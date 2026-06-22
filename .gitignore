@@ -1,0 +1,103 @@
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# ============================================================
+# Virtual Environment
+# ============================================================
+venv/
+.venv/
+env/
+.env/
+
+# ============================================================
+# Environment Variables
+# ============================================================
+# IMPORTANT: Never commit API keys!
+.env
+.env.*
+!.env.example
+
+# ============================================================
+# ChromaDB / Vector Store
+# ============================================================
+# The chroma/ directory contains your persisted vector database.
+# It is large and can be rebuilt by re-running embed_data().
+chroma/
+*.chroma
+
+# ============================================================
+# Temp files generated during OCR
+# ============================================================
+temp_page_*.png
+
+# ============================================================
+# Model / Tokenizer Cache
+# ============================================================
+# HuggingFace model cache (sentence-transformers, tokenizers)
+.cache/
+*.onnx
+
+# PaddleX / PaddleOCR cached models
+# (stored in C:\Users\<user>\.paddlex by default, but just in case)
+.paddlex/
+
+# EasyOCR model cache
+.EasyOCR/
+
+# ============================================================
+# IDE / Editor
+# ============================================================
+.vscode/
+.idea/
+*.code-workspace
+
+# ============================================================
+# OS-generated files
+# ============================================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ============================================================
+# Build / Distribution
+# ============================================================
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# ============================================================
+# Testing & Coverage
+# ============================================================
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# ============================================================
+# Jupyter Notebooks (if used for experimentation)
+# ============================================================
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================================
+# Data Files
+# ============================================================
+# Uncomment the line below if you do NOT want to commit your PDFs.
+# (Recommended for large files — use Git LFS or store externally instead)
+data/
+
