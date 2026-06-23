@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from chromadb import Collection
 from chromadb.errors import ChromaError
 from database.database import Database
@@ -8,16 +9,16 @@ from service.embed_service import EmbedService
 from service.llm_service import LLMService
 from rich.console import Console
 from rich.panel import Panel
-from util.utility import get_project_root, format_context
+from util.utility import get_project_root, format_context, is_pdf
 from huggingface_hub import login
 from dotenv import load_dotenv
-
 
 load_dotenv()
 HP_API_KEY = os.getenv("HP_API_KEY")
 login(HP_API_KEY)  # Login to HuggingFace
 
 CONVERSATION_WINDOW_COUNT = 5
+DEFAULT_DATA_PATH = get_project_root() / "data"
 
 db = Database()
 collection = db.get_or_create_collection()
@@ -27,57 +28,93 @@ console = Console()
 conversation_history = []
 
 
-def get_menu_choice() -> int:
+def get_options_choice(min: int = 1, max: int = 3) -> int:
     choice = 0
     while True:
         choice = int(input("Select from menu: "))
 
-        if choice < 1 or choice > 3:
+        if choice < min or choice > max:
             print("INVALID MENU OPTION!")
         else:
             return choice
 
 
-def embed_data(collection: Collection):
+def embed_data(collection: Collection, path: str | Path = DEFAULT_DATA_PATH):
+    # Convert string to Path object if necessary
+    path_obj = Path(path)
+
+    # Make sure the path actually exists
+    if not path_obj.exists():
+        print(f"Error: Path {path_obj} does not exist.")
+        return
+    
     print("Starting process...")
-
-    DATA_PATH = get_project_root() / "data"
-
+    
     pdf_count = 0
     chunks_count = 0
 
-    for folder in DATA_PATH.glob("*"):
-        if folder.is_dir():
-            print(f"Processing folder: {folder.name}...")
-            
-            for pdf in folder.glob("*.pdf"):
+    # Check if the provided path itself is a file or a folder
+    if path_obj.is_file():
+        # Handle single file processing
+        if is_pdf(path_obj):  # or is_pdf(path_obj)
+            print(f"Processing file: {path_obj.name}...")
+            chunks_count += process_pdf(path_obj, collection)
+            pdf_count += 1
+        else:
+            print(f"Skipping non-PDF file: {path_obj.name}")
+
+    elif path_obj.is_dir():
+        # Handle folder processing by scanning its contents
+        for item in path_obj.glob("*"):
+            # If sub-item is a subfolder, process its PDFs
+            if item.is_dir():
+                print(f"Processing folder: {item.name}...")
+
+                for pdf in item.glob("*.pdf"):
+                    chunks_count += process_pdf(pdf, collection)
+                    pdf_count += 1
+
+                print(f"Finished processing folder: {item.name}...")
+
+            # If sub-item is a PDF file in the root of the folder
+            elif item.is_file() and is_pdf(item):
+                print(f"Processing file: {item.name}...")
+                chunks_count += process_pdf(item, collection)
                 pdf_count += 1
-
-                ids = []
-                documents = []
-                metadatas = []
-
-                print(f"Extracting text from {pdf.name}...")
-                document_chunks = extract_text_from_pdf(pdf)
-                for j, chunk in enumerate(document_chunks):
-                    chunks_count += 1
-
-                    ids.append(f"{str(pdf.stem)}_chunk_{str(j)}")
-                    metadatas.append({"title": pdf.stem, "section": chunk["section"]})
-                    documents.append(chunk["document"])
-
-                if len(ids) > 0 and len(documents) > 0 and len(metadatas) > 0:
-                    collection.add(ids=ids, documents=documents, metadatas=metadatas)
-                    
-                print(f"Finished processing {pdf.name}...")
-                
-        print(f"Finished processing folder: {folder.name}...")
 
     print(f"{pdf_count} documents added...")
     print(f"{chunks_count} chunks added...")
 
 
-def start_coversation():
+def process_pdf(pdf: Path, collection: Collection) -> int:
+    chunk_count = 0
+
+    ids = []
+    documents = []
+    metadatas = []
+
+    print(f"Extracting text from {pdf.name}...")
+    document_chunks = extract_text_from_pdf(pdf)
+    for j, chunk in enumerate(document_chunks):
+        chunk_count += 1
+
+        ids.append(f"{str(pdf.stem)}_chunk_{str(j)}")
+        metadatas.append({"title": pdf.stem, "section": chunk["section"]})
+        documents.append(chunk["document"])
+
+    if len(ids) > 0 and len(documents) > 0 and len(metadatas) > 0:
+        collection.add(
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas,
+        )
+
+    print(f"Finished processing {pdf.name}...")
+
+    return chunk_count
+
+
+def start_conversation():
     global conversation_history
 
     while True:
@@ -217,26 +254,33 @@ def main():
         print("[3] Exit")
         print(f"{"=" * 45}")
 
-        choice = get_menu_choice()
+        choice = get_options_choice()
         print(f"{"=" * 45}")
 
         if choice == 1:
             try:
-                embed_data(collection)
-                print("Data embeded successfully...")
+                path = input(
+                    "Use absolute path -> leave blank to use default data folder\nEnter path to file / folder: "
+                )
+                if not path:
+                    path = DEFAULT_DATA_PATH
+
+                print(f"{"=" * 45}")
+                embed_data(collection, path)
+                print("Data embedded successfully...")
             except ChromaError as ex:
-                print(f"AN ERROR OCCURED WHILE EMBEDDING DATA: {ex.message}")
+                print(f"AN ERROR OCCURRED WHILE EMBEDDING DATA: {ex.message}")
             except Exception as ex:
-                print(f"AN ERROR OCCURED: {ex}")
+                print(f"AN ERROR OCCURRED: {ex}")
         elif choice == 2:
             try:
-                start_coversation()
+                start_conversation()
             except OpenAIError as ex:
-                print(f"AN ERROR OCCURED WHILE USING LLM SERVICE: {ex}")
+                print(f"AN ERROR OCCURRED WHILE USING LLM SERVICE: {ex}")
             except ChromaError as ex:
-                print(f"AN ERROR OCCURED WHILE EMBEDDING QUERY: {ex.message}")
+                print(f"AN ERROR OCCURRED WHILE EMBEDDING QUERY: {ex.message}")
             except Exception as ex:
-                print(f"AN ERROR OCCURED: {ex}")
+                print(f"AN ERROR OCCURRED: {ex}")
         else:
             print("Good Bye!")
             print(f"{"=" * 45}")

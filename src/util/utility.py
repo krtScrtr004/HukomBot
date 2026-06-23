@@ -5,6 +5,14 @@ def get_project_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
+def is_pdf(file_path: Path) -> bool:
+    try:
+        with open(file_path, "rb") as f:
+            return f.read(5) == b"%PDF-"
+    except (FileNotFoundError, PermissionError):
+        return False
+
+
 def format_context(results) -> str:
     formatted_results = []
     for result in results:
