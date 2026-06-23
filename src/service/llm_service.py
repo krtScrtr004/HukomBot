@@ -28,6 +28,50 @@ class LLMService:
             return None
 
         return response.choices[0].message.content
+    
+    def extract_legal_issues(self, case_facts: list[str]) -> list[str]:
+        facts = "\n".join(f"- {fact}" for fact in case_facts)
+        
+        prompt = f"""
+        You are an expert legal analyst specializing in Philippine Law. Your task is to extract the specific legal issues raised by the following facts.
+
+        ### Case Facts:
+        {facts}
+
+        ### Instructions:
+        1. Identify each distinct legal issue or question of law that arises from the facts.
+        2. Express each issue as a concise, standalone legal question or statement (e.g., "Whether the employer validly dismissed the employee for just cause").
+        3. Focus on substantive legal issues (e.g., liability, jurisdiction, validity of a contract). Do not include procedural matters unless they are central to the case.
+        4. If multiple parties are involved, specify who the issue affects (e.g., "Whether Person A is liable to Person B for damages").
+        5. Return only the list of legal issues, one per line.
+
+        ### Output Format:
+        Legal Issue 1: ...
+        Legal Issue 2: ...
+        ...
+        """
+        
+        response = self.client.chat.completions.create(
+            model=self.MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=500,
+        )
+
+        if not response.choices:
+            return []
+
+        content = response.choices[0].message.content or ""
+        issues = []
+        for line in content.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if "." in line and line.split(".", 1)[0].strip().isdigit():
+                line = line.split(".", 1)[1].strip().lstrip(":").strip()
+            issues.append(line)
+
+        return issues if issues else content.splitlines()
 
     def expand_query(self, query: str) -> list[str] | None:
         prompt = f"""
@@ -59,7 +103,7 @@ class LLMService:
 
         return [query, *generated_queries]
     
-    
+    # TODO: Remove this
     def contextualize_query(self, query: str, conversation_history: list[dict[str, str]]):
         prompt = f"""
         You are a query contextualization assistant for a Philippine legal retrieval system.
