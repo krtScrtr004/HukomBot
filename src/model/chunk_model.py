@@ -7,21 +7,30 @@ from psycopg import errors
 class ChunkModel(Model):
     def __init__(
         self,
-        id: uuid,
-        document_id: uuid,
-        chunk_number: int,
-        chunk_text: str,
-        embedding: list,
+        id: uuid = None,
+        document_id: uuid = None,
+        chunk_number: int = None,
+        chunk_text: str = None,
+        embedding: list = None,
     ):
         super().__init__()
 
-        self.id = (id)
+        self.id = id
         self.document_id = document_id
         self.chunk_number = chunk_number
         self.chunk_text = chunk_text
         self.embedding = embedding
 
     def create(self):
+        if not self.document_id:
+            raise RuntimeError("Document Id not provided")
+        if not self.chunk_number:
+            raise RuntimeError("Chunk number not provided")
+        if not self.chunk_text:
+            raise RuntimeError("Chunk text not provided")
+        if not self.embedding:
+            raise RuntimeError("Embeddings not provided")
+
         try:
             with self.connection.conn.cursor() as cur:
                 cur.execute(
@@ -39,7 +48,7 @@ class ChunkModel(Model):
                         self.embedding,
                     ),
                 )
-                
+
             self.connection.conn.commit()
         except errors.IntegrityError as ex:
             print(f"Duplicate id exception: {ex}")
@@ -68,22 +77,22 @@ class ChunkModel(Model):
                     WHERE search_vector @@ q.q
                     ORDER BY rank DESC
                     """,
-                    (chunk_text,)
+                    (chunk_text,),
                 )
-                
+
                 rows = cur.fetchall()
-                
+
                 chunks = []
                 for row in rows:
                     chunk = ChunkModel(
-                        id=uuid.UUID(row['id']),
-                        document_id=uuid.UUID(row['document_id']),
-                        chunk_number=int(row['chunk_id']),
-                        chunk_text=row['chunk_text'],
-                        embedding=row['embedding']
+                        id=uuid.UUID(row["id"]),
+                        document_id=uuid.UUID(row["document_id"]),
+                        chunk_number=int(row["chunk_id"]),
+                        chunk_text=row["chunk_text"],
+                        embedding=row["embedding"],
                     )
                     chunks.append(chunk)
-                    
+
                 return chunks
         except errors.OperationalError as ex:
             print(f"Insert error: {ex}")

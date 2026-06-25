@@ -7,8 +7,8 @@ from psycopg import errors
 class DocumentModel(Model):
     def __init__(
         self,
-        id: uuid,
-        title: str,
+        id: uuid = None,
+        title: str = None,
         file_type: str | None = None,
         created_at: datetime | None = None,
     ):
@@ -20,8 +20,10 @@ class DocumentModel(Model):
         self.created_at = created_at
 
     def create(self):
+        if not self.title:
+            raise RuntimeError("Title not provided")
+
         try:
-            title_c = self.title
             file_type_c = self.file_type
             if not file_type_c:
                 file_type_c = None
@@ -38,7 +40,7 @@ class DocumentModel(Model):
                         %s, %s, %s
                     )
                     """,
-                    (title_c, file_type_c, created_at_c),
+                    (self.title, file_type_c, created_at_c),
                 )
             self.connection.conn.commit()
         except errors.IntegrityError as ex:
