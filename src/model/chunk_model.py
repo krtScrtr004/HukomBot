@@ -1,4 +1,6 @@
 import uuid
+from __future__ import annotations
+from typing import List, Dict, Optional
 from model.model import Model
 from datetime import datetime
 from psycopg import errors
@@ -39,7 +41,7 @@ class ChunkModel(Model):
                         document_id, chunk_number, chunk_text, embedding
                     ) VALUES (
                         %s, %s, %s, %s
-                    )
+                    ) RETURNING id
                     """,
                     (
                         self.document_id,
@@ -48,6 +50,74 @@ class ChunkModel(Model):
                         self.embedding,
                     ),
                 )
+
+                # Set chunk id
+                self.id = cur.fetchone()[0]
+
+            self.connection.conn.commit()
+        except errors.IntegrityError as ex:
+            print(f"Duplicate id exception: {ex}")
+            self.connection.conn.rollback()
+        except errors.ForeignKeyViolation as ex:
+            print(f"Document id not found exception: {ex}")
+            self.connection.conn.rollback()
+        except errors.OperationalError as ex:
+            print(f"Insert error: {ex}")
+            raise
+
+    def create_many(self, chunks: List[ChunkModel]):
+        if not chunks:
+            return
+
+        params = []
+        for chunk in chunks:
+            entry = {}
+            if not chunk.document_id:
+                raise RuntimeError("Document Id not provided")
+            entry["document_id"] = chunk.document_id
+            if not chunk.chunk_number:
+                raise RuntimeError("Chunk number not provided")
+            entry["chunk_number"] = chunk.chunk_number
+            if not chunk.chunk_text:
+                raise RuntimeError("Chunk text not provided")
+            entry["chunk_text"] = chunk.chunk_text
+            if not chunk.embedding:
+                raise RuntimeError("Embeddings not provided")
+            entry["embedding"] = chunk.embedding
+            params.append(entry)
+
+        try:
+            with self.connection.conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT INTO chunks (
+                        document_id, chunk_number, chunk_text, embedding
+                    ) VALUES (
+                        %s, %s, %s, %s
+                    ) RETURNING id
+                    """,
+                    [
+                        (
+                            param["document_id"],
+                            param["chunk_number"],
+                            param["chunk_text"],
+                            param["embedding"],
+                        )
+                        for param in params
+                    ],
+                    returning=True,
+                )
+
+                # Retrieve the generated IDs
+                counter = 0
+                while True:
+                    row = cur.fetchone()
+                    if row:
+                        # Update the chunk's ID attribute
+                        chunks[counter].id = row[0]
+                        counter += 1
+                    if not cur.nextset():
+                        break
 
             self.connection.conn.commit()
         except errors.IntegrityError as ex:
