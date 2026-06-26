@@ -47,7 +47,7 @@ class DocumentModel(Model):
 
                 conn.commit()
             except errors.IntegrityError as ex:
-                print(f"Duplicate id exception: {ex}")
+                print(f"Integrity error exception: {ex}")
                 conn.rollback()
             except errors.OperationalError as ex:
                 print(f"Insert error: {ex}")
@@ -56,7 +56,7 @@ class DocumentModel(Model):
     def search(self, title: str = "", file_type: str = None) -> list:
         if not title and not file_type:
             raise RuntimeError("Title OR file_type parameters must be provided")
-        
+
         with self.connection.connection() as conn:
             try:
                 combined_terms = ""
@@ -97,13 +97,13 @@ class DocumentModel(Model):
             except errors.OperationalError as ex:
                 print(f"Search error: {ex}")
                 raise
-            
+
     @staticmethod
     def create_many(documents: List[DocumentModel]):
         # Return if list is empty
         if not documents:
             return
-        
+
         model = DocumentModel()
 
         params = []
@@ -147,7 +147,35 @@ class DocumentModel(Model):
 
                 conn.commit()
             except errors.IntegrityError as ex:
-                print(f"Duplicate id exception: {ex}")
+                print(f"Integrity error exception: {ex}")
+                conn.rollback()
+            except errors.OperationalError as ex:
+                print(f"Insert error: {ex}")
+                raise
+
+    @staticmethod
+    def delete_many(ids: list[uuid.UUID]):
+        if not ids:
+            return
+
+        model = DocumentModel()
+
+        with model.connection.connection() as conn:
+            try:
+                with conn.cursor() as cur:
+                    placeholders = ", ".join(["%s"] * len(ids))
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            f"""
+                            DELETE FROM documents
+                            WHERE id IN ({placeholders})
+                            """,
+                            ids,
+                        )
+
+                conn.commit()
+            except errors.IntegrityError as ex:
+                print(f"Integrity error exception: {ex}")
                 conn.rollback()
             except errors.OperationalError as ex:
                 print(f"Insert error: {ex}")

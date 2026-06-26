@@ -57,7 +57,7 @@ class ChunkModel(Model):
 
                 conn.commit()
             except errors.IntegrityError as ex:
-                print(f"Duplicate id exception: {ex}")
+                print(f"Integrity error exception: {ex}")
                 conn.rollback()
             except errors.ForeignKeyViolation as ex:
                 print(f"Document id not found exception: {ex}")
@@ -165,7 +165,7 @@ class ChunkModel(Model):
 
                 conn.commit()
             except errors.IntegrityError as ex:
-                print(f"Duplicate id exception: {ex}")
+                print(f"Integrity error exception: {ex}")
                 conn.rollback()
             except errors.ForeignKeyViolation as ex:
                 print(f"Document id not found exception: {ex}")
