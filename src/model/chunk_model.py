@@ -1,7 +1,8 @@
 from __future__ import annotations
-import uuid
+from uuid import UUID
 from typing import List, Dict, Optional
 from model.model import Model
+from model.document_model import DocumentModel
 from datetime import datetime
 from psycopg import errors
 
@@ -9,12 +10,13 @@ from psycopg import errors
 class ChunkModel(Model):
     def __init__(
         self,
-        id: uuid = None,
-        document_id: uuid = None,
+        id: UUID = None,
+        document_id: UUID = None,
         chunk_number: int = None,
         chunk_text: str = None,
         section: str = None,
         embedding: list = None,
+        document: DocumentModel = None,
     ):
         super().__init__()
 
@@ -24,6 +26,8 @@ class ChunkModel(Model):
         self.chunk_text = chunk_text
         self.section = section
         self.embedding = embedding
+
+        self.document = document  # Navigation prop
 
     def create(self):
         if not self.document_id:
@@ -53,7 +57,7 @@ class ChunkModel(Model):
                             self.chunk_number,
                             self.chunk_text,
                             self.embedding,
-                            self.section
+                            self.section,
                         ),
                     )
 
@@ -71,23 +75,32 @@ class ChunkModel(Model):
                 print(f"Insert error: {ex}")
                 raise
 
-    def search(self, chunk_text: str):
+    def search(self, chunk_text: str, limit: int = 10, offset: int = 0):
         with self.connection.connection() as conn:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
-                        """
+                        f"""
                         WITH query AS (
                             SELECT plainto_tsquery('english', %s) as q
                         )
                         SELECT
-                            c.*,
-                            ts_rank(
-                                c.search_vector, q.q
-                            ) as rank
+                            c.id as c_id,
+                            c.chunk_number as c_chunk_number,
+                            c.chunk_text as c_chunk_text,
+                            c.embedding as c_embedding,
+                            c.section as c_section,
+                            ts_rank(c.search_vector, q.q) as c_rank,
+                            d.id as d_id,
+                            d.title as d_title,
+                            d.file_type as d_file_type
                         FROM chunks c, query q
-                        WHERE search_vector @@ q.q
-                        ORDER BY rank DESC
+                        JOIN document d
+                            ON c.document_id = d.id
+                        WHERE c.search_vector @@ q.q
+                        ORDER BY c_rank DESC
+                        LIMIT {limit}
+                        OFFSET {offset}
                         """,
                         (chunk_text,),
                     )
@@ -97,12 +110,17 @@ class ChunkModel(Model):
                     chunks = []
                     for row in rows:
                         chunk = ChunkModel(
-                            id=uuid.UUID(row["id"]),
-                            document_id=uuid.UUID(row["document_id"]),
-                            chunk_number=int(row["chunk_id"]),
-                            chunk_text=row["chunk_text"],
-                            embedding=row["embedding"],
-                            section=row["section"]
+                            id=UUID(row["c_id"]),
+                            document_id=UUID(row["d_id"]),
+                            chunk_number=int(row["c_chunk_number"]),
+                            chunk_text=row["c_chunk_text"],
+                            embedding=row["c_embedding"],
+                            section=row["c_section"],
+                            document=DocumentModel(
+                                id=row["d_id"],
+                                title=row["d_title"],
+                                file_type=row["d_file_type"],
+                            ),
                         )
                         chunks.append(chunk)
 
@@ -110,7 +128,56 @@ class ChunkModel(Model):
             except errors.OperationalError as ex:
                 print(f"Insert error: {ex}")
                 raise
-            
+
+    def search_vector(self, chunk_embedding: list, limit: int = 10, offset: int = 0):
+        with self.connection.connection() as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT 
+                            c.id as c_id,
+                            c.chunk_number as c_chunk_number,
+                            c.chunk_text as c_chunk_text,
+                            c.embedding as c_embedding,
+                            c.section as c_section,
+                            d.id as d_id,
+                            d.title as d_title,
+                            d.file_type as d_file_type
+                        FROM chunks c
+                        JOIN documents d
+                            ON c.document_id = d.id
+                        ORDER BY c.embedding <=> %s
+                        LIMIT %s
+                        OFFSET %s
+                        """,
+                        (chunk_embedding, limit, offset),
+                    )
+
+                    rows = cur.fetchall()
+
+                    chunks = []
+                    for row in rows:
+                        chunk = ChunkModel(
+                            id=UUID(row["c_id"]),
+                            document_id=UUID(row["d_id"]),
+                            chunk_number=int(row["c_chunk_number"]),
+                            chunk_text=row["c_chunk_text"],
+                            embedding=row["c_embedding"],
+                            section=row["c_section"],
+                            document=DocumentModel(
+                                id=row["d_id"],
+                                title=row["d_title"],
+                                file_type=row["d_file_type"],
+                            ),
+                        )
+                        chunks.append(chunk)
+
+                    return chunks
+            except errors.OperationalError as ex:
+                print(f"Insert error: {ex}")
+                raise
+
     @staticmethod
     def create_many(chunks: List[ChunkModel]):
         if not chunks:
