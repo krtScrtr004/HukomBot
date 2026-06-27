@@ -146,7 +146,7 @@ class ChunkModel(Model):
                         INSERT INTO chunks (
                             document_id, chunk_number, chunk_text, embedding, section
                         ) VALUES (
-                            %s, %s, %s, %s
+                            %s, %s, %s, %s, %s
                         ) RETURNING id
                         """,
                         [
