@@ -13,6 +13,7 @@ class ChunkModel(Model):
         document_id: uuid = None,
         chunk_number: int = None,
         chunk_text: str = None,
+        section: str = None,
         embedding: list = None,
     ):
         super().__init__()
@@ -21,6 +22,7 @@ class ChunkModel(Model):
         self.document_id = document_id
         self.chunk_number = chunk_number
         self.chunk_text = chunk_text
+        self.section = section
         self.embedding = embedding
 
     def create(self):
@@ -32,6 +34,8 @@ class ChunkModel(Model):
             raise RuntimeError("Chunk text not provided")
         if not self.embedding:
             raise RuntimeError("Embeddings not provided")
+        if not self.section:
+            raise RuntimeError("Section not provided")
 
         with self.connection.connection() as conn:
             try:
@@ -39,9 +43,9 @@ class ChunkModel(Model):
                     cur.execute(
                         """
                         INSERT INTO chunks (
-                            document_id, chunk_number, chunk_text, embedding
+                            document_id, chunk_number, chunk_text, embedding, section
                         ) VALUES (
-                            %s, %s, %s, %s
+                            %s, %s, %s, %s, %s
                         ) RETURNING id
                         """,
                         (
@@ -49,6 +53,7 @@ class ChunkModel(Model):
                             self.chunk_number,
                             self.chunk_text,
                             self.embedding,
+                            self.section
                         ),
                     )
 
@@ -97,6 +102,7 @@ class ChunkModel(Model):
                             chunk_number=int(row["chunk_id"]),
                             chunk_text=row["chunk_text"],
                             embedding=row["embedding"],
+                            section=row["section"]
                         )
                         chunks.append(chunk)
 
@@ -127,6 +133,9 @@ class ChunkModel(Model):
             if not all(chunk.embedding):
                 raise RuntimeError("Embeddings not provided")
             entry["embedding"] = chunk.embedding
+            if not chunk.section:
+                raise RuntimeError("Section not provided")
+            entry["section"] = chunk.section
             params.append(entry)
 
         with model.connection.connection() as conn:
@@ -135,7 +144,7 @@ class ChunkModel(Model):
                     cur.executemany(
                         """
                         INSERT INTO chunks (
-                            document_id, chunk_number, chunk_text, embedding
+                            document_id, chunk_number, chunk_text, embedding, section
                         ) VALUES (
                             %s, %s, %s, %s
                         ) RETURNING id
@@ -146,6 +155,7 @@ class ChunkModel(Model):
                                 param["chunk_number"],
                                 param["chunk_text"],
                                 param["embedding"],
+                                param["section"],
                             )
                             for param in params
                         ],

@@ -15,7 +15,7 @@ tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-base-en-v1.5")
 def chunk_text(text: str, chunk_size: int = 512, overlap=80) -> list[dict[str, str]]:
     # Split on Article/Section boundaries
     boundaries = re.split(
-        r"(?=\b(ARTICLE|ART|SECTION|SEC|SECT)\s+[IVXLC\d]+)", text, flags=re.IGNORECASE
+        r"(?=\b(?:ARTICLE|ART|SECTION|SEC|SECT)\s+[IVXLC\d]+)", text, flags=re.IGNORECASE
     )
 
     chunks = []
