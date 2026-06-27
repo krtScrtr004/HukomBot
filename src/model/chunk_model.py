@@ -21,7 +21,7 @@ class ChunkModel(Model):
         super().__init__()
 
         self.id = id
-        self.document_id = document_id
+        self.document_id = document.id if document is not None else document_id
         self.chunk_number = chunk_number
         self.chunk_text = chunk_text
         self.section = section
@@ -30,7 +30,8 @@ class ChunkModel(Model):
         self.document = document  # Navigation prop
 
     def create(self):
-        if not self.document_id:
+        document_id = self.document.id if self.document is not None else self.document_id
+        if not document_id:
             raise RuntimeError("Document Id not provided")
         if not self.chunk_number:
             raise RuntimeError("Chunk number not provided")
@@ -53,7 +54,7 @@ class ChunkModel(Model):
                         ) RETURNING id
                         """,
                         (
-                            self.document_id,
+                            document_id,
                             self.chunk_number,
                             self.chunk_text,
                             self.embedding,
@@ -188,9 +189,10 @@ class ChunkModel(Model):
         params = []
         for chunk in chunks:
             entry = {}
-            if not chunk.document_id:
+            document_id = chunk.document.id if chunk.document is not None else chunk.document_id
+            if not document_id:
                 raise RuntimeError("Document Id not provided")
-            entry["document_id"] = chunk.document_id
+            entry["document_id"] = document_id
             if chunk.chunk_number < 0:
                 raise RuntimeError("Chunk number not provided")
             entry["chunk_number"] = chunk.chunk_number

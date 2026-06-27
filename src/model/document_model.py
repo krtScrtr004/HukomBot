@@ -1,5 +1,5 @@
 from __future__ import annotations
-import uuid
+from uuid import UUID
 from typing import List, Dict, Optional
 from model.model import Model
 from datetime import datetime
@@ -9,7 +9,7 @@ from psycopg import errors
 class DocumentModel(Model):
     def __init__(
         self,
-        id: uuid = None,
+        id: UUID = None,
         title: str = None,
         file_type: str | None = None,
         created_at: datetime | None = None,
@@ -86,7 +86,7 @@ class DocumentModel(Model):
                     documents = []
                     for row in rows:
                         document = DocumentModel(
-                            id=uuid.UUID(row["id"]),
+                            id=UUID(row["id"]),
                             title=row["title"],
                             file_type=row["file_type"],
                             created_at=datetime.fromisoformat(row["created_at"]),
@@ -154,7 +154,7 @@ class DocumentModel(Model):
                 raise
 
     @staticmethod
-    def delete_many(ids: list[uuid.UUID]):
+    def delete_many(ids: list[UUID]):
         if not ids:
             return
 
