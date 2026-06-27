@@ -76,6 +76,78 @@ class LegalChatbotService:
 
         return queries if queries else legal_issues
 
+    def generate_answer(self, case_facts: list[str], context: str):
+        retrieved_cases = "\n---\n".join
+        prompt = """
+            You are a legal research assistant specializing in Philippine law.
+
+            Your task is to analyze the user's facts and the retrieved legal cases, then identify which cases may be relevant.
+
+            IMPORTANT RULES:
+
+            1. Use ONLY the information provided in the retrieved cases.
+            2. Do NOT invent legal cases, citations, facts, doctrines, or rulings.
+            3. If the retrieved cases are insufficient, explicitly state that.
+            4. Explain similarities between the user's situation and the cases.
+            5. Distinguish between established facts and assumptions.
+            6. Do NOT provide definitive legal advice or conclusions.
+            7. Present your findings objectively and professionally.
+
+            USER FACTS:
+            --------------------
+            {case_facts}
+            --------------------
+
+            RETRIEVED LEGAL CASES:
+            --------------------
+            {context}
+            --------------------
+
+            Generate your response using the following format:
+
+            ## Relevant Cases
+
+            For each relevant case:
+
+            ### [Case Name]
+
+            **Why it may be relevant:**
+            - Explain which facts are similar to the user's situation.
+            - Explain the legal issue involved.
+            - Explain any important distinctions.
+
+            **Key doctrine or ruling:**
+            - Summarize the doctrine or ruling based only on the provided context.
+
+            **Confidence:**
+            High / Medium / Low
+
+            ---
+
+            ## Overall Analysis
+
+            Provide a concise analysis of:
+            - The possible legal issues involved.
+            - The common themes among the relevant cases.
+            - Any limitations in the retrieved information.
+
+            ## Disclaimer
+
+            State that this analysis is for legal research purposes only and is not a substitute for professional legal advice.
+            """
+
+        response = self.client.chat.completions.create(
+            model=self.MODEL,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        content = response.choices[0].message.content
+        if not content:
+            raise RuntimeError("LLM service failed to generate the final answer")
+
+        return content
+
     def contextualize_query(
         self, query: str, conversation_history: list[dict[str, str]]
     ):
