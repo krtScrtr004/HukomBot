@@ -13,20 +13,6 @@ def is_pdf(file_path: Path) -> bool:
         return False
 
 
-def format_context(results) -> str:
-    formatted_results = []
-    for result in results:
-        title = result["metadata"]["title"] if result["metadata"] else "Unknown Title"
-        distance = result["distance"]
-        document = result["document"]
-
-        formatted_results.append(
-            f"Title: {title}\nDistance: {distance}\nDocument: {document}"
-        )
-
-    return "\n\n---\n\n".join(formatted_results)
-
-
 def format_conversation_history(histories: list[dict[str, str]]) -> str:
     formatted_history = []
     for history in histories:
