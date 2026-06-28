@@ -1,5 +1,6 @@
 python-dotenv
-chromadb
+psycopg[binary]
+psycopg-pool
 sentence-transformers
 pypdf
 pymupdf
