@@ -29,12 +29,11 @@ class LegalChatbotService:
         """
 
         response = self.llm_service.chat(prompt=prompt, temprature=0.1, max_tokens=500)
-        if not response.choices:
+        if not response:
             return []
 
-        content = response.choices[0].message.content or ""
         issues = []
-        for line in content.splitlines():
+        for line in response.splitlines():
             line = line.strip()
             if not line:
                 continue
@@ -42,7 +41,7 @@ class LegalChatbotService:
                 line = line.split(".", 1)[1].strip().lstrip(":").strip()
             issues.append(line)
 
-        return issues if issues else content.splitlines()
+        return issues if issues else response.splitlines()
 
     def generate_queries(
         self, legal_issues: list[str], query_count: int = 5
@@ -68,11 +67,10 @@ class LegalChatbotService:
         """
 
         response = self.llm_service.chat(prompt=prompt, temprature=0)
-        if not response.choices:
+        if not response:
             return [legal_issues[0]] if legal_issues else []
 
-        content = response.choices[0].message.content or ""
-        queries = [line.strip() for line in content.splitlines() if line.strip()]
+        queries = [line.strip() for line in response.splitlines() if line.strip()]
 
         return queries if queries else legal_issues
 
@@ -136,17 +134,16 @@ class LegalChatbotService:
             State that this analysis is for legal research purposes only and is not a substitute for professional legal advice.
             """
 
-        response = self.client.chat.completions.create(
+        response = self.llm_service.chat(
             model=self.MODEL,
             temperature=0,
-            messages=[{"role": "user", "content": prompt}],
+            prompt=prompt,
         )
 
-        content = response.choices[0].message.content
-        if not content:
+        if not response:
             raise RuntimeError("LLM service failed to generate the final answer")
 
-        return content
+        return response
 
     def contextualize_query(
         self, query: str, conversation_history: list[dict[str, str]]
@@ -176,17 +173,15 @@ class LegalChatbotService:
         Standalone Search Query:
         """
 
-        response = self.client.chat.completions.create(
+        response = self.llm_service.chat(
             model=self.MODEL,
             temperature=0,
-            messages=[{"role": "user", "content": prompt}],
+            prompt=prompt,
         )
-
-        content = response.choices[0].message.content
-        if not content:
+        if not response:
             return query  # Just return original query if LLM fails
 
-        return content
+        return response
 
     def expand_query(self, query: str) -> list[str] | None:
         prompt = f"""
@@ -202,18 +197,16 @@ class LegalChatbotService:
         {query}
         """
 
-        response = self.client.chat.completions.create(
+        response = self.llm_service.chat(
             model=self.MODEL,
             temperature=0,
             messages=[{"role": "user", "content": prompt}],
         )
-
-        content = response.choices[0].message.content
-        if not content:
+        if not response:
             return [query]
 
         generated_queries = [
-            line.strip() for line in content.splitlines() if line.strip()
+            line.strip() for line in response.splitlines() if line.strip()
         ]
 
         return [query, *generated_queries]
