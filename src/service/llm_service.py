@@ -25,7 +25,7 @@ class LLMService:
         response = self.client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=temprature,
+            temperature=temperature,
             max_tokens=max_tokens,
         )
 
