@@ -19,7 +19,7 @@ class LLMService:
         self,
         prompt: str,
         model: str = MODEL,
-        temprature: float = 0.2,
+        temperature: float = 0.2,
         max_tokens: int = 1000,
     ) -> str | None:
         response = self.client.chat.completions.create(

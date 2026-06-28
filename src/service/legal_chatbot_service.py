@@ -28,7 +28,7 @@ class LegalChatbotService:
         ...
         """
 
-        response = self.llm_service.chat(prompt=prompt, temprature=0.1, max_tokens=500)
+        response = self.llm_service.chat(prompt=prompt, temperature=0.1, max_tokens=500)
         if not response:
             return []
 
@@ -66,7 +66,7 @@ class LegalChatbotService:
         7. Return only the queries, one per line, with no numbering, bullets, or extra text.
         """
 
-        response = self.llm_service.chat(prompt=prompt, temprature=0)
+        response = self.llm_service.chat(prompt=prompt, temperature=0)
         if not response:
             return [legal_issues[0]] if legal_issues else []
 
@@ -135,7 +135,6 @@ class LegalChatbotService:
             """
 
         response = self.llm_service.chat(
-            model=self.MODEL,
             temperature=0,
             prompt=prompt,
         )
@@ -174,7 +173,6 @@ class LegalChatbotService:
         """
 
         response = self.llm_service.chat(
-            model=self.MODEL,
             temperature=0,
             prompt=prompt,
         )
@@ -198,9 +196,8 @@ class LegalChatbotService:
         """
 
         response = self.llm_service.chat(
-            model=self.MODEL,
             temperature=0,
-            messages=[{"role": "user", "content": prompt}],
+            prompt=prompt,
         )
         if not response:
             return [query]
