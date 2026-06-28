@@ -81,29 +81,29 @@ class ChunkModel(Model):
             try:
                 with conn.cursor() as cur:
                     cur.execute(
-                        f"""
+                        """
                         WITH query AS (
-                            SELECT plainto_tsquery('english', %s) as q
+                            SELECT plainto_tsquery('english', %s) AS q
                         )
                         SELECT
-                            c.id as c_id,
-                            c.chunk_number as c_chunk_number,
-                            c.chunk_text as c_chunk_text,
-                            c.embedding as c_embedding,
-                            c.section as c_section,
-                            ts_rank(c.search_vector, q.q) as c_rank,
-                            d.id as d_id,
-                            d.title as d_title,
-                            d.file_type as d_file_type
-                        FROM chunks c, query q
-                        JOIN document d
-                            ON c.document_id = d.id
+                            c.id AS c_id,
+                            c.chunk_number AS c_chunk_number,
+                            c.chunk_text AS c_chunk_text,
+                            c.embedding AS c_embedding,
+                            c.section AS c_section,
+                            ts_rank(c.search_vector, q.q) AS c_rank,
+                            d.id AS d_id,
+                            d.title AS d_title,
+                            d.file_type AS d_file_type
+                        FROM chunks c
+                        JOIN documents d ON c.document_id = d.id
+                        CROSS JOIN query q
                         WHERE c.search_vector @@ q.q
                         ORDER BY c_rank DESC
-                        LIMIT {limit}
-                        OFFSET {offset}
+                        LIMIT %s
+                        OFFSET %s
                         """,
-                        (chunk_text,),
+                        (chunk_text, limit, offset),
                     )
 
                     rows = cur.fetchall()
@@ -148,11 +148,11 @@ class ChunkModel(Model):
                         FROM chunks c
                         JOIN documents d
                             ON c.document_id = d.id
-                        ORDER BY c.embedding <=> %s
+                        ORDER BY c.embedding <=> %s::vector
                         LIMIT %s
                         OFFSET %s
                         """,
-                        (chunk_embedding, limit, offset),
+                        (str(chunk_embedding), limit, offset),
                     )
 
                     rows = cur.fetchall()
@@ -160,8 +160,8 @@ class ChunkModel(Model):
                     chunks = []
                     for row in rows:
                         chunk = ChunkModel(
-                            id=UUID(row["c_id"]),
-                            document_id=UUID(row["d_id"]),
+                            id=row["c_id"],
+                            document_id=row["d_id"],
                             chunk_number=int(row["c_chunk_number"]),
                             chunk_text=row["c_chunk_text"],
                             embedding=row["c_embedding"],

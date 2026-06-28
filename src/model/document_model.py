@@ -86,7 +86,7 @@ class DocumentModel(Model):
                     documents = []
                     for row in rows:
                         document = DocumentModel(
-                            id=UUID(row["id"]),
+                            id=row["id"],
                             title=row["title"],
                             file_type=row["file_type"],
                             created_at=datetime.fromisoformat(row["created_at"]),
