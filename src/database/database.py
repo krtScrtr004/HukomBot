@@ -26,6 +26,7 @@ class Database:
                 conninfo=f"host={DB_HOST} port={DB_PORT} dbname={DB_NAME} user={DB_USER} password={DB_PASSWORD}",
                 min_size=1,
                 max_size=20,
+                kwargs={"row_factory": dict_row},
             )
 
     def connection(self):
