@@ -3,6 +3,7 @@ from model.document_model import Document, DocumentCreate, DocumentSearch
 from typing import List
 from psycopg import errors
 from datetime import datetime
+from uuid import UUID
 
 
 class DocumentRepository:
@@ -130,4 +131,27 @@ class DocumentRepository:
                     return documents
             except errors.OperationalError as ex:
                 print(f"DB error: {ex}")
+                raise
+
+    def delete_many(self, ids: List[UUID]):
+        if not ids:
+            return
+
+        with self.database.connection() as conn:
+            try:
+                with conn.cursor() as cur:
+                    placeholders = ", ".join(["%s"] * len(ids))
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            f"""
+                            DELETE FROM documents
+                            WHERE id IN ({placeholders})
+                            """,
+                            ids,
+                        )
+
+                conn.commit()
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                print(f"DB error: {ex}")
+                conn.rollback()
                 raise
