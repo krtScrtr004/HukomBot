@@ -17,7 +17,7 @@ class ChunkCreate(Chunk):
     chunk_number: int
     chunk_text: str
     section: Optional[str] = None
-    embedding: list
+    embedding: Optional[List] = None
     
 class ChunkSearchKeyword(Chunk):
     chunk_text: str
