@@ -2,7 +2,7 @@ from service.llm_service import LLMService
 from util.utility import format_conversation_history
 
 
-class LegalChatbotService:
+class ChatbotService:
     def __init__(self):
         self.llm_service = LLMService()
 
