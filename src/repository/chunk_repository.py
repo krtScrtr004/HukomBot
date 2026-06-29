@@ -1,3 +1,4 @@
+import ast
 from database.database import Database
 from model.document_model import Document
 from model.chunk_model import Chunk, ChunkCreate, ChunkSearchKeyword, ChunkSearchVector
@@ -31,7 +32,7 @@ class ChunkRepository:
                         ),
                     )
 
-                    chunk_id = cur.fetchone()[0]
+                    chunk_id = cur.fetchone()["id"]
 
                 conn.commit()
             except (
@@ -87,7 +88,7 @@ class ChunkRepository:
                         if row:
                             updated.extend(
                                 Chunk(
-                                    id=row[0],
+                                    id=row["id"],
                                     document_id=chunks[counter].document_id,
                                     chunk_number=chunks[counter].chunk_number,
                                     chunk_text=chunks[counter].chunk_text,
@@ -138,7 +139,7 @@ class ChunkRepository:
                         LIMIT %s
                         OFFSET %s
                         """,
-                        (chunk.chunk_text, chunk.limit, chunk.offset),
+                        (chunk.text, chunk.limit, chunk.offset),
                     )
 
                     rows = cur.fetchall()
@@ -150,13 +151,13 @@ class ChunkRepository:
                             document_id=row["d_id"],
                             chunk_number=int(row["c_chunk_number"]),
                             chunk_text=row["c_chunk_text"],
-                            embedding=row["c_embedding"],
+                            embedding=ast.literal_eval(row["c_embedding"]),
                             section=row["c_section"],
                             document=Document(
                                 id=row["d_id"],
                                 title=row["d_title"],
                                 file_type=row["d_file_type"],
-                                created_at=datetime.fromisoformat(row["d_created_at"]),
+                                created_at=row["d_created_at"]
                             ),
                         )
                         chunks.append(chunk)
@@ -201,13 +202,13 @@ class ChunkRepository:
                             document_id=row["d_id"],
                             chunk_number=int(row["c_chunk_number"]),
                             chunk_text=row["c_chunk_text"],
-                            embedding=row["c_embedding"],
+                            embedding=ast.literal_eval(row["c_embedding"]),
                             section=row["c_section"],
                             document=Document(
                                 id=row["d_id"],
                                 title=row["d_title"],
                                 file_type=row["d_file_type"],
-                                created_at=datetime.fromisoformat(row["d_created_at"])
+                                created_at=row["d_created_at"]
                             ),
                         )
                         chunks.append(chunk)

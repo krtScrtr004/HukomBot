@@ -24,7 +24,7 @@ class DocumentRepository:
                         """,
                         (document.title, document.file_type, document.created_at),
                     )
-                    document_id = cur.fetchone()[0]
+                    document_id = cur.fetchone()["id"]
                 conn.commit()
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 print(f"DB error: {ex}")
@@ -72,7 +72,7 @@ class DocumentRepository:
                             # Update the document's ID attribute
                             updated.extends(
                                 Document(
-                                    id=row[0],
+                                    id=row["id"],
                                     title=documents[counter].title,
                                     file_type=documents[counter].file_type,
                                     created_at=documents[counter].created_at,
@@ -124,7 +124,7 @@ class DocumentRepository:
                             id=row["id"],
                             title=row["title"],
                             file_type=row["file_type"],
-                            created_at=datetime.fromisoformat(row["created_at"]),
+                            created_at=row["created_at"]
                         )
                         documents.append(document)
 
