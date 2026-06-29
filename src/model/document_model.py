@@ -12,13 +12,13 @@ class Document(BaseModel):
     created_at: datetime
 
 
-class DocumentCreate(Document):
+class DocumentCreate(BaseModel):
     title: str
     file_type: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
 
 
-class DocumentSearch(Document):
+class DocumentSearch(BaseModel):
     title: Optional[str] = None
     file_type: Optional[str] = None
     limit: int = 10

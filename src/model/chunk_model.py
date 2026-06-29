@@ -12,19 +12,19 @@ class Chunk(BaseModel):
     section: Optional[str] = None
     embedding: list
     
-class ChunkCreate(Chunk):
+class ChunkCreate(BaseModel):
     document_id: UUID
     chunk_number: int
     chunk_text: str
     section: Optional[str] = None
     embedding: Optional[List] = None
     
-class ChunkSearchKeyword(Chunk):
+class ChunkSearchKeyword(BaseModel):
     chunk_text: str
     limit: int = 10
     offset: int = 0
     
-class ChunkSearchVector(Chunk):
+class ChunkSearchVector(BaseModel):
     embeddings: List
     limit: int = 10
     offset: int = 0
