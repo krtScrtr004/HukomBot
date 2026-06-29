@@ -37,7 +37,10 @@ class DocumentModel(Model):
                             title, file_type, created_at
                         ) VALUES (
                             %s, %s, %s
-                        ) RETURNING id
+                        ) ON CONFLICT (title)
+                        DO UPDATE SET
+                            file_type = EXCLUDED.file_type
+                        RETURNING id
                         """,
                         (self.title, file_type_c, created_at_c),
                     )
@@ -126,7 +129,9 @@ class DocumentModel(Model):
                             title, file_type, created_at
                         ) VALUES (
                             %s, %s, %s
-                        ) RETURNING id
+                        ) ON DUPLICATE SET
+                            file_type = EXCULDED.file_type
+                        RETURNING id
                         """,
                         [
                             (param["title"], param["file_type"], param["created_at"])
