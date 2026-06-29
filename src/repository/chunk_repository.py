@@ -166,7 +166,7 @@ class ChunkRepository:
                 print(f"DB error: {ex}")
                 raise
 
-    def search_sector(self, chunk: ChunkSearchVector) -> List[Chunk]:
+    def search_vector(self, chunk: ChunkSearchVector) -> List[Chunk]:
         with self.database.connection() as conn:
             try:
                 with conn.cursor() as cur:
