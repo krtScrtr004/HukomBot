@@ -1,15 +1,21 @@
 import os
+from uuid import UUID
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+import torch
+
 from pathlib import Path
-from chromadb import Collection
 from chromadb.errors import ChromaError
-from database.database import Database
+from model.document_model import DocumentModel
+from model.chunk_model import ChunkModel
 from openai import OpenAIError
 from util.extract_text_from_pdf import extract_text_from_pdf
+from util.timer import timer
 from service.embed_service import EmbedService
 from service.llm_service import LLMService
-from rich.console import Console
-from rich.panel import Panel
-from util.utility import get_project_root, format_context, is_pdf
+from service.chatbot_service import ChatbotService
+from service.reranker_service import RerankService
+from util.utility import get_project_root, is_pdf
 from huggingface_hub import login
 from dotenv import load_dotenv
 
@@ -17,15 +23,10 @@ load_dotenv()
 HP_API_KEY = os.getenv("HP_API_KEY")
 login(HP_API_KEY)  # Login to HuggingFace
 
-CONVERSATION_WINDOW_COUNT = 5
 DEFAULT_DATA_PATH = get_project_root() / "data"
 
-db = Database()
-collection = db.get_or_create_collection()
-llm_client = LLMService()
-
-console = Console()
-conversation_history = []
+chatbot_service = ChatbotService()
+reranker_service = RerankService()
 
 
 def get_options_choice(min: int = 1, max: int = 3) -> int:
@@ -39,7 +40,7 @@ def get_options_choice(min: int = 1, max: int = 3) -> int:
             return choice
 
 
-def embed_data(collection: Collection, path: str | Path = DEFAULT_DATA_PATH):
+def embed_data(path: str | Path = DEFAULT_DATA_PATH):
     # Convert string to Path object if necessary
     path_obj = Path(path)
 
@@ -47,200 +48,229 @@ def embed_data(collection: Collection, path: str | Path = DEFAULT_DATA_PATH):
     if not path_obj.exists():
         print(f"Error: Path {path_obj} does not exist.")
         return
-    
-    print("Starting process...")
-    
+
+    print("Starting Process...")
+
     pdf_count = 0
     chunks_count = 0
 
-    # Check if the provided path itself is a file or a folder
-    if path_obj.is_file():
-        # Handle single file processing
-        if is_pdf(path_obj):  # or is_pdf(path_obj)
-            print(f"Processing file: {path_obj.name}...")
-            chunks_count += process_pdf(path_obj, collection)
-            pdf_count += 1
-        else:
-            print(f"Skipping non-PDF file: {path_obj.name}")
+    pdf_id_created = []
 
-    elif path_obj.is_dir():
-        # Handle folder processing by scanning its contents
-        for item in path_obj.glob("*"):
-            # If sub-item is a subfolder, process its PDFs
-            if item.is_dir():
-                print(f"Processing folder: {item.name}...")
+    with timer("Embedding process"):
+        try:
 
-                for pdf in item.glob("*.pdf"):
-                    chunks_count += process_pdf(pdf, collection)
-                    pdf_count += 1
+            def process_document_entry(pdf: Path):
+                nonlocal pdf_id_created, chunks_count, pdf_count
 
-                print(f"Finished processing folder: {item.name}...")
+                print(f"Processing file: {pdf.name}...")
+                document = DocumentModel(
+                    title=pdf.stem,
+                    file_type=pdf.suffix,
+                )
+                document.create()  # Create document instance
 
-            # If sub-item is a PDF file in the root of the folder
-            elif item.is_file() and is_pdf(item):
-                print(f"Processing file: {item.name}...")
-                chunks_count += process_pdf(item, collection)
+                pdf_id_created.append(document.id)
+                chunks_count += process_pdf_chunk(pdf, document.id)
                 pdf_count += 1
 
-    print(f"{pdf_count} documents added...")
-    print(f"{chunks_count} chunks added...")
+                torch.cuda.empty_cache()  # Free unused VRAM
+
+            # Check if the provided path itself is a file or a folder
+            if path_obj.is_file():
+                # Handle single file processing
+                if is_pdf(path_obj):  # or is_pdf(path_obj)
+                    process_document_entry(path_obj)
+                else:
+                    print(f"Skipping non-PDF file: {path_obj.name}")
+
+            elif path_obj.is_dir():
+                # Handle folder processing by scanning its contents
+                for item in path_obj.glob("*"):
+                    # If sub-item is a subfolder, process its PDFs
+                    if item.is_dir():
+                        print(f"Processing folder: {item.name}...")
+
+                        for pdf in item.glob("*.pdf"):
+                            process_document_entry(pdf)
+
+                        print(f"Finished processing folder: {item.name}...")
+
+                    # If sub-item is a PDF file in the root of the folder
+                    elif item.is_file() and is_pdf(item):
+                        process_document_entry(item)
+
+            print(f"{pdf_count} documents added...")
+            print(f"{chunks_count} chunks added...")
+        except Exception as ex:
+            print("Something went wrong! Performing rollback operation...")
+            DocumentModel().delete_many(
+                pdf_id_created
+            )  # Rollback document / chunks created
+            raise ex
 
 
-def process_pdf(pdf: Path, collection: Collection) -> int:
-    chunk_count = 0
-
-    ids = []
-    documents = []
-    metadatas = []
-
+def process_pdf_chunk(pdf: Path, document_id: UUID):
     print(f"Extracting text from {pdf.name}...")
-    document_chunks = extract_text_from_pdf(pdf)
-    for j, chunk in enumerate(document_chunks):
-        chunk_count += 1
 
-        ids.append(f"{str(pdf.stem)}_chunk_{str(j)}")
-        metadatas.append({"title": pdf.stem, "section": chunk["section"]})
-        documents.append(chunk["document"])
+    chunks = extract_text_from_pdf(pdf)
+    if not chunks:
+        print(f"No text extracted from {pdf.name}.")
+        return 0
 
-    if len(ids) > 0 and len(documents) > 0 and len(metadatas) > 0:
-        collection.add(
-            ids=ids,
-            documents=documents,
-            metadatas=metadatas,
+    # Create the chunk models
+    document_chunks = {}
+    for i, chunk in enumerate(chunks):
+        document_chunks[i] = ChunkModel(
+            document_id=document_id,
+            chunk_number=i,
+            chunk_text=chunk["document"],
+            section=chunk["section"],
         )
 
-    print(f"Finished processing {pdf.name}...")
+    with timer(f"Embed {pdf.stem}"):
+        print("Generating embeddings...")
+        # Generate embeddings for all chunks
+        texts = [chunk["document"] for chunk in chunks]
+        embeddings = EmbedService().embed_documents(texts)
 
-    return chunk_count
+        # Map embeddings back to the chunk models
+        for i, embedding in enumerate(embeddings):
+            chunk_model = document_chunks.get(i)
+            if chunk_model:
+                chunk_model.embedding = embedding
+
+    print("Creating database entries...")
+    ChunkModel().create_many(list(document_chunks.values()))
+
+    return len(document_chunks)
 
 
-def start_conversation():
-    global conversation_history
+def analyze_case():
+    print('Type "quit" to exit\n')
 
-    while True:
-        print('Type "quit" to exit\n')
-
-        query_text = input("Query: ")
-        if query_text == "quit":
-            break
+    with timer("Analyze Case"):
+        case_facts = get_case_facts()
+        if not case_facts:
+            return
 
         print("---")
-        print("Searching for relevant results...")
 
-        # Cotextualize user query based on history if contextualize_history is not empty
-        if len(conversation_history) > 0:
-            print("Contextualizing query based on conversation history...")
-            query_text = llm_client.contextualize_query(
-                query=query_text, conversation_history=conversation_history
+        # Extract legal issues
+        print("Extracting legal issues...")
+        legal_issues = chatbot_service.extract_issues(case_facts)
+        if not legal_issues:
+            raise RuntimeError(
+                "Cannot extract legal issues from the case facts provided."
             )
 
-        # Add user query to conversation history
-        append_conversation_history(role="User", context=query_text)
+        # Genrate legal queries
+        print("Generating legal queries...")
+        generated_queries = chatbot_service.generate_queries(legal_issues)
+        if not generated_queries:
+            raise RuntimeError(
+                "Cannot generate queries from the legal issues extracted."
+            )
 
-        results = retrieve(query_text=query_text)
+        # Vector Search
+        print("Performing vector search...")
+        vector_results = retrieve_from_vector_search(generated_queries)
+        print(f"Retrieve {len(vector_results)} from vector search...")
+        # Keyword Search
+        print("Performing keyword search...")
+        keyword_result = retrieve_from_keyword_search(generated_queries)
+        print(f"Retrieve {len(keyword_result)} from keyword search...")
 
-        formatted_context = format_context(results)
+        print("Reranking results...")
+        deduplicated_result = deduplicate_results(vector_results, keyword_result)
+        reranked_result = reranker_service.rerank(
+            "\n".join(case_facts), deduplicated_result
+        )
 
-        print("Generating the final answer...")
-        generated_answer = generate_answer(
-            question=query_text, context=formatted_context
+        print("Generating final answer...")
+        final_answer = chatbot_service.generate_answer(
+            "\n".join(case_facts), format_context(reranked_result[:10])
         )
         print("---")
         print("ANSWER:\n")
 
-        print(generated_answer)
+        print(final_answer)
         print(f"{"=" * 45}")
 
-        # Add generated answer to conversation history
-        append_conversation_history(role="Assistant", context=generated_answer)
 
+def get_case_facts() -> list[str] | None:
+    MIN = 8
+    MAX = 500
 
-def append_conversation_history(role: str, context: str):
-    global conversation_history
+    facts = []
 
-    conversation_history.append({"role": role, "context": context})
-
-    if len(conversation_history) >= CONVERSATION_WINDOW_COUNT:
-        conversation_history = conversation_history[1:]
-
-
-def retrieve(query_text: str):
-    retrieved_chunks = {}
-
-    # Expand query
-    print("Expanding query...")
-    expanded_queries = llm_client.expand_query(query=query_text)
-    if not expanded_queries:
-        raise RuntimeError("LLM service failed to expand query")
-
-    for query in expanded_queries:
-        # Get result for query N
-        print(f"Retrieving results for expanded query: {query}...")
-        results = collection.query(query_texts=[query], n_results=5)
-        if not results:
+    counter = 1
+    while True:
+        print(f"{29 * "-"}")
+        print(f"Enter fact no. {counter}:")
+        print(f"{29 * "-"}")
+        print(f"MIN = {MIN}, MAX = {MAX}")
+        print("Enter an empty line to finish")
+        print(f"{29 * "-"}")
+        fact = input()
+        if not fact:
+            return facts
+        elif fact == "quit":
+            return None
+        elif len(fact) < MIN or len(fact) > MAX:
+            print(f"Fact must be between {MIN} and {MAX} only")
             continue
 
-        # Deduplicate query results while maintaining the metadata and distance
-        print("Deduplicating query results...")
-        for index, document in enumerate((results.get("documents") or [[]])[0]):
-            chunk_id = results["ids"][0][index]
-            metadata = (results.get("metadatas") or [[[]]])[0][index]
-            distance = (results.get("distances") or [[[]]])[0][index]
-
-            # Check if the chunk is not present or has lower distance than present in the retrieved_chunks
-            if (
-                chunk_id not in retrieved_chunks
-                or distance < retrieved_chunks[chunk_id]["distance"]
-            ):
-                retrieved_chunks[chunk_id] = {
-                    "document": document,
-                    "metadata": metadata,
-                    "distance": distance,
-                }
-
-    # Sort the result with the least distance first
-    sorted_result = sorted(
-        retrieved_chunks.values(), key=lambda chunk: chunk["distance"]
-    )
-    return sorted_result
+        facts.append(fact)
+        counter += 1
 
 
-def generate_answer(question: str, context: str) -> str:
-    prompt = f"""
-    You are an expert legal assistant specializing in Philippine Laws, Legislations, and Supreme Court Jurisprudence. Your task is to answer the user's question accurately and objectively using only the provided context.
+def retrieve_from_vector_search(queries: list[str]):
+    chunk_model = ChunkModel()
+    embedding_service = EmbedService()
 
-    ### Context:
-    {context}
+    results = []
+    for query in queries:
+        embedding = embedding_service.embed_query(query)  # Create embeddings for query
+        results.extend(chunk_model.search_vector(embedding))
 
-    ### Question:
-    {question}
+    return results
 
-    ### Instructions & Rules:
-    1. **Strict Context Adherence:** Base your answer *only* on the provided context. Do not use outside knowledge or assume/extrapolate details not explicitly stated.
-    2. **Citations:** Whenever you reference a legal provision, statute, or case, you must include the exact citation from the context (e.g., "Article III, Section 1 of the 1987 Constitution," "Republic Act No. 11058, Section 4," or "G.R. No. XXXXXX").
-    3. **Hierarchy of Laws & Repeals:** Philippine law follows a strict hierarchy (Constitution > Statutes/Republic Acts > Executive Orders > Administrative Rules). If the context presents conflicting rules (e.g., an older law vs. a newer amending Republic Act), prioritize the prevailing law or explicitly highlight the conflict as described in the context.
-    4. **Strict Truthfulness (No Hallucinations):** If the provided context does not contain enough information to answer the question, state clearly: "Based on the provided context, the information required to answer this question is not available." Do not attempt to guess or give general legal advice.
-    5. **Tone & Formatting:** Use a professional, objective, and analytical legal tone. Use bullet points and bold text to break down complex legal requirements or elements of a law.
 
-    Format your response as follows:
-    1. **Summary:**
-    [Direct answer]
+def retrieve_from_keyword_search(queries: list[str]):
+    chunk_model = ChunkModel()
 
-    2. **Legal Basis:**
-    [List the relevant law, article, section, or provision]
+    results = []
+    for query in queries:
+        results.extend(chunk_model.search(query))
 
-    3. **Explanation:**
-    [Detailed explanation based solely on the context]
-    
-    4. **References:**
-    [List of references of the extracted information]
-    """
+    return results
 
-    result = llm_client.chat(prompt=prompt)
-    if result is None:
-        raise RuntimeError("LLM service failed to return a valid response")
 
-    return result
+def deduplicate_results(
+    vector_results: list[ChunkModel], keyword_results: list[ChunkModel]
+) -> list[ChunkModel]:
+    unique_results = {}
+
+    combined = vector_results + keyword_results
+    for item in combined:
+        if item.id not in unique_results:
+            unique_results[item.id] = item
+
+    return list(unique_results.values())
+
+
+def format_context(results: list[ChunkModel]) -> str:
+    formatted_results = []
+    for result in results:
+        title = result.document.title or "Unknown document title"
+        chunk_text = result.chunk_text
+        section = result.section or "Unknown section"
+
+        formatted_results.append(
+            f"Title: {title}\nSection: {section}\nDocument: {chunk_text}"
+        )
+
+    return "\n\n---\n\n".join(formatted_results)
 
 
 def main():
@@ -250,7 +280,7 @@ def main():
         print(f"{"=" * 45}")
         print("MENU: ")
         print("[1] Embed Data")
-        print("[2] Start Conversation")
+        print("[2] Analyze Case")
         print("[3] Exit")
         print(f"{"=" * 45}")
 
@@ -266,7 +296,7 @@ def main():
                     path = DEFAULT_DATA_PATH
 
                 print(f"{"=" * 45}")
-                embed_data(collection, path)
+                embed_data(path)
                 print("Data embedded successfully...")
             except ChromaError as ex:
                 print(f"AN ERROR OCCURRED WHILE EMBEDDING DATA: {ex.message}")
@@ -274,7 +304,8 @@ def main():
                 print(f"AN ERROR OCCURRED: {ex}")
         elif choice == 2:
             try:
-                start_conversation()
+                pass
+                analyze_case()
             except OpenAIError as ex:
                 print(f"AN ERROR OCCURRED WHILE USING LLM SERVICE: {ex}")
             except ChromaError as ex:
