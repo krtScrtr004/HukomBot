@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pydantic import BaseModel, Field, model_validator, EmailStr
 from enum import Enum
 from uuid import UUID
@@ -46,3 +47,19 @@ class UserUpdate(BaseModel):
     last_login_at: Optional[datetime] = None
     display_name: Optional[str] = None
     avatar_url: Optional[str] = None
+
+
+class UserSearch(BaseModel):
+    display_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    provider: Optional[OAuthProvider] = None
+    limit: int = 10
+    offset: int = 0
+    
+    model_config = {"arbitrary_types_allowed": True}
+    
+    @model_validator(mode="after")
+    def at_least_one_required(self) -> UserSearch:
+        if not any(self.display_name, self.email, self.provider):
+            raise ValueError("At least one of 'display_name', 'email', or 'provider' must be provided")
+        return self
