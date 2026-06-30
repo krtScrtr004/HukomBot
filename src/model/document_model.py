@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pydantic import BaseModel, Field, model_validator
 from uuid import UUID
 from typing import Optional

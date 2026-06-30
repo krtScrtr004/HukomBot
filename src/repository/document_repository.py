@@ -17,12 +17,12 @@ class DocumentRepository:
                     cur.execute(
                         """
                         INSERT INTO documents (title, file_type, created_at)
-                        VALUES (%s, %s, %s)
+                        VALUES (%(title)s, %(file_type)s, %(created_at)s)
                         ON CONFLICT (title)
                         DO UPDATE SET file_type = EXCLUDED.file_type
                         RETURNING id
                         """,
-                        (document.title, document.file_type, document.created_at),
+                        (document.model_dump()),
                     )
                     document_id = cur.fetchone()["id"]
                 conn.commit()
@@ -48,18 +48,13 @@ class DocumentRepository:
                 with conn.cursor() as cur:
                     cur.executemany(
                         """
-                        INSERT INTO documents (
-                            title, file_type, created_at
-                        ) VALUES (
-                            %s, %s, %s
-                        ) ON DUPLICATE SET
+                        INSERT INTO documents (title, file_type, created_at) 
+                        VALUES (%(title)s, %(file_type)s, %(created_at)s) 
+                        ON DUPLICATE SET
                             file_type = EXCULDED.file_type
                         RETURNING id
                         """,
-                        [
-                            (docu.title, docu.file_type, docu.created_at)
-                            for docu in documents
-                        ],
+                        [docu.model_dump() for docu in documents],
                         returning=True,
                     )
 
@@ -92,11 +87,8 @@ class DocumentRepository:
     def search(self, document: DocumentSearch) -> List:
         with self.database.connection() as conn:
             try:
-                combined_terms = ""
-                if document.title:
-                    combined_terms += f" {document.title}"
-                if document.file_type:
-                    combined_terms += f" {document.file_type}"
+                search_comps = [document.title, document.file_type]
+                terms = " ".join([item for item in search_comps if item])
 
                 with conn.cursor() as cur:
                     cur.execute(
@@ -113,20 +105,14 @@ class DocumentRepository:
                         LIMIT %s
                         OFFSET %s
                         """,
-                        (combined_terms, document.limit, document.offset),
+                        (terms, document.limit, document.offset),
                     )
 
                     rows = cur.fetchall()
 
                     documents = []
                     for row in rows:
-                        document = Document(
-                            id=row["id"],
-                            title=row["title"],
-                            file_type=row["file_type"],
-                            created_at=row["created_at"]
-                        )
-                        documents.append(document)
+                        documents.append(Document.model_validate(row))
 
                     return documents
             except errors.OperationalError as ex:

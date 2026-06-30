@@ -17,19 +17,11 @@ class ChunkRepository:
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        INSERT INTO chunks (
-                            document_id, chunk_number, chunk_text, embedding, section
-                        ) VALUES (
-                            %s, %s, %s, %s, %s
-                        ) RETURNING id
+                        INSERT INTO chunks (document_id, chunk_number, chunk_text, embedding, section) 
+                        VALUES (%(document_id)s, %(chunk_number)s, %(chunk_text)s, %(embedding)s, %(section)s) 
+                        RETURNING id
                         """,
-                        (
-                            chunk.document_id,
-                            chunk.chunk_number,
-                            chunk.chunk_text,
-                            chunk.embedding,
-                            chunk.section,
-                        ),
+                        (chunk.model_dump(),),
                     )
 
                     chunk_id = cur.fetchone()["id"]
@@ -62,22 +54,11 @@ class ChunkRepository:
                 with conn.cursor() as cur:
                     cur.executemany(
                         """
-                        INSERT INTO chunks (
-                            document_id, chunk_number, chunk_text, embedding, section
-                        ) VALUES (
-                            %s, %s, %s, %s, %s
-                        ) RETURNING id
+                        INSERT INTO chunks (document_id, chunk_number, chunk_text, embedding, section) 
+                        VALUES (%(document_id)s, %(chunk_number)s, %(chunk_text)s, %(embedding)s, %(section)s) 
+                        RETURNING id
                         """,
-                        [
-                            (
-                                chunk.document_id,
-                                chunk.chunk_number,
-                                chunk.chunk_text,
-                                chunk.embedding,
-                                chunk.section,
-                            )
-                            for chunk in chunks
-                        ],
+                        [chunk.model_dump() for chunk in chunks],
                         returning=True,
                     )
 
@@ -157,7 +138,7 @@ class ChunkRepository:
                                 id=row["d_id"],
                                 title=row["d_title"],
                                 file_type=row["d_file_type"],
-                                created_at=row["d_created_at"]
+                                created_at=row["d_created_at"],
                             ),
                         )
                         chunks.append(chunk)
@@ -208,7 +189,7 @@ class ChunkRepository:
                                 id=row["d_id"],
                                 title=row["d_title"],
                                 file_type=row["d_file_type"],
-                                created_at=row["d_created_at"]
+                                created_at=row["d_created_at"],
                             ),
                         )
                         chunks.append(chunk)
