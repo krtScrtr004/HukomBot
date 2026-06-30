@@ -1,4 +1,3 @@
-from __future__ import annotations
 from pydantic import BaseModel, Field, model_validator
 from uuid import UUID
 from typing import Optional
@@ -16,6 +15,9 @@ class DocumentCreate(BaseModel):
     title: str
     file_type: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
+    
+    class Config:
+        from_attributes: True
 
 
 class DocumentSearch(BaseModel):

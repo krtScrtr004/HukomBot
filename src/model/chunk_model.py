@@ -25,6 +25,9 @@ class Chunk(BaseModel):
             self.document_id = self.document.id
         return self
 
+    class Config:
+        from_attributes: True
+
 
 class ChunkCreate(BaseModel):
     document_id: UUID
