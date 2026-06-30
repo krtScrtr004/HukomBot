@@ -28,27 +28,18 @@ login(HP_API_KEY)  # Login to HuggingFace
 
 DEFAULT_DATA_PATH = get_project_root() / "data"
 
-# Repositories ----------
+# --- Repositories ------------------------
 document_repo = DocumentRepository()
 chunk_repo = ChunkRepository()
-# ----------
+# -----------------------------------------
 
-# Services ----------
+# --- Services ----------------------------
 chatbot_service = ChatbotService()
 embed_service = EmbedService()
 reranker_service = RerankService()
-# ----------
+# -----------------------------------------
 
-
-def get_options_choice(min: int = 1, max: int = 3) -> int:
-    choice = 0
-    while True:
-        choice = int(input("Select from menu: "))
-
-        if choice < min or choice > max:
-            print("INVALID MENU OPTION!")
-        else:
-            return choice
+# --- Embedding ---------------------------
 
 
 def embed_data(path: str | Path = DEFAULT_DATA_PATH):
@@ -162,6 +153,11 @@ def process_pdf_chunk(pdf: Path, document_id: UUID):
     return len(document_chunks)
 
 
+# -----------------------------------------
+
+# --- Case Analysis------------------------
+
+
 def analyze_case():
     print('Type "quit" to exit\n')
 
@@ -191,14 +187,16 @@ def analyze_case():
         # Vector Search
         print("Performing vector search...")
         vector_results = retrieve_from_vector_search(generated_queries)
-        print(f"Retrieve {len(vector_results)} from vector search...")
+        print(f"Retrieve {len(vector_results)} chunks from vector search...")
         # Keyword Search
         print("Performing keyword search...")
         keyword_result = retrieve_from_keyword_search(generated_queries)
-        print(f"Retrieve {len(keyword_result)} from keyword search...")
+        print(f"Retrieve {len(keyword_result)} chunks from keyword search...")
 
         print("Reranking results...")
-        deduplicated_result = deduplicate_results(vector_results, keyword_result)
+        deduplicated_result = deduplicate_results(
+            vector_results, keyword_result
+        )  # Include only the first 20 from each results
         reranked_result = reranker_service.rerank(
             "\n".join(case_facts), deduplicated_result
         )
@@ -241,25 +239,27 @@ def get_case_facts() -> List[str] | None:
         counter += 1
 
 
-def retrieve_from_vector_search(queries: list[str]):
+def retrieve_from_vector_search(queries: list[str], limit: int = 20):
     global chunk_repo, embed_service
 
     results = []
     for query in queries:
         embedding = embed_service.embed_query(query)  # Create embeddings for query
         results.extend(
-            chunk_repo.search_vector(ChunkSearchVector(embeddings=embedding))
+            chunk_repo.search_vector(
+                ChunkSearchVector(embeddings=embedding, limit=limit)
+            )
         )
 
     return results
 
 
-def retrieve_from_keyword_search(queries: list[str]):
+def retrieve_from_keyword_search(queries: list[str], limit: int = 20):
     global chunk_repo
 
     results = []
     for query in queries:
-        results.extend(chunk_repo.search(ChunkSearchKeyword(text=query)))
+        results.extend(chunk_repo.search(ChunkSearchKeyword(text=query, limit=limit)))
 
     return results
 
@@ -289,6 +289,20 @@ def format_context(results: List[Chunk]) -> str:
         )
 
     return "\n\n---\n\n".join(formatted_results)
+
+
+# -----------------------------------------
+
+
+def get_options_choice(min: int = 1, max: int = 3) -> int:
+    choice = 0
+    while True:
+        choice = int(input("Select from menu: "))
+
+        if choice < min or choice > max:
+            print("INVALID MENU OPTION!")
+        else:
+            return choice
 
 
 def main():
