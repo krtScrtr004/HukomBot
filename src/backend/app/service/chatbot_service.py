@@ -1,5 +1,5 @@
-from service.llm_service import LLMService
-from util.utility import format_conversation_history
+from backend.app.service.llm_service import LLMService
+from backend.app.util.utility import format_conversation_history
 
 
 class ChatbotService:

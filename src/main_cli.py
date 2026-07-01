@@ -4,18 +4,18 @@ import torch
 from uuid import UUID
 from pathlib import Path
 from typing import List
-from model.chunk_model import Chunk
-from schema.document_schema import DocumentCreate 
-from schema.chunk_schema import ChunkCreate, ChunkSearchKeyword, ChunkSearchVector
-from repository.document_repository import DocumentRepository
-from repository.chunk_repository import ChunkRepository
+from backend.app.model.chunk_model import Chunk
+from backend.app.schema.document_schema import DocumentCreate 
+from backend.app.schema.chunk_schema import ChunkCreate, ChunkSearchKeyword, ChunkSearchVector
+from backend.app.repository.document_repository import DocumentRepository
+from backend.app.repository.chunk_repository import ChunkRepository
 from openai import OpenAIError
-from util.extract_text_from_pdf import extract_text_from_pdf
-from util.timer import timer
-from service.embed_service import EmbedService
-from service.chatbot_service import ChatbotService
-from service.reranker_service import RerankService
-from util.utility import get_project_root, is_pdf
+from backend.app.util.extract_text_from_pdf import extract_text_from_pdf
+from backend.app.util.timer import timer
+from backend.app.service.embed_service import EmbedService
+from backend.app.service.chatbot_service import ChatbotService
+from backend.app.service.reranker_service import RerankService
+from backend.app.util.utility import get_project_root, is_pdf
 from huggingface_hub import login
 from dotenv import load_dotenv
 

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from uuid import UUID
 from typing import List, Optional
 
+
 class ChunkCreate(BaseModel):
     document_id: UUID
     chunk_number: int

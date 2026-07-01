@@ -1,4 +1,4 @@
-from model.chunk_model import Chunk
+from backend.app.model.chunk_model import Chunk
 from sentence_transformers import CrossEncoder
 
 

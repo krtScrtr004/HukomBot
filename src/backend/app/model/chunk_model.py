@@ -1,5 +1,5 @@
 from __future__ import annotations
-from model.document_model import Document
+from backend.app.model.document_model import Document
 from typing import Optional
 from pydantic import BaseModel, model_validator
 from uuid import UUID

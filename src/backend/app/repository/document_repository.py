@@ -1,6 +1,6 @@
-from database.database import Database
-from model.document_model import Document
-from schema.document_schema import DocumentCreate, DocumentSearch
+from backend.app.database.database import Database
+from backend.app.model.document_model import Document
+from backend.app.schema.document_schema import DocumentCreate, DocumentSearch
 from typing import List
 from psycopg import errors
 from datetime import datetime

@@ -1,8 +1,8 @@
 import ast
-from database.database import Database
-from model.document_model import Document
-from model.chunk_model import Chunk
-from schema.chunk_schema import ChunkCreate, ChunkSearchKeyword, ChunkSearchVector
+from backend.app.database.database import Database
+from backend.app.model.document_model import Document
+from backend.app.model.chunk_model import Chunk
+from backend.app.schema.chunk_schema import ChunkCreate, ChunkSearchKeyword, ChunkSearchVector
 from typing import List
 from psycopg import errors
 from datetime import datetime

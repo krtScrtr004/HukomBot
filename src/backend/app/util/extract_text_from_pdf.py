@@ -6,8 +6,8 @@ import torch
 from typing import cast
 from pypdf import PdfReader
 from transformers import AutoTokenizer
-from util.utility import get_project_root
-from util.timer import timer
+from backend.app.util.utility import get_project_root
+from backend.app.util.timer import timer
 
 PROJECT_ROOT = get_project_root()
 OCR_RETRY_COUNT_MAX = 1
@@ -20,7 +20,9 @@ tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-base-en-v1.5")
 def chunk_text(text: str, chunk_size: int = 512, overlap=80) -> list[dict[str, str]]:
     # Split on Article/Section boundaries
     boundaries = re.split(
-        r"(?=\b(?:ARTICLE|ART|SECTION|SEC|SECT)\s+[IVXLC\d]+)", text, flags=re.IGNORECASE
+        r"(?=\b(?:ARTICLE|ART|SECTION|SEC|SECT)\s+[IVXLC\d]+)",
+        text,
+        flags=re.IGNORECASE,
     )
 
     chunks = []
@@ -44,8 +46,8 @@ def chunk_text(text: str, chunk_size: int = 512, overlap=80) -> list[dict[str, s
 
 def extract_text_with_ocr_single_page(pdf_path, page_num: int) -> str:
     global gpu_reader, cpu_reader
-    
-    reader = gpu_reader    
+
+    reader = gpu_reader
     with timer(f"OCR {pdf_path.stem}"):
         image_name = f"{pdf_path.stem}_page_{page_num}.png"
         image_path = PROJECT_ROOT / "data/bin" / image_name
@@ -60,7 +62,7 @@ def extract_text_with_ocr_single_page(pdf_path, page_num: int) -> str:
             pix = page.get_pixmap(dpi=300)
             pix.save(str(image_path))
             doc.close()
-                        
+
         print(f"Performing OCR on page {page_num}...")
         text_lines = []
         for attempt in range(OCR_RETRY_COUNT_MAX + 1):

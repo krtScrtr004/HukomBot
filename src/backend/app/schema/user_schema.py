@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, model_validator, EmailStr
-from model.user_model import UserBase
-from enum.oauth_provider import OAuthProvider
+from backend.app.model.user_model import UserBase
+from backend.app.enum.oauth_provider import OAuthProvider
 from typing import Optional
 from datetime import datetime
 

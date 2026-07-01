@@ -3,11 +3,12 @@ from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 from datetime import datetime
 
+
 class DocumentCreate(BaseModel):
     title: str
     file_type: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     class Config:
         from_attributes: True
 

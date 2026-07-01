@@ -1,6 +1,6 @@
-from database.database import Database
-from model.user_model import User
-from schema.user_schema import UserCreate, UserSearch
+from backend.app.database.database import Database
+from backend.app.model.user_model import User
+from backend.app.schema.user_schema import UserCreate, UserSearch
 from psycopg import errors
 from typing import List
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel, EmailStr
-from enum.oauth_provider import OAuthProvider
+from backend.app.enum.oauth_provider import OAuthProvider
 from uuid import UUID
 from typing import Optional
 from datetime import datetime
