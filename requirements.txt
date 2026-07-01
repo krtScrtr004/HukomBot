@@ -10,3 +10,4 @@ tiktoken
 transformers
 fastapi
 uvicorn[standard]
+python-magic-bin 
