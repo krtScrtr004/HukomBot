@@ -9,8 +9,8 @@ from datetime import datetime
 
 
 class ChunkRepository:
-    def __init__(self):
-        self.database = Database()
+    def __init__(self, db: Database):
+        self.database = db
 
     def create(self, chunk: ChunkCreate) -> Chunk:
         with self.database.connection() as conn:

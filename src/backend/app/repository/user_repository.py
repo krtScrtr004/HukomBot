@@ -6,8 +6,8 @@ from typing import List
 
 
 class UserRepositry:
-    def __init__(self):
-        self.database = Database()
+    def __init__(self, db: Database):
+        self.database = db
 
     def create(self, user: UserCreate) -> User:
         with self.database.connection() as conn:

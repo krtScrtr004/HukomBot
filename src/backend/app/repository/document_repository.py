@@ -8,8 +8,8 @@ from uuid import UUID
 
 
 class DocumentRepository:
-    def __init__(self):
-        self.database = Database()
+    def __init__(self, db: Database):
+        self.database = db
 
     def create(self, document: DocumentCreate) -> Document:
         with self.database.connection() as conn:
