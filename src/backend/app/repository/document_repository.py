@@ -120,6 +120,25 @@ class DocumentRepository:
                 print(f"DB error: {ex}")
                 raise
 
+    def delete(self, id: UUID):
+        with self.database.connection() as conn:
+            try:
+                with conn.cursor() as cur:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            f"""
+                            DELETE FROM documents
+                            WHERE id = %s) 
+                            """,
+                            id,
+                        )
+
+                conn.commit()
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                print(f"DB error: {ex}")
+                conn.rollback()
+                raise
+
     def delete_many(self, ids: List[UUID]):
         if not ids:
             return
