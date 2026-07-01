@@ -8,4 +8,4 @@ def timer(label="Process"):
         yield
     finally:
         end = time.perf_counter()
-        print(f"[{label}] Elapsed time: {end - start:.6f} seconds")
+        return end - start
