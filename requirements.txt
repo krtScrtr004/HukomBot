@@ -9,4 +9,4 @@ openai
 tiktoken
 transformers
 fastapi
-uv
+uvicorn[standard]
