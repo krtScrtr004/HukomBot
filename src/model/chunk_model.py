@@ -27,23 +27,3 @@ class Chunk(BaseModel):
 
     class Config:
         from_attributes: True
-
-
-class ChunkCreate(BaseModel):
-    document_id: UUID
-    chunk_number: int
-    chunk_text: str
-    section: Optional[str] = None
-    embedding: Optional[List] = None
-
-
-class ChunkSearchKeyword(BaseModel):
-    text: str
-    limit: int = 10
-    offset: int = 0
-
-
-class ChunkSearchVector(BaseModel):
-    embeddings: List
-    limit: int = 10
-    offset: int = 0

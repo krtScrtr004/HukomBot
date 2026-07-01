@@ -1,17 +1,14 @@
 import os
-from uuid import UUID
-
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import torch
-
+from uuid import UUID
 from pathlib import Path
 from typing import List
-
-from model.document_model import Document, DocumentCreate, DocumentSearch
-from model.chunk_model import Chunk, ChunkCreate, ChunkSearchKeyword, ChunkSearchVector
+from model.chunk_model import Chunk
+from schema.document_schema import DocumentCreate 
+from schema.chunk_schema import ChunkCreate, ChunkSearchKeyword, ChunkSearchVector
 from repository.document_repository import DocumentRepository
 from repository.chunk_repository import ChunkRepository
-
 from openai import OpenAIError
 from util.extract_text_from_pdf import extract_text_from_pdf
 from util.timer import timer

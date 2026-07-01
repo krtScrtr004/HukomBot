@@ -1,5 +1,6 @@
 from database.database import Database
-from model.user_model import User, UserCreate, UserSearch
+from model.user_model import User
+from schema.user_schema import UserCreate, UserSearch
 from psycopg import errors
 from typing import List
 

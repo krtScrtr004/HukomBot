@@ -1,5 +1,6 @@
 from database.database import Database
-from model.document_model import Document, DocumentCreate, DocumentSearch
+from model.document_model import Document
+from schema.document_schema import DocumentCreate, DocumentSearch
 from typing import List
 from psycopg import errors
 from datetime import datetime
