@@ -11,11 +11,11 @@ class DocumentRepository:
     def __init__(self, db: Database):
         self.database = db
 
-    def create(self, document: DocumentCreate) -> Document:
-        with self.database.connection() as conn:
+    async def create(self, document: DocumentCreate) -> Document:
+        async with self.database.connection() as conn:
             try:
-                with conn.cursor() as cur:
-                    cur.execute(
+                async with conn.cursor() as cur:
+                    await cur.execute(
                         """
                         INSERT INTO documents (title, file_type, created_at)
                         VALUES (%(title)s, %(file_type)s, %(created_at)s)
@@ -25,11 +25,10 @@ class DocumentRepository:
                         """,
                         (document.model_dump()),
                     )
-                    document_id = cur.fetchone()["id"]
-                conn.commit()
+                    document_id = await cur.fetchone()["id"]
+                await conn.commit()
             except (errors.IntegrityError, errors.OperationalError) as ex:
-                print(f"DB error: {ex}")
-                conn.rollback()
+                await conn.rollback()
                 raise
 
         return Document(
@@ -39,15 +38,15 @@ class DocumentRepository:
             created_at=document.created_at,
         )
 
-    def create_many(self, documents: List[DocumentCreate]) -> List[Document]:
+    async def create_many(self, documents: List[DocumentCreate]) -> List[Document]:
         # Return if list is empty
         if not documents:
             return
 
-        with self.database.connection() as conn:
+        async with self.database.connection() as conn:
             try:
-                with conn.cursor() as cur:
-                    cur.executemany(
+                async with conn.cursor() as cur:
+                    await cur.executemany(
                         """
                         INSERT INTO documents (title, file_type, created_at) 
                         VALUES (%(title)s, %(file_type)s, %(created_at)s) 
@@ -63,7 +62,7 @@ class DocumentRepository:
                     updated = []
                     counter = 0
                     while True:
-                        row = cur.fetchone()
+                        row = await cur.fetchone()
                         if row:
                             # Update the document's ID attribute
                             updated.extends(
@@ -75,24 +74,23 @@ class DocumentRepository:
                                 )
                             )
                             counter += 1
-                        if not cur.nextset():
+                        if not await cur.nextset():
                             break
 
-                conn.commit()
+                await conn.commit()
                 return updated
             except (errors.IntegrityError, errors.OperationalError) as ex:
-                print(f"DB Error: {ex}")
-                conn.rollback()
+                await conn.rollback()
                 raise
 
-    def search(self, document: DocumentSearch) -> List:
-        with self.database.connection() as conn:
+    async def search(self, document: DocumentSearch) -> List:
+        async with self.database.connection() as conn:
             try:
                 search_comps = [document.title, document.file_type]
                 terms = " ".join([item for item in search_comps if item])
 
-                with conn.cursor() as cur:
-                    cur.execute(
+                async with conn.cursor() as cur:
+                    await cur.execute(
                         """
                         WITH query AS (
                             SELECT plainto_tsquery('english', %s) AS q
@@ -109,7 +107,7 @@ class DocumentRepository:
                         (terms, document.limit, document.offset),
                     )
 
-                    rows = cur.fetchall()
+                    rows = await cur.fetchall()
 
                     documents = []
                     for row in rows:
@@ -117,47 +115,42 @@ class DocumentRepository:
 
                     return documents
             except errors.OperationalError as ex:
-                print(f"DB error: {ex}")
                 raise
 
-    def delete(self, id: UUID):
-        with self.database.connection() as conn:
+    async def delete(self, id: UUID):
+        async with self.database.connection() as conn:
             try:
-                with conn.cursor() as cur:
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            f"""
-                            DELETE FROM documents
-                            WHERE id = %s) 
-                            """,
-                            id,
-                        )
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        f"""
+                        DELETE FROM documents
+                        WHERE id = %s) 
+                        """,
+                        id,
+                    )
 
-                conn.commit()
+                await conn.commit()
             except (errors.IntegrityError, errors.OperationalError) as ex:
-                print(f"DB error: {ex}")
-                conn.rollback()
+                await conn.rollback()
                 raise
 
-    def delete_many(self, ids: List[UUID]):
+    async def delete_many(self, ids: List[UUID]):
         if not ids:
             return
 
-        with self.database.connection() as conn:
+        async with self.database.connection() as conn:
             try:
-                with conn.cursor() as cur:
+                async with conn.cursor() as cur:
                     placeholders = ", ".join(["%s"] * len(ids))
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            f"""
-                            DELETE FROM documents
-                            WHERE id IN ({placeholders})
-                            """,
-                            ids,
-                        )
+                    await cur.execute(
+                        f"""
+                        DELETE FROM documents
+                        WHERE id IN ({placeholders})
+                        """,
+                        ids,
+                    )
 
-                conn.commit()
+                await conn.commit()
             except (errors.IntegrityError, errors.OperationalError) as ex:
-                print(f"DB error: {ex}")
-                conn.rollback()
+                await conn.rollback()
                 raise

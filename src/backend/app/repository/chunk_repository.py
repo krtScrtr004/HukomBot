@@ -12,10 +12,10 @@ class ChunkRepository:
     def __init__(self, db: Database):
         self.database = db
 
-    def create(self, chunk: ChunkCreate) -> Chunk:
-        with self.database.connection() as conn:
+    async def create(self, chunk: ChunkCreate) -> Chunk:
+        async with self.database.connection() as conn:
             try:
-                with conn.cursor() as cur:
+                async with conn.cursor() as cur:
                     cur.execute(
                         """
                         INSERT INTO chunks (document_id, chunk_number, chunk_text, embedding, section) 
@@ -25,16 +25,15 @@ class ChunkRepository:
                         (chunk.model_dump(),),
                     )
 
-                    chunk_id = cur.fetchone()["id"]
+                    chunk_id = await cur.fetchone()["id"]
 
-                conn.commit()
+                await conn.commit()
             except (
                 errors.ForeignKeyViolation,
                 errors.IntegrityError,
                 errors.OperationalError,
             ) as ex:
-                print(f"DB Error: {ex}")
-                conn.rollback()
+                await conn.rollback()
                 raise
 
         return Chunk(
@@ -46,14 +45,14 @@ class ChunkRepository:
             embedding=chunk.embedding,
         )
 
-    def create_many(self, chunks: List[ChunkCreate]) -> List[Chunk]:
+    async def create_many(self, chunks: List[ChunkCreate]) -> List[Chunk]:
         if not chunks:
             return
 
-        with self.database.connection() as conn:
+        async with self.database.connection() as conn:
             try:
-                with conn.cursor() as cur:
-                    cur.executemany(
+                async with conn.cursor() as cur:
+                    await cur.executemany(
                         """
                         INSERT INTO chunks (document_id, chunk_number, chunk_text, embedding, section) 
                         VALUES (%(document_id)s, %(chunk_number)s, %(chunk_text)s, %(embedding)s, %(section)s) 
@@ -66,7 +65,7 @@ class ChunkRepository:
                     updated = []
                     counter = 0
                     while True:
-                        row = cur.fetchone()
+                        row = await cur.fetchone()
                         if row:
                             updated.extend(
                                 Chunk(
@@ -79,25 +78,24 @@ class ChunkRepository:
                                 )
                             )
                             counter += 1
-                        if not cur.nextset():
+                        if not await cur.nextset():
                             break
 
-                conn.commit()
+                await conn.commit()
                 return updated
             except (
                 errors.ForeignKeyViolation,
                 errors.IntegrityError,
                 errors.OperationalError,
             ) as ex:
-                print(f"DB Error: {ex}")
-                conn.rollback()
+                await conn.rollback()
                 raise
 
-    def search(self, chunk: ChunkSearchKeyword) -> List:
-        with self.database.connection() as conn:
+    async def search(self, chunk: ChunkSearchKeyword) -> List:
+        async with self.database.connection() as conn:
             try:
-                with conn.cursor() as cur:
-                    cur.execute(
+                async with conn.cursor() as cur:
+                    await cur.execute(
                         """
                         WITH query AS (
                             SELECT plainto_tsquery('english', %s) AS q
@@ -124,7 +122,7 @@ class ChunkRepository:
                         (chunk.text, chunk.limit, chunk.offset),
                     )
 
-                    rows = cur.fetchall()
+                    rows = await cur.fetchall()
 
                     chunks = []
                     for row in rows:
@@ -149,11 +147,11 @@ class ChunkRepository:
                 print(f"DB error: {ex}")
                 raise
 
-    def search_vector(self, chunk: ChunkSearchVector) -> List[Chunk]:
-        with self.database.connection() as conn:
+    async def search_vector(self, chunk: ChunkSearchVector) -> List[Chunk]:
+        async with self.database.connection() as conn:
             try:
-                with conn.cursor() as cur:
-                    cur.execute(
+                async with conn.cursor() as cur:
+                    await cur.execute(
                         """
                         SELECT 
                             c.id as c_id,
@@ -175,7 +173,7 @@ class ChunkRepository:
                         (str(chunk.embeddings), chunk.limit, chunk.offset),
                     )
 
-                    rows = cur.fetchall()
+                    rows = await cur.fetchall()
 
                     chunks = []
                     for row in rows:

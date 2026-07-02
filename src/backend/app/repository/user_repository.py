@@ -9,11 +9,11 @@ class UserRepositry:
     def __init__(self, db: Database):
         self.database = db
 
-    def create(self, user: UserCreate) -> User:
-        with self.database.connection() as conn:
+    async def create(self, user: UserCreate) -> User:
+        async with self.database.connection() as conn:
             try:
-                with conn.cursor() as cur:
-                    cur.execute(
+                async with conn.cursor() as cur:
+                    await cur.execute(
                         """
                         INSERT INTO user (
                             email, 
@@ -38,17 +38,16 @@ class UserRepositry:
                         User.model_dump(),
                     )
 
-                    row = cur.fetchone()
+                    row = await cur.fetchone()
                     user_id = row["id"]
                     user_is_active = row["is_active"]
                     user_last_login_at = row["last_login_at"]
                     user_created_at = row["created_at"]
                     user_updated_at = row["updated_at"]
 
-                conn.commit()
+                await conn.commit()
             except (errors.IntegrityError, errors.OperationalError) as ex:
-                print(f"DB error: {ex}")
-                conn.rollback()
+                await conn.rollback()
                 raise
 
         return User(
@@ -67,14 +66,14 @@ class UserRepositry:
             updated_at=user_updated_at,
         )
         
-    def search(self, user: UserSearch) -> List[User]:
-        with self.database.connection() as conn:
+    async def search(self, user: UserSearch) -> List[User]:
+        async with self.database.connection() as conn:
             try:
                 search_comps = [user.display_name, user.email, user.provider.value]
                 terms = " ".join([item for item in search_comps if item])
                 
-                with conn.cursor() as cur:
-                    cur.execute(
+                async with conn.cursor() as cur:
+                    await cur.execute(
                         """
                         WITH query AS (
                             SELECT plainto_tsquery('english',  %s) AS q
@@ -91,7 +90,7 @@ class UserRepositry:
                         (terms, user.limit, user.offset)
                     )
                     
-                    rows = cur.fetchall()
+                    rows = await cur.fetchall()
                     
                     users = []
                     for row in rows:
@@ -99,6 +98,5 @@ class UserRepositry:
                     
                     return users
             except errors.OperationalError as ex:
-                print(f"DB error: {ex}")
                 raise
             
