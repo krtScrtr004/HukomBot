@@ -1,8 +1,10 @@
 from __future__ import annotations
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, model_serializer, SerializerFunctionWrapHandler
 from typing import Optional
 from datetime import datetime
-from fastapi import UploadFile
+from uuid import UUID
+
+from backend.app.schema.base_schema import BaseResponse
 
 
 class DocumentCreate(BaseModel):
@@ -27,7 +29,19 @@ class DocumentSearch(BaseModel):
         return self
     
 
-class DocumentUpload(BaseModel):
-    file: UploadFile
+class DocumentResponse(BaseResponse):
+    document_id: UUID
+    status: str
     
     model_config = {"arbitrary_types_allowed": True}
+    
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        result = handler(self)
+
+        result["data"] = {
+            "document_id": result.pop("document_id"),
+            "status": result.pop("status")
+        }
+
+        return result
