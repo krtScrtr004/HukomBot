@@ -15,20 +15,30 @@ from backend.app.enum.upload_status import UploadStatus
 
 
 class DocumentCreate(BaseModel):
-    title: str
-    file_type: Optional[str] = None
+    title: str = Field(min_length=1, max_length=300)
+    file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
-    upload_error: str = Field(default=None)
+    upload_error: str = Field(default=None, max_length=500)
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"from_attributes": True}
 
 
+class DocumentUpdate(BaseModel):
+    id: UUID
+    title: Optional[str] = Field(default=None, min_length=1, max_length=300)
+    file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    upload_status: Optional[UploadStatus] = Field(default=None)
+    upload_error: Optional[str] = Field(default=None, max_length=500)
+
+    model_config = {"from_attributes": True}
+
+
 class DocumentSearch(BaseModel):
-    title: Optional[str] = None
-    file_type: Optional[str] = None
-    limit: int = 10
-    offset: int = 0
+    title: Optional[str] = Field(default=None, min_length=1, max_length=300)
+    file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    limit: int = Field(default=10, gt=0, lt=100)
+    offset: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def at_least_one_required(self) -> DocumentSearch:
