@@ -1,14 +1,17 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+
 from backend.app.api.v1.endpoint.document import document_router
 
-from backend.app.schema.base_schema import Response
+from backend.app.api.v1.dependency.dependency import lifespan
+from backend.app.schema.base_schema import BaseResponse
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
+# Routers
 app.include_router(router=document_router, prefix="embed", tags=["embed"])
 
 
@@ -16,7 +19,7 @@ app.include_router(router=document_router, prefix="embed", tags=["embed"])
 async def invalid_document_type_exception(request: Request, exc: ChunkFileException):
     return JSONResponse(
         status_code=exc.status_code if exc.status_code else 400,
-        content=Response(error=[exc.message]).model_dump(),
+        content=BaseResponse(error=[exc.message]).model_dump(),
     )
 
 
@@ -26,5 +29,5 @@ async def invalid_document_type_exception(
 ):
     return JSONResponse(
         status_code=exc.status_code if exc.status_code else 422,
-        content=Response(error=[exc.message]).model_dump(),
+        content=BaseResponse(error=[exc.message]).model_dump(),
     )
