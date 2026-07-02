@@ -1,4 +1,7 @@
 from __future__ import annotations
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
 from pydantic import (
     BaseModel,
     Field,
@@ -6,9 +9,6 @@ from pydantic import (
     model_serializer,
     SerializerFunctionWrapHandler,
 )
-from typing import Optional
-from datetime import datetime
-from uuid import UUID
 
 from backend.app.schema.base_schema import BaseResponse
 from backend.app.enum.upload_status import UploadStatus
@@ -17,10 +17,11 @@ from backend.app.enum.upload_status import UploadStatus
 class DocumentCreate(BaseModel):
     title: str
     file_type: Optional[str] = None
+    upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
+    upload_error: str = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        from_attributes: True
+    model_config = {"from_attributes": True}
 
 
 class DocumentSearch(BaseModel):
