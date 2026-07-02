@@ -11,7 +11,7 @@ from datetime import datetime
 from uuid import UUID
 
 from backend.app.schema.base_schema import BaseResponse
-from backend.app.enum.upload_status import UploadEnum
+from backend.app.enum.upload_status import UploadStatus
 
 
 class DocumentCreate(BaseModel):
@@ -38,7 +38,7 @@ class DocumentSearch(BaseModel):
 
 class DocumentUploadResponse(BaseResponse):
     document_id: UUID
-    status: UploadEnum = Field(default=UploadEnum.PENDING)
+    status: UploadStatus = Field(default=UploadStatus.PENDING)
 
     model_config = {"arbitrary_types_allowed": True, "use_enum_values": True}
 
