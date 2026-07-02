@@ -1,10 +1,17 @@
 from __future__ import annotations
-from pydantic import BaseModel, Field, model_validator, model_serializer, SerializerFunctionWrapHandler
+from pydantic import (
+    BaseModel,
+    Field,
+    model_validator,
+    model_serializer,
+    SerializerFunctionWrapHandler,
+)
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
 from backend.app.schema.base_schema import BaseResponse
+from backend.app.enum.upload_status import UploadEnum
 
 
 class DocumentCreate(BaseModel):
@@ -27,21 +34,21 @@ class DocumentSearch(BaseModel):
         if self.title is None and self.file_type is None:
             raise ValueError("At least one of 'title' or 'file_type' must be provided")
         return self
-    
 
-class DocumentResponse(BaseResponse):
+
+class DocumentUploadResponse(BaseResponse):
     document_id: UUID
-    status: str
-    
-    model_config = {"arbitrary_types_allowed": True}
-    
+    status: UploadEnum = Field(default=UploadEnum.PENDING)
+
+    model_config = {"arbitrary_types_allowed": True, "use_enum_values": True}
+
     @model_serializer(mode="wrap")
     def custom_serializer(self, handler: SerializerFunctionWrapHandler):
         result = handler(self)
 
         result["data"] = {
             "document_id": result.pop("document_id"),
-            "status": result.pop("status")
+            "status": result.pop("status"),
         }
 
         return result
