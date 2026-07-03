@@ -1,13 +1,16 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-
 from backend.app.api.v1.endpoint.document import document_router
 
-from backend.app.api.v1.dependency.dependency import lifespan
 from backend.app.schema.base_schema import BaseResponse
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
+
+from backend.app.api.v1.dependency import lifespan
+from backend.app.core.logger import setup_logging
+
+setup_logging()
 
 app = FastAPI(lifespan=lifespan)
 
