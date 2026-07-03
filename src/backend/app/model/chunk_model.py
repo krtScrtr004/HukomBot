@@ -16,7 +16,7 @@ class Chunk(BaseModel):
 
     document: Optional[Document] = None  # Navigation prop
 
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
 
     @model_validator(mode="after")
     def resolve_document_id(self) -> Chunk:
@@ -24,6 +24,3 @@ class Chunk(BaseModel):
         if self.document is not None and self.document_id is None:
             self.document_id = self.document.id
         return self
-
-    class Config:
-        from_attributes: True
