@@ -11,3 +11,6 @@ transformers
 fastapi
 uvicorn[standard]
 python-magic-bin 
+pytest 
+pytest-asyncio 
+httpx
