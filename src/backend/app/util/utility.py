@@ -1,8 +1,11 @@
 from pathlib import Path
 
 
-def get_project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
+def get_project_root(level: int = 4) -> Path:
+    path = Path(__file__).resolve()
+    for _ in range(level):
+        path = path.parent
+    return path
 
 
 def is_pdf(file_path: Path) -> bool:
