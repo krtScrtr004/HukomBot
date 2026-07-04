@@ -84,7 +84,7 @@ def extract_text_with_ocr_single_page(pdf_path: Path, page_num: int) -> str:
     return "\n".join(text_lines)
 
 
-async def extract_text_from_pdf(pdf: Path) -> list[dict[str, str]]:
+def extract_text_from_pdf(pdf: Path) -> list[dict[str, str]]:
     reader = PdfReader(pdf)
     all_chunks = []
 
