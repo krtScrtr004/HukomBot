@@ -18,4 +18,4 @@ def get_db(request: Request) -> Database:
 
 
 def get_document_service(db: Database = Depends(get_db)) -> DocumentService:
-    return DocumentService(db=get_db())
+    return DocumentService(db=db)
