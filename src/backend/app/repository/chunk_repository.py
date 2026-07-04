@@ -67,7 +67,7 @@ class ChunkRepository:
                     while True:
                         row = await cur.fetchone()
                         if row:
-                            updated.extend(
+                            updated.append(
                                 Chunk(
                                     id=row["id"],
                                     document_id=chunks[counter].document_id,
@@ -78,7 +78,7 @@ class ChunkRepository:
                                 )
                             )
                             counter += 1
-                        if not await cur.nextset():
+                        if not cur.nextset():
                             break
 
                 await conn.commit()

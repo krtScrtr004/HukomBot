@@ -67,7 +67,7 @@ class DocumentRepository:
                         row = await cur.fetchone()
                         if row:
                             # Update the document's ID attribute
-                            updated.extends(
+                            updated.append(
                                 Document(
                                     id=row["id"],
                                     title=documents[counter].title,
@@ -78,7 +78,7 @@ class DocumentRepository:
                                 )
                             )
                             counter += 1
-                        if not await cur.nextset():
+                        if not cur.nextset():
                             break
 
                 await conn.commit()
