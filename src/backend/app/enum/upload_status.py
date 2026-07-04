@@ -4,4 +4,4 @@ class UploadStatus(str, Enum):
     PENDING = "pending"
     ONGOING = "ongoing"
     COMPLETED = "completed"
-    FAILED = "faield"
+    FAILED = "failed"
