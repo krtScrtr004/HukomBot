@@ -25,7 +25,7 @@ class DocumentRepository:
                         """,
                         (document.model_dump()),
                     )
-                    document_id = await cur.fetchone()["id"]
+                    document_id = (await cur.fetchone())["id"]
                 await conn.commit()
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()

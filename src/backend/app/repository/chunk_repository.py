@@ -25,7 +25,7 @@ class ChunkRepository:
                         (chunk.model_dump(),),
                     )
 
-                    chunk_id = await cur.fetchone()["id"]
+                    chunk_id = (await cur.fetchone())["id"]
 
                 await conn.commit()
             except (
