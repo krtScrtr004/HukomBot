@@ -18,7 +18,7 @@ class DocumentCreate(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
-    upload_error: str = Field(default=None, max_length=500)
+    upload_error: Optional[str] = Field(default=None, max_length=500)
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"from_attributes": True}
