@@ -1,6 +1,7 @@
 import magic
 import tempfile
 import asyncio
+import logging
 
 from uuid import UUID
 from pathlib import Path
@@ -12,11 +13,14 @@ from backend.app.schema.chunk_schema import ChunkCreate
 from backend.app.repository.chunk_repository import ChunkRepository
 from backend.app.schema.document_schema import DocumentCreate, DocumentUpdate
 from backend.app.repository.document_repository import DocumentRepository
+from backend.app.service.embed_service import EmbedService
 
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
 
 from backend.app.util.extract_text_from_pdf import extract_text_from_pdf
+
+logger = logging.getLogger(__name__)
 
 ocr_semaphor = asyncio.Semaphore(
     1
@@ -32,6 +36,8 @@ class DocumentService:
         self.document_repo = DocumentRepository(db=db)
         self.chunk_repo = ChunkRepository(db=db)
 
+        self.embed_service = EmbedService()
+
     async def create_pending_document(self, file_name: str, contents: bytes):
         suffix = Path(file_name).suffix.lower()
 
@@ -46,6 +52,10 @@ class DocumentService:
             )
         )  # Create document instance
 
+        logging.info(
+            "Document with id: %s inserted in the db and is ongoing for embedding process",
+            created_document.id,
+        )
         return created_document
 
     async def process_document_pdf_upload(
@@ -78,18 +88,47 @@ class DocumentService:
                     section=chunk["section"],
                 )
 
+            texts = [chunk["document"] for chunk in chunks]
+            embeddings = self.embed_service.embed_documents(texts)
+
+            # Map embeddings back to the chunk models
+            for i, embedding in enumerate(embeddings):
+                chunk_model = document_chunks.get(i)
+                if chunk_model:
+                    chunk_model.embedding = embedding
+
             await self.chunk_repo.create_many(list(document_chunks.values()))
 
             # Set document upload status to COMPLETED
             await self.document_repo.update(
-                DocumentUpdate(id=document_id, update_status=UploadStatus.COMPLETED)
+                DocumentUpdate(
+                    id=document_id,
+                    upload_status=UploadStatus.COMPLETED,
+                    upload_error=None,
+                )
+            )
+
+            logging.info(
+                "%i chunks created for document with id: %s",
+                len(document_chunks),
+                document_id,
+            )
+
+            logging.info(
+                "Document with id: %s set upload status to COMPLETED", document_id
             )
         except Exception as ex:
-            # Set document upload status to FAILD
+            # Set document upload status to FAILED
             await self.document_repo.update(
                 DocumentUpdate(
                     id=document_id,
-                    update_status=UploadStatus.FAILED,
-                    update_error=str(ex),
+                    upload_status=UploadStatus.FAILED,
+                    upload_error=str(ex),
                 )
             )
+
+            logging.error(
+                "Document with id: %s set upload status to FAILED", document_id
+            )
+
+            logging.exception(str(ex))
