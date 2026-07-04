@@ -1,4 +1,6 @@
 import logging
+
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 from backend.app.util.utility import get_project_root
@@ -6,10 +8,10 @@ from backend.app.util.utility import get_project_root
 
 def setup_logging():
     # Create logs directory if it doesn't exist
-    log_dir = get_project_root()
+    log_dir = get_project_root() / "logs"
     log_dir.mkdir(exist_ok=True)
 
-    log_file = log_dir / "app.log"
+    log_file = log_dir / f"{datetime.date}.log"
 
     file_handler = RotatingFileHandler(
         filename=log_file, maxBytes=10_000_000, backupCount=5, encoding="utf-8"  # 10 MB
