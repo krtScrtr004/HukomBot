@@ -57,6 +57,7 @@ def extract_text_with_ocr_single_page(pdf_path: Path, page_num: int) -> str:
 
     if not image_path.exists():
         # Generate image for OCR if it doesn't exist
+        image_path.parent.mkdir(parents=True, exist_ok=True)
         doc = fitz.open(pdf_path)
         page = doc[page_num]
         pix = page.get_pixmap(dpi=300)
