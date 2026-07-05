@@ -15,7 +15,7 @@ setup_logging()
 app = FastAPI(lifespan=lifespan)
 
 # Routers
-app.include_router(router=document_router, prefix="/document", tags=["document"])
+app.include_router(router=document_router, prefix="/documents", tags=["documents"])
 
 
 @app.exception_handler(ChunkFileException)
