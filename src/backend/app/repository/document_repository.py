@@ -4,7 +4,11 @@ from uuid import UUID
 
 from backend.app.database.database import Database
 from backend.app.model.document_model import Document
-from backend.app.schema.document_schema import DocumentCreate, DocumentUpdate, DocumentSearch
+from backend.app.schema.document_schema import (
+    DocumentCreate,
+    DocumentUpdate,
+    DocumentSearch,
+)
 
 
 class DocumentRepository:
@@ -87,21 +91,21 @@ class DocumentRepository:
                 await conn.rollback()
                 raise
 
-    async def update(self, document: DocumentUpdate): 
+    async def update(self, document: DocumentUpdate):
         if not document.model_dump(exclude={"id"}, exclude_none=True):
             return
-        
+
         async with self.database.connection() as conn:
-            query, params = self._build_update_query(document)            
-            
+            query, params = self._build_update_query(document)
+
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(query, params)
                 await conn.commit()
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
-                raise   
-            
+                raise
+
     def _build_update_query(self, document: DocumentUpdate) -> tuple[str, tuple]:
         set_clauses = []
         values = {"id": document.id}
@@ -129,6 +133,48 @@ class DocumentRepository:
         """
 
         return query, values
+
+    async def get_by_id(self, id: UUID) -> Document | None:
+        async with self.database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT *
+                        FROM documents
+                        WHERE id = %s
+                        LIMIT 1
+                        """,
+                        (id,),
+                    )
+
+                    row = await cur.fetchone()
+
+                await conn.commit()
+                return Document.model_validate(row)
+            except errors.OperationalError as ex:
+                raise
+
+    async def get_by_title(self, title: str) -> Document | None:
+        async with self.database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT *
+                        FROM documents
+                        WHERE title = %s
+                        LIMIT 1
+                        """,
+                        (title.strip(),),
+                    )
+
+                    row = await cur.fetchone()
+
+                await conn.commit()
+                return Document.model_validate(row)
+            except errors.OperationalError as ex:
+                raise
 
     async def search(self, document: DocumentSearch) -> List:
         async with self.database.connection() as conn:
@@ -173,7 +219,7 @@ class DocumentRepository:
                         DELETE FROM documents
                         WHERE id = %s) 
                         """,
-                        id,
+                        (id,),
                     )
 
                 await conn.commit()
