@@ -39,6 +39,11 @@ class DocumentService:
         self.embed_service = EmbedService()
 
     async def create_pending_document(self, file_name: str, contents: bytes):
+        existing_document = await self.document_repo.get_by_title(file_name)
+        if existing_document:
+            logging.info("Document with id: %s already exists", existing_document.id)
+            return existing_document
+
         suffix = Path(file_name).suffix.lower()
 
         mime = magic.from_buffer(contents, mime=True)
@@ -62,6 +67,15 @@ class DocumentService:
         self, document_id: UUID, filename: str, contents: bytes
     ):
         try:
+            existing_document = await self.document_repo.get_by_id(document_id)
+            if (
+                existing_document
+                and existing_document.upload_status == UploadStatus.COMPLETED
+            ):
+                # Do not perform embedding if document is already uploaded
+                logging.info("Document's content with id: %s already embeded", document_id)
+                return
+
             suffix = Path(filename).suffix.lower()
             # Create temporary file on disk
             with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
