@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 from pydantic import (
     BaseModel,
     Field,
@@ -15,7 +15,8 @@ from backend.app.enum.upload_status import UploadStatus
 
 
 class DocumentCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=300)
+    original_file_name: str = Field(min_length=1, max_length=300)
+    upload_file_name: UUID = Field(default=uuid4())
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
     upload_error: Optional[str] = Field(default=None, max_length=500)
@@ -26,7 +27,8 @@ class DocumentCreate(BaseModel):
 
 class DocumentUpdate(BaseModel):
     id: UUID
-    title: Optional[str] = Field(default=None, min_length=1, max_length=300)
+    original_file_name: Optional[str] = Field(default=None, min_length=1, max_length=300)
+    upload_file_name: Optional[UUID] = Field(default=None)
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     upload_status: Optional[UploadStatus] = Field(default=None)
     upload_error: Optional[str] = Field(default=None, max_length=500)
@@ -35,14 +37,14 @@ class DocumentUpdate(BaseModel):
 
 
 class DocumentSearch(BaseModel):
-    title: Optional[str] = Field(default=None, min_length=1, max_length=300)
+    original_file_name: Optional[str] = Field(default=None, min_length=1, max_length=300)
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     limit: int = Field(default=10, gt=0, lt=100)
     offset: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def at_least_one_required(self) -> DocumentSearch:
-        if self.title is None and self.file_type is None:
+        if self.original_file_name is None and self.file_type is None:
             raise ValueError("At least one of 'title' or 'file_type' must be provided")
         return self
 
