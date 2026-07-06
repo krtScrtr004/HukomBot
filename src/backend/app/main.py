@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from backend.app.api.v1.endpoint.document import document_router
+from backend.app.api.v1.endpoint.document import document_api_router
 
 from backend.app.schema.base_schema import BaseResponse
 from backend.app.exception.chunk_exception import ChunkFileException
@@ -15,7 +15,7 @@ setup_logging()
 app = FastAPI(lifespan=lifespan)
 
 # Routers
-app.include_router(router=document_router, prefix="/documents", tags=["documents"])
+app.include_router(router=document_api_router, prefix="/api/documents", tags=["Documents API"])
 
 
 @app.exception_handler(ChunkFileException)

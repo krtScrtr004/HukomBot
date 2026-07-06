@@ -6,9 +6,9 @@ from backend.app.service.document_service import DocumentService
 
 from backend.app.api.v1.dependency import get_document_service
 
-document_router = APIRouter()
+document_api_router = APIRouter()
 
-@document_router.post("/")
+@document_api_router.post("/")
 async def upload_document(
     *,
     file: UploadFile = File(...),
