@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import StrEnum
 
-class OAuthProvider(str, Enum):
+class OAuthProvider(StrEnum):
     GOOGLE = "google"
     FACEBOOK = "facebook"
     APPLE = "apple"
