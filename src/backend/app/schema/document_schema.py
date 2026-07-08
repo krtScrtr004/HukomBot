@@ -12,35 +12,45 @@ from pydantic import (
 
 from backend.app.schema.base_schema import BaseResponse
 from backend.app.enum.upload_status import UploadStatus
+from backend.app.enum.legal_document_type import LegalDocumentType
 
 
 class DocumentCreate(BaseModel):
     original_file_name: str = Field(min_length=1, max_length=300)
     upload_file_name: UUID = Field(default=uuid4())
+    document_type: LegalDocumentType
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
     upload_error: Optional[str] = Field(default=None, max_length=500)
     created_at: datetime = Field(default_factory=datetime.now)
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
 class DocumentUpdate(BaseModel):
     id: UUID
-    original_file_name: Optional[str] = Field(default=None, min_length=1, max_length=300)
+    original_file_name: Optional[str] = Field(
+        default=None, min_length=1, max_length=300
+    )
     upload_file_name: Optional[UUID] = Field(default=None)
+    document_type: Optional[LegalDocumentType] = Field(default=None)
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     upload_status: Optional[UploadStatus] = Field(default=None)
     upload_error: Optional[str] = Field(default=None, max_length=500)
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
 class DocumentSearch(BaseModel):
-    original_file_name: Optional[str] = Field(default=None, min_length=1, max_length=300)
+    original_file_name: Optional[str] = Field(
+        default=None, min_length=1, max_length=300
+    )
+    document_type: LegalDocumentType
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     limit: int = Field(default=10, gt=0, lt=100)
     offset: int = Field(default=0, ge=0)
+
+    model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
     @model_validator(mode="after")
     def at_least_one_required(self) -> DocumentSearch:
