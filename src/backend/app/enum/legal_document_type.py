@@ -1,14 +1,7 @@
 from enum import StrEnum
 
 
-class LegalDocumentType(StrEnum):
-    # Regulatory & Administrative (Public/Statutory Issuances)
-    REPUBLIC_ACT = "republic_act"  # Added: Perfectly maps statutory laws (e.g., RA 11976)
-    REVENUE_REGULATION = "revenue_regulation"
-    REVENUE_MEMORANDUM_CIRCULAR = "revenue_memorandum_circular"
-    EXECUTIVE_ORDER = "executive_order"
-    MUNICIPAL_ORDINANCE = "municipal_ordinance"
-    
+class LegalDocumentType(StrEnum):    
     # Contracts & Agreements
     CONTRACT = "contract"
     NON_DISCLOSURE_AGREEMENT = "non_disclosure_agreement"
@@ -63,6 +56,7 @@ class LegalDocumentType(StrEnum):
     CERTIFICATE_OF_REGISTRATION = "certificate_of_registration"
 
     # Regulatory & Administrative
+    REPUBLIC_ACT = "republic_act" 
     REVENUE_REGULATION = "revenue_regulation"
     REVENUE_MEMORANDUM_CIRCULAR = "revenue_memorandum_circular"
     EXECUTIVE_ORDER = "executive_order"
