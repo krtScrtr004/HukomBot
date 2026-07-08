@@ -40,16 +40,17 @@ class DocumentService:
         self.embed_service = EmbedService()
 
     async def create_pending_document(self, file_name: str, document_type: LegalDocumentType, contents: bytes):
-        existing_document = await self.document_repo.get_by_title(file_name)
-        if existing_document:
-            logging.info("Document with id: %s already exists", existing_document.id)
-            return existing_document
 
         file_path = Path(file_name)
         original_file_name = file_path.stem
         upload_file_name = uuid4()
         suffix = file_path.suffix.lower()
 
+        existing_document = await self.document_repo.get_by_original_file_name(original_file_name)
+        if existing_document:
+            logging.info("Document with id: %s already exists", existing_document.id)
+            return existing_document
+        
         mime = magic.from_buffer(contents, mime=True)
         if mime not in DocumentService.ALLOWED_FILE_TYPES:
             raise InvalidDocumentTypeException("File type not allowed")
@@ -72,7 +73,16 @@ class DocumentService:
     async def process_document_pdf_upload(
         self, document_id: UUID, filename: str, contents: bytes
     ):
-        try:
+        try:            
+            existing_document = await self.document_repo.get_by_id(document_id)
+            if (
+                existing_document
+                and existing_document.upload_status == UploadStatus.COMPLETED
+            ):
+                # Do not perform embedding if document is already uploaded
+                logging.info("Document's content with id: %s already embeded", document_id)
+                return
+
             # Set document upload status to ONGOING
             await self.document_repo.update(
                 DocumentUpdate(
@@ -85,15 +95,6 @@ class DocumentService:
             logging.info(
                 "Document with id: %s set upload status to ONGOING", document_id
             )
-            
-            existing_document = await self.document_repo.get_by_id(document_id)
-            if (
-                existing_document
-                and existing_document.upload_status == UploadStatus.COMPLETED
-            ):
-                # Do not perform embedding if document is already uploaded
-                logging.info("Document's content with id: %s already embeded", document_id)
-                return
 
             suffix = Path(filename).suffix.lower()
             # Create temporary file on disk
@@ -137,7 +138,6 @@ class DocumentService:
                 DocumentUpdate(
                     id=document_id,
                     upload_status=UploadStatus.COMPLETED,
-                    upload_error=None,
                 )
             )
 

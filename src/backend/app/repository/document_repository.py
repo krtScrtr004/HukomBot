@@ -2,6 +2,7 @@ from typing import List
 from psycopg import errors
 from uuid import UUID
 
+from backend.app.enum.upload_status import UploadStatus
 from backend.app.database.database import Database
 from backend.app.model.document_model import Document
 from backend.app.schema.document_schema import (
@@ -116,8 +117,12 @@ class DocumentRepository:
                             updated.append(
                                 Document(
                                     id=row["id"],
-                                    original_file_name=documents[counter].original_file_name,
-                                    upload_file_name=documents[counter].upload_file_name,
+                                    original_file_name=documents[
+                                        counter
+                                    ].original_file_name,
+                                    upload_file_name=documents[
+                                        counter
+                                    ].upload_file_name,
                                     document_type=documents[counter].document_type,
                                     file_type=documents[counter].file_type,
                                     upload_status=documents[counter].upload_status,
@@ -166,12 +171,17 @@ class DocumentRepository:
         if document.file_type:
             set_clauses.append("file_type = %(file_type)s")
             values["file_type"] = document.file_type
-        if document.upload_status:
-            set_clauses.append("upload_status = %(upload_status)s")
-            values["upload_status"] = document.upload_status
         if document.upload_error:
             set_clauses.append("upload_error = %(upload_error)s")
             values["upload_error"] = document.upload_error
+        if document.upload_status:                
+            set_clauses.append("upload_status = %(upload_status)s")
+            values["upload_status"] = document.upload_status
+            
+            # Set upload_error to None if status is COMPLETED
+            if document.upload_status == UploadStatus.COMPLETED:
+                set_clauses.append("upload_error = %(upload_error)s")
+                values["upload_error"] = None
 
         if not set_clauses:
             raise RuntimeError("No fields to update")
@@ -201,11 +211,13 @@ class DocumentRepository:
                     row = await cur.fetchone()
 
                 await conn.commit()
-                return Document.model_validate(row)
+                return Document.model_validate(row) if row is not None else None
             except errors.OperationalError as ex:
                 raise
 
-    async def get_by_title(self, title: str) -> Document | None:
+    async def get_by_original_file_name(
+        self, original_file_name: str
+    ) -> Document | None:
         async with self.database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
@@ -213,23 +225,27 @@ class DocumentRepository:
                         """
                         SELECT *
                         FROM documents
-                        WHERE title = %s
+                        WHERE original_file_name = %s
                         LIMIT 1
                         """,
-                        (title.strip(),),
+                        (original_file_name.strip(),),
                     )
 
                     row = await cur.fetchone()
 
                 await conn.commit()
-                return Document.model_validate(row)
+                return Document.model_validate(row) if row is not None else None
             except errors.OperationalError as ex:
                 raise
 
     async def search(self, document: DocumentSearch) -> List:
         async with self.database.connection() as conn:
             try:
-                search_comps = [document.title, document.file_type]
+                search_comps = [
+                    document.original_file_name,
+                    document.document_type.value,
+                    document.file_type,
+                ]
                 terms = " ".join([item for item in search_comps if item])
 
                 async with conn.cursor() as cur:
