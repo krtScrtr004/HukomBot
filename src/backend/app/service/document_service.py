@@ -3,11 +3,12 @@ import tempfile
 import asyncio
 import logging
 
-from uuid import UUID
+from uuid import UUID, uuid4
 from pathlib import Path
 from fastapi.concurrency import run_in_threadpool
 
 from backend.app.enum.upload_status import UploadStatus
+from backend.app.enum.legal_document_type import LegalDocumentType
 from backend.app.database.database import Database
 from backend.app.schema.chunk_schema import ChunkCreate
 from backend.app.repository.chunk_repository import ChunkRepository
@@ -38,13 +39,16 @@ class DocumentService:
 
         self.embed_service = EmbedService()
 
-    async def create_pending_document(self, file_name: str, contents: bytes):
+    async def create_pending_document(self, file_name: str, document_type: LegalDocumentType, contents: bytes):
         existing_document = await self.document_repo.get_by_title(file_name)
         if existing_document:
             logging.info("Document with id: %s already exists", existing_document.id)
             return existing_document
 
-        suffix = Path(file_name).suffix.lower()
+        file_path = Path(file_name)
+        original_file_name = file_path.stem
+        upload_file_name = uuid4()
+        suffix = file_path.suffix.lower()
 
         mime = magic.from_buffer(contents, mime=True)
         if mime not in DocumentService.ALLOWED_FILE_TYPES:
@@ -52,7 +56,9 @@ class DocumentService:
 
         created_document = await self.document_repo.create(
             DocumentCreate(
-                title=file_name,
+                original_file_name=original_file_name,
+                upload_file_name=upload_file_name,
+                document_type=document_type,
                 file_type=suffix,
             )
         )  # Create document instance
@@ -67,6 +73,19 @@ class DocumentService:
         self, document_id: UUID, filename: str, contents: bytes
     ):
         try:
+            # Set document upload status to ONGOING
+            await self.document_repo.update(
+                DocumentUpdate(
+                    id=document_id,
+                    upload_status=UploadStatus.ONGOING,
+                    upload_error=None,
+                )
+            )
+            
+            logging.info(
+                "Document with id: %s set upload status to ONGOING", document_id
+            )
+            
             existing_document = await self.document_repo.get_by_id(document_id)
             if (
                 existing_document

@@ -21,10 +21,30 @@ class DocumentRepository:
                 async with conn.cursor() as cur:
                     await cur.execute(
                         """
-                        INSERT INTO documents (title, file_type, upload_status, upload_error, created_at)
-                        VALUES (%(title)s, %(file_type)s, %(upload_status)s, %(upload_error)s, %(created_at)s)
-                        ON CONFLICT (title)
-                        DO UPDATE SET file_type = EXCLUDED.file_type
+                        INSERT INTO documents (
+                            original_file_name, 
+                            upload_file_name, 
+                            document_type, 
+                            file_type, 
+                            upload_status, 
+                            upload_error, 
+                            created_at
+                        ) VALUES (
+                            %(original_file_name)s, 
+                            %(upload_file_name)s, 
+                            %(document_type)s, 
+                            %(file_type)s, 
+                            %(upload_status)s, 
+                            %(upload_error)s, 
+                            %(created_at)s
+                        )
+                        ON CONFLICT (original_file_name)
+                            DO UPDATE SET 
+                                upload_file_name    = EXCLUDED.upload_file_name,
+                                document_type       = EXCLUDED.document_type,
+                                file_type           = EXCLUDED.file_type,
+                                upload_status       = EXCLUDED.upload_status,
+                                upload_error        = EXCLUDED.upload_error
                         RETURNING id
                         """,
                         (document.model_dump()),
@@ -37,7 +57,9 @@ class DocumentRepository:
 
         return Document(
             id=document_id,
-            title=document.title,
+            original_file_name=document.original_file_name,
+            upload_file_name=document.upload_file_name,
+            document_type=document.document_type,
             file_type=document.file_type,
             upload_status=document.upload_status,
             upload_error=document.upload_error,
@@ -54,10 +76,30 @@ class DocumentRepository:
                 async with conn.cursor() as cur:
                     await cur.executemany(
                         """
-                        INSERT INTO documents (title, file_type, upload_status, upload_error, created_at) 
-                        VALUES (%(title)s, %(file_type)s, %(upload_status)s, %(upload_error)s, %(created_at)s) 
-                        ON DUPLICATE SET
-                            file_type = EXCULDED.file_type
+                        INSERT INTO documents (
+                            original_file_name, 
+                            upload_file_name, 
+                            document_type, 
+                            file_type, 
+                            upload_status, 
+                            upload_error, 
+                            created_at
+                        ) VALUES (
+                            %(original_file_name)s, 
+                            %(upload_file_name)s, 
+                            %(document_type)s, 
+                            %(file_type)s, 
+                            %(upload_status)s, 
+                            %(upload_error)s, 
+                            %(created_at)s
+                        )
+                        ON CONFLICT (original_file_name)
+                            DO UPDATE SET 
+                                upload_file_name    = EXCLUDED.upload_file_name,
+                                document_type       = EXCLUDED.document_type,
+                                file_type           = EXCLUDED.file_type,
+                                upload_status       = EXCLUDED.upload_status,
+                                upload_error        = EXCLUDED.upload_error
                         RETURNING id
                         """,
                         [docu.model_dump() for docu in documents],
@@ -74,7 +116,9 @@ class DocumentRepository:
                             updated.append(
                                 Document(
                                     id=row["id"],
-                                    title=documents[counter].title,
+                                    original_file_name=documents[counter].original_file_name,
+                                    upload_file_name=documents[counter].upload_file_name,
+                                    document_type=documents[counter].document_type,
                                     file_type=documents[counter].file_type,
                                     upload_status=documents[counter].upload_status,
                                     upload_error=documents[counter].upload_error,
@@ -110,9 +154,15 @@ class DocumentRepository:
         set_clauses = []
         values = {"id": document.id}
 
-        if document.title:
-            set_clauses.append("title = %(title)s")
-            values["title"] = document.title
+        if document.original_file_name:
+            set_clauses.append("original_file_name = %(original_file_name)s")
+            values["original_file_name"] = document.original_file_name
+        if document.upload_file_name:
+            set_clauses.append("upload_file_name = %(upload_file_name)s")
+            values["upload_file_name"] = document.upload_file_name
+        if document.document_type:
+            set_clauses.append("document_type = %(document_type)s")
+            values["document_type"] = document.document_type.value
         if document.file_type:
             set_clauses.append("file_type = %(file_type)s")
             values["file_type"] = document.file_type
