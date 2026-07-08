@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from backend.app.database.database import Database
 from backend.app.service.document_service import DocumentService
+from backend.app.service.file_storage_service import FileStorageService
 
 
 @asynccontextmanager
@@ -19,3 +20,7 @@ def get_db(request: Request) -> Database:
 
 def get_document_service(db: Database = Depends(get_db)) -> DocumentService:
     return DocumentService(db=db)
+
+
+def get_file_storage_service() -> FileStorageService:
+    return FileStorageService()
