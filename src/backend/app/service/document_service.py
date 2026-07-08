@@ -5,6 +5,7 @@ import logging
 
 from uuid import UUID, uuid4
 from pathlib import Path
+from fastapi import UploadFile, BackgroundTasks, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from backend.app.enum.upload_status import UploadStatus
@@ -12,9 +13,14 @@ from backend.app.enum.legal_document_type import LegalDocumentType
 from backend.app.database.database import Database
 from backend.app.schema.chunk_schema import ChunkCreate
 from backend.app.repository.chunk_repository import ChunkRepository
-from backend.app.schema.document_schema import DocumentCreate, DocumentUpdate
+from backend.app.schema.document_schema import (
+    DocumentCreate,
+    DocumentUpdate,
+    DocumentUploadResponse,
+)
 from backend.app.repository.document_repository import DocumentRepository
 from backend.app.service.embed_service import EmbedService
+from backend.app.service.file_storage_service import FileStorageService
 
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
@@ -38,22 +44,38 @@ class DocumentService:
         self.chunk_repo = ChunkRepository(db=db)
 
         self.embed_service = EmbedService()
+        self.file_storage_service = FileStorageService()
 
-    async def create_pending_document(self, file_name: str, document_type: LegalDocumentType, contents: bytes):
+    async def create_pending_document(
+        self, file: UploadFile, document_type: LegalDocumentType
+    ):
+        contents = await file.read()
 
-        file_path = Path(file_name)
+        file_path = Path(file.filename)
         original_file_name = file_path.stem
         upload_file_name = uuid4()
         suffix = file_path.suffix.lower()
 
-        existing_document = await self.document_repo.get_by_original_file_name(original_file_name)
-        if existing_document:
-            logging.info("Document with id: %s already exists", existing_document.id)
-            return existing_document
-        
+        # Check if valid file type
         mime = magic.from_buffer(contents, mime=True)
         if mime not in DocumentService.ALLOWED_FILE_TYPES:
             raise InvalidDocumentTypeException("File type not allowed")
+
+        existing_document = await self.document_repo.get_by_original_file_name(
+            original_file_name
+        )
+        if existing_document:
+            logger.info("Document with id: %s already exists", existing_document.id)
+            return DocumentUploadResponse(
+                message=["File already exisits"],
+                document_id=created_document.id,
+                status=existing_document.upload_status,
+            )
+
+        # Save pending document to data/pending/ folder
+        await self.file_storage_service.save_to_pending(
+            upload_file_name, contents, suffix
+        )
 
         created_document = await self.document_repo.create(
             DocumentCreate(
@@ -64,23 +86,29 @@ class DocumentService:
             )
         )  # Create document instance
 
-        logging.info(
-            "Document with id: %s inserted in the db and is ongoing for embedding process",
+        logger.info(
+            "Document with id: %s inserted in the db and is pending for embedding process",
             created_document.id,
         )
-        return created_document
+        return DocumentUploadResponse(
+            message=["File upload is pending for approval"],
+            document_id=created_document.id,
+            status=UploadStatus.PENDING,
+        )
 
     async def process_document_pdf_upload(
         self, document_id: UUID, filename: str, contents: bytes
     ):
-        try:            
+        try:
             existing_document = await self.document_repo.get_by_id(document_id)
             if (
                 existing_document
                 and existing_document.upload_status == UploadStatus.COMPLETED
             ):
                 # Do not perform embedding if document is already uploaded
-                logging.info("Document's content with id: %s already embeded", document_id)
+                logger.info(
+                    "Document's content with id: %s already embeded", document_id
+                )
                 return
 
             # Set document upload status to ONGOING
@@ -91,8 +119,8 @@ class DocumentService:
                     upload_error=None,
                 )
             )
-            
-            logging.info(
+
+            logger.info(
                 "Document with id: %s set upload status to ONGOING", document_id
             )
 
@@ -141,13 +169,13 @@ class DocumentService:
                 )
             )
 
-            logging.info(
+            logger.info(
                 "%i chunks created for document with id: %s",
                 len(document_chunks),
                 document_id,
             )
 
-            logging.info(
+            logger.info(
                 "Document with id: %s set upload status to COMPLETED", document_id
             )
         except Exception as ex:
@@ -160,8 +188,8 @@ class DocumentService:
                 )
             )
 
-            logging.error(
+            logger.error(
                 "Document with id: %s set upload status to FAILED", document_id
             )
 
-            logging.exception(str(ex))
+            logger.exception(str(ex))
