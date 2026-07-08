@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
 from backend.app.api.v1.endpoint.document import document_api_router
@@ -18,8 +18,15 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(router=document_api_router, prefix="/api/documents", tags=["Documents API"])
 
 
+@app.exception_handler(HTTPException)
+async def http_exception(equest: Request, exc: ChunkFileException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=BaseResponse(error=[exc.message]).model_dump(),
+    )
+
 @app.exception_handler(ChunkFileException)
-async def invalid_document_type_exception(request: Request, exc: ChunkFileException):
+async def chunk_file_exception(request: Request, exc: ChunkFileException):
     return JSONResponse(
         status_code=exc.status_code if exc.status_code else 400,
         content=BaseResponse(error=[exc.message]).model_dump(),
