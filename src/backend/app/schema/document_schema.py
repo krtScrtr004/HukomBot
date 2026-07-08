@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, Annotated
 from datetime import datetime
 from uuid import UUID, uuid4
 from pydantic import (
@@ -75,3 +75,9 @@ class DocumentUploadResponse(BaseResponse):
         }
 
         return result
+
+
+# API Schemas ========================================
+
+class ApproveDocumentUpload(BaseModel):
+    document_type: Optional[LegalDocumentType] = Field(default=None)
