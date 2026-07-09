@@ -1,5 +1,5 @@
 from psycopg import errors
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
 from backend.app.api.v1.endpoint.document import document_api_router
@@ -36,6 +36,12 @@ async def http_exception(request: Request, exc: Exception):
         content=BaseResponse(errors=[str(exc)]).model_dump(),
     )
 
+@app.exception_handler(HTTPException)
+async def http_exception(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=BaseResponse(errors=[exc.detail]).model_dump(),
+    )
 
 db_exceptions = [
     errors.IntegrityError,

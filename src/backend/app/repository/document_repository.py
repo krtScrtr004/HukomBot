@@ -252,10 +252,14 @@ class DocumentRepository:
                         (document_id,),
                     )
 
-                    row = (await cur.fetchone())["upload_status"]
+                    row = await cur.fetchone()
 
                 await conn.commit()
-                return UploadStatus(row) if row is not None else None
+                return (
+                    UploadStatus(row["upload_status"])
+                    if row is not None and row["upload_status"] is not None
+                    else None
+                )
             except errors.OperationalError as ex:
                 raise
 
