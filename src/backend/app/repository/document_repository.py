@@ -43,7 +43,7 @@ class DocumentRepository:
                         )
                         ON CONFLICT (digest)
                             DO UPDATE SET
-                                original_file_name  = EXLUDED.original_file_name,
+                                original_file_name  = EXCLUDED.original_file_name,
                                 upload_file_name    = EXCLUDED.upload_file_name,
                                 document_type       = EXCLUDED.document_type,
                                 file_type           = EXCLUDED.file_type,
@@ -102,7 +102,7 @@ class DocumentRepository:
                         )
                         ON CONFLICT (digest)
                             DO UPDATE SET 
-                                original_file_name  = EXLUDED.original_file_name,
+                                original_file_name  = EXCLUDED.original_file_name,
                                 upload_file_name    = EXCLUDED.upload_file_name,
                                 document_type       = EXCLUDED.document_type,
                                 file_type           = EXCLUDED.file_type,
