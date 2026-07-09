@@ -75,6 +75,25 @@ class DocumentUploadResponse(BaseResponse):
         }
 
         return result
+    
+
+class DocumentUploadStatusResponse(BaseResponse):
+    status_value: UploadStatus
+    
+    model_config = {"arbitrary_types_allowed": True, "use_enum_values": True}
+    
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        status_display_name =  self.status_value.display_name()
+        
+        result = handler(self)
+
+        result["data"] = {
+            "status_value": result.pop("status_value"),
+            "status_display_name": status_display_name
+        }
+
+        return result
 
 
 # API Schemas ========================================
