@@ -11,7 +11,7 @@ from fastapi import (
 
 from backend.app.enum.upload_status import UploadStatus
 from backend.app.enum.legal_document_type import LegalDocumentType
-from backend.app.schema.document_schema import DocumentUploadResponse, ApproveDocumentUpload
+from backend.app.schema.document_schema import ApproveDocumentUpload
 from backend.app.service.document_service import DocumentService
 
 from backend.app.api.v1.dependency import get_document_service
@@ -26,3 +26,14 @@ async def upload_document(
     service: Annotated[DocumentService, Depends(get_document_service)],
 ):
     return await service.create_pending_document(file, document_type)
+
+
+@document_api_router.post("/{document_id}/approve")
+async def approve_document(
+    document_id: UUID,
+    payload: ApproveDocumentUpload,
+    background_tasks: BackgroundTasks,
+    service: Annotated[DocumentService, Depends(get_document_service)],    
+):
+    return await service.approve_document_upload(document_id, payload, background_tasks)
+    
