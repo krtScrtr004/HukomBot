@@ -84,7 +84,11 @@ class DocumentUploadStatusResponse(BaseResponse):
     
     @model_serializer(mode="wrap")
     def custom_serializer(self, handler: SerializerFunctionWrapHandler):
-        status_display_name =  self.status_value.display_name()
+        status_display_name =  None
+        if isinstance(self.status_value, UploadStatus):
+            status_display_name = self.status_value.display_name()
+        else:
+            status_display_name = UploadStatus(self.status_value).display_name()
         
         result = handler(self)
 
