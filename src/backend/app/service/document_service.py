@@ -1,6 +1,7 @@
 import magic
 import asyncio
 import logging
+import hashlib
 
 from uuid import UUID, uuid4
 from pathlib import Path
@@ -18,7 +19,7 @@ from backend.app.schema.document_schema import (
     DocumentUpdate,
     DocumentUploadResponse,
     DocumentUploadStatusResponse,
-    ApproveDocumentUpload
+    ApproveDocumentUpload,
 )
 from backend.app.repository.document_repository import DocumentRepository
 from backend.app.service.embed_service import EmbedService
@@ -53,19 +54,19 @@ class DocumentService:
     ):
         contents = await file.read()
 
-        file_path = Path(file.filename)
-        original_file_name = file_path.stem
-        upload_file_name = uuid4()
-        suffix = file_path.suffix.lower()
-
         # Check if valid file type
         mime = magic.from_buffer(contents, mime=True)
         if mime not in DocumentService.ALLOWED_FILE_TYPES:
             raise InvalidDocumentTypeException("File type not allowed")
 
-        existing_document = await self.document_repo.get_by_original_file_name(
-            original_file_name
-        )
+        file_path = Path(file.filename)
+        original_file_name = file_path.stem
+        upload_file_name = uuid4()
+        suffix = file_path.suffix.lower()
+        digest = hashlib.sha256(contents).digest()
+
+        # Check for existing document by file digest
+        existing_document = await self.document_repo.get_by_digest(digest)
         if existing_document:
             logger.info("Document with id: %s already exists", existing_document.id)
             return DocumentUploadResponse(
@@ -85,6 +86,7 @@ class DocumentService:
                 upload_file_name=upload_file_name,
                 document_type=document_type,
                 file_type=suffix,
+                digest=digest,
             )
         )  # Create document instance
 
@@ -217,8 +219,8 @@ class DocumentService:
         upload_status = await self.document_repo.get_upload_status_by_id(document_id)
         if not upload_status:
             raise HTTPException(status_code=404, detail="Document not found")
-            
+
         return DocumentUploadStatusResponse(
             messages=[f"Document upload status is: {upload_status.display_name()}"],
-            status_value=upload_status
+            status_value=upload_status,
         )
