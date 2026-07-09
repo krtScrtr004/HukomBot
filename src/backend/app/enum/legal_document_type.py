@@ -56,6 +56,7 @@ class LegalDocumentType(StrEnum):
     CERTIFICATE_OF_REGISTRATION = "certificate_of_registration"
 
     # Regulatory & Administrative
+    CONSTITUTION = "constitution"
     REPUBLIC_ACT = "republic_act" 
     REVENUE_REGULATION = "revenue_regulation"
     REVENUE_MEMORANDUM_CIRCULAR = "revenue_memorandum_circular"
@@ -170,6 +171,8 @@ class LegalDocumentType(StrEnum):
                 return "Tax Clearance"
             case LegalDocumentType.CERTIFICATE_OF_REGISTRATION:
                 return "Certificate of Registration"
+            case LegalDocumentType.CONSTITUTION:
+                return "Constitution"
             case LegalDocumentType.REPUBLIC_ACT:
                 return "Republic Act"
             case LegalDocumentType.REVENUE_REGULATION:
