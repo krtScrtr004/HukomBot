@@ -49,11 +49,19 @@ def chunk_text(text: str, chunk_size: int = 512, overlap=80) -> list[dict[str, s
 
 def extract_text_with_ocr_single_page(pdf_path: Path, page_num: int) -> str:
     global gpu_reader, cpu_reader
+    
+    def clear_cache():
+        gc.collect()
+        torch.cuda.empty_cache()
 
-    reader = gpu_reader
+    reader = cpu_reader
 
     image_name = f"{pdf_path.stem}_{pdf_path.suffix}_page_{page_num}.png"
-    image_path = PROJECT_ROOT / "data/bin" / image_name
+    
+    BIN_PATH = PROJECT_ROOT / "data/bin"
+    BIN_PATH.mkdir(parents=True, exist_ok=True)
+    
+    image_path = BIN_PATH / image_name
 
     if not image_path.exists():
         # Generate image for OCR if it doesn't exist
@@ -63,9 +71,11 @@ def extract_text_with_ocr_single_page(pdf_path: Path, page_num: int) -> str:
         pix = page.get_pixmap(dpi=300)
         pix.save(str(image_path))
         doc.close()
+        
+    clear_cache()
 
     text_lines = []
-    for attempt in range(OCR_RETRY_COUNT_MAX + 1):
+    for attempt in range(OCR_RETRY_COUNT_MAX + 1):            
         try:
             results = reader.readtext(str(image_path), detail=0)
             text_lines = cast(list[str], results)
@@ -74,14 +84,15 @@ def extract_text_with_ocr_single_page(pdf_path: Path, page_num: int) -> str:
             # Use CPU
             if attempt < OCR_RETRY_COUNT_MAX:
                 del reader
-                gc.collect()
-                torch.cuda.empty_cache()
+                clear_cache()
                 reader = cpu_reader
             else:
                 raise
         except Exception:
             raise
-
+        finally:
+            clear_cache()
+            
     return "\n".join(text_lines)
 
 

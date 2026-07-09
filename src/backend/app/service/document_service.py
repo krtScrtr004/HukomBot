@@ -1,5 +1,4 @@
 import magic
-import tempfile
 import asyncio
 import logging
 
@@ -13,10 +12,12 @@ from backend.app.enum.legal_document_type import LegalDocumentType
 from backend.app.database.database import Database
 from backend.app.schema.chunk_schema import ChunkCreate
 from backend.app.repository.chunk_repository import ChunkRepository
+from backend.app.model.document_model import Document
 from backend.app.schema.document_schema import (
     DocumentCreate,
     DocumentUpdate,
     DocumentUploadResponse,
+    ApproveDocumentUpload
 )
 from backend.app.repository.document_repository import DocumentRepository
 from backend.app.service.embed_service import EmbedService
@@ -68,7 +69,7 @@ class DocumentService:
             logger.info("Document with id: %s already exists", existing_document.id)
             return DocumentUploadResponse(
                 message=["File already exisits"],
-                document_id=created_document.id,
+                document_id=existing_document.id,
                 status=existing_document.upload_status,
             )
 
@@ -96,55 +97,67 @@ class DocumentService:
             status=UploadStatus.PENDING,
         )
 
-    async def process_document_pdf_upload(
-        self, document_id: UUID, filename: str, contents: bytes
+    async def approve_document_upload(
+        self,
+        document_id: UUID,
+        payload: ApproveDocumentUpload,
+        background_tasks: BackgroundTasks,
     ):
-        try:
-            existing_document = await self.document_repo.get_by_id(document_id)
-            if (
-                existing_document
-                and existing_document.upload_status == UploadStatus.COMPLETED
-            ):
-                # Do not perform embedding if document is already uploaded
-                logger.info(
-                    "Document's content with id: %s already embeded", document_id
-                )
-                return
+        document = await self.document_repo.get_by_id(document_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
 
+        if document.upload_status == UploadStatus.COMPLETED:
+            return DocumentUploadResponse(
+                message=["File upload completed"],
+                document_id=document_id,
+                status=UploadStatus.COMPLETED,
+            )
+
+        file = self.file_storage_service.get_pending_file(
+            document.upload_file_name, document.file_type
+        )
+
+        # Update document_type if not None in request body
+        document.document_type = (
+            payload.document_type
+            if payload.document_type is not None
+            else document.document_type
+        )
+        background_tasks.add_task(self._process_document_pdf_upload, document, file)
+
+        return DocumentUploadResponse(
+            message=["File upload is ongoing"],
+            document_id=document_id,
+            status=UploadStatus.ONGOING,
+        )
+
+    async def _process_document_pdf_upload(self, document: Document, file: Path):
+        try:
             # Set document upload status to ONGOING
             await self.document_repo.update(
                 DocumentUpdate(
-                    id=document_id,
+                    id=document.id,
+                    document_type=document.document_type,
                     upload_status=UploadStatus.ONGOING,
                     upload_error=None,
                 )
             )
-
             logger.info(
-                "Document with id: %s set upload status to ONGOING", document_id
+                "Document with id: %s set upload status to ONGOING", document.id
             )
 
-            suffix = Path(filename).suffix.lower()
-            # Create temporary file on disk
-            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                tmp.write(contents)
-                tmp_path = Path(tmp.name)
-
             chunks = None
-            try:
-                async with ocr_semaphor:
-                    chunks = await run_in_threadpool(extract_text_from_pdf, tmp_path)
-                if not chunks:
-                    raise ChunkFileException("No chunks extracted from file")
-            finally:
-                # Clean up temp file regardless of outcome
-                tmp_path.unlink(missing_ok=True)
+            async with ocr_semaphor:
+                chunks = await run_in_threadpool(extract_text_from_pdf, file)
+            if not chunks:
+                raise ChunkFileException("No chunks extracted from file")
 
             # Create the chunk models
             document_chunks = {}
             for i, chunk in enumerate(chunks):
                 document_chunks[i] = ChunkCreate(
-                    document_id=document_id,
+                    document_id=document.id,
                     chunk_number=i,
                     chunk_text=chunk["document"],
                     section=chunk["section"],
@@ -164,7 +177,7 @@ class DocumentService:
             # Set document upload status to COMPLETED
             await self.document_repo.update(
                 DocumentUpdate(
-                    id=document_id,
+                    id=document.id,
                     upload_status=UploadStatus.COMPLETED,
                 )
             )
@@ -172,24 +185,29 @@ class DocumentService:
             logger.info(
                 "%i chunks created for document with id: %s",
                 len(document_chunks),
-                document_id,
+                document.id,
             )
 
             logger.info(
-                "Document with id: %s set upload status to COMPLETED", document_id
+                "Document with id: %s set upload status to COMPLETED", document.id
             )
+
+            # Delete file in the server
+            await self.file_storage_service.delete_from_pending(file.name)
+
+            logger.info("Document %s successfully deleted", file.name)
         except Exception as ex:
             # Set document upload status to FAILED
             await self.document_repo.update(
                 DocumentUpdate(
-                    id=document_id,
+                    id=document.id,
                     upload_status=UploadStatus.FAILED,
                     upload_error=str(ex),
                 )
             )
 
             logger.error(
-                "Document with id: %s set upload status to FAILED", document_id
+                "Document with id: %s set upload status to FAILED", document.id
             )
 
             logger.exception(str(ex))
