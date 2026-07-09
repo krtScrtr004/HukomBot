@@ -29,6 +29,7 @@ class DocumentRepository:
                             file_type, 
                             upload_status, 
                             upload_error, 
+                            digest,
                             created_at
                         ) VALUES (
                             %(original_file_name)s, 
@@ -37,10 +38,12 @@ class DocumentRepository:
                             %(file_type)s, 
                             %(upload_status)s, 
                             %(upload_error)s, 
+                            %(digest)s,
                             %(created_at)s
                         )
-                        ON CONFLICT (original_file_name)
-                            DO UPDATE SET 
+                        ON CONFLICT (digest)
+                            DO UPDATE SET
+                                original_file_name  = EXLUDED.original_file_name,
                                 upload_file_name    = EXCLUDED.upload_file_name,
                                 document_type       = EXCLUDED.document_type,
                                 file_type           = EXCLUDED.file_type,
@@ -64,6 +67,7 @@ class DocumentRepository:
             file_type=document.file_type,
             upload_status=document.upload_status,
             upload_error=document.upload_error,
+            digest=document.digest,
             created_at=document.created_at,
         )
 
@@ -84,6 +88,7 @@ class DocumentRepository:
                             file_type, 
                             upload_status, 
                             upload_error, 
+                            digest,
                             created_at
                         ) VALUES (
                             %(original_file_name)s, 
@@ -92,10 +97,12 @@ class DocumentRepository:
                             %(file_type)s, 
                             %(upload_status)s, 
                             %(upload_error)s, 
+                            %(digest)s,
                             %(created_at)s
                         )
-                        ON CONFLICT (original_file_name)
+                        ON CONFLICT (digest)
                             DO UPDATE SET 
+                                original_file_name  = EXLUDED.original_file_name,
                                 upload_file_name    = EXCLUDED.upload_file_name,
                                 document_type       = EXCLUDED.document_type,
                                 file_type           = EXCLUDED.file_type,
@@ -127,6 +134,7 @@ class DocumentRepository:
                                     file_type=documents[counter].file_type,
                                     upload_status=documents[counter].upload_status,
                                     upload_error=documents[counter].upload_error,
+                                    digest=documents[counter].digest,
                                     created_at=documents[counter].created_at,
                                 )
                             )
