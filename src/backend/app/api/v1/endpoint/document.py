@@ -33,7 +33,14 @@ async def approve_document(
     document_id: UUID,
     payload: ApproveDocumentUpload,
     background_tasks: BackgroundTasks,
-    service: Annotated[DocumentService, Depends(get_document_service)],    
+    service: Annotated[DocumentService, Depends(get_document_service)],
 ):
     return await service.approve_document_upload(document_id, payload, background_tasks)
-    
+
+
+@document_api_router.get("/{document_id}/upload-status")
+async def get_document_upload_status(
+    document_id: UUID,
+    service: Annotated[DocumentService, Depends(get_document_service)],
+):
+    return await service.get_upload_status(document_id)
