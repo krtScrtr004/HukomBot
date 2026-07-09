@@ -65,40 +65,45 @@ class DocumentService:
         suffix = file_path.suffix.lower()
         digest = hashlib.sha256(contents).digest()
 
-        # Check for existing document by file digest
-        existing_document = await self.document_repo.get_by_digest(digest)
-        if existing_document:
-            logger.info("Document with id: %s already exists", existing_document.id)
+        try:
+            # Check for existing document by file digest
+            existing_document = await self.document_repo.get_by_digest(digest)
+            if existing_document:
+                logger.info("Document with id: %s already exists", existing_document.id)
+                return DocumentUploadResponse(
+                    messages=["File already exisits"],
+                    document_id=existing_document.id,
+                    status=existing_document.upload_status,
+                )
+
+            # Save pending document to data/pending/ folder
+            await self.file_storage_service.save_to_pending(
+                upload_file_name, contents, suffix
+            )
+
+            created_document = await self.document_repo.create(
+                DocumentCreate(
+                    original_file_name=original_file_name,
+                    upload_file_name=upload_file_name,
+                    document_type=document_type,
+                    file_type=suffix,
+                    digest=digest,
+                )
+            )  # Create document instance
+
+            logger.info(
+                "Document with id: %s inserted in the db and is pending for embedding process",
+                created_document.id,
+            )
             return DocumentUploadResponse(
-                messages=["File already exisits"],
-                document_id=existing_document.id,
-                status=existing_document.upload_status,
+                messages=["File upload is pending for approval"],
+                document_id=created_document.id,
+                status=UploadStatus.PENDING,
             )
-
-        # Save pending document to data/pending/ folder
-        await self.file_storage_service.save_to_pending(
-            upload_file_name, contents, suffix
-        )
-
-        created_document = await self.document_repo.create(
-            DocumentCreate(
-                original_file_name=original_file_name,
-                upload_file_name=upload_file_name,
-                document_type=document_type,
-                file_type=suffix,
-                digest=digest,
-            )
-        )  # Create document instance
-
-        logger.info(
-            "Document with id: %s inserted in the db and is pending for embedding process",
-            created_document.id,
-        )
-        return DocumentUploadResponse(
-            messages=["File upload is pending for approval"],
-            document_id=created_document.id,
-            status=UploadStatus.PENDING,
-        )
+        except Exception:
+            # Rollback file creation
+            self.file_storage_service.delete_from_pending(f"{upload_file_name}.{suffix.lstrip(".")}")
+            raise
 
     async def approve_document_upload(
         self,
