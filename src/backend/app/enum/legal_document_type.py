@@ -81,3 +81,130 @@ class LegalDocumentType(StrEnum):
     WAIVER = "waiver"
     NOTICE = "notice"
     OTHER = "other"
+
+    def display_name(self):
+        match self:
+            case LegalDocumentType.CONTRACT:
+                return "Contract"
+            case LegalDocumentType.NON_DISCLOSURE_AGREEMENT:
+                return "Non-Disclosure Agreement"
+            case LegalDocumentType.SERVICE_AGREEMENT:
+                return "Service Agreement"
+            case LegalDocumentType.EMPLOYMENT_CONTRACT:
+                return "Employment Contract"
+            case LegalDocumentType.LEASE_AGREEMENT:
+                return "Lease Agreement"
+            case LegalDocumentType.PARTNERSHIP_AGREEMENT:
+                return "Partnership Agreement"
+            case LegalDocumentType.MEMORANDUM_OF_AGREEMENT:
+                return "Memorandum of Agreement"
+            case LegalDocumentType.MEMORANDUM_OF_UNDERSTANDING:
+                return "Memorandum of Understanding"
+            case LegalDocumentType.ADDENDUM_AMENDMENT:
+                return "Addendum/Amendment"
+            case LegalDocumentType.FRANCHISE_AGREEMENT:
+                return "Franchise Agreement"
+            case LegalDocumentType.INDEMNITY_AGREEMENT:
+                return "Indemnity Agreement"
+            case LegalDocumentType.ARTICLES_OF_INCORPORATION:
+                return "Articles of Incorporation"
+            case LegalDocumentType.BYLAWS:
+                return "Bylaws"
+            case LegalDocumentType.BOARD_RESOLUTION:
+                return "Board Resolution"
+            case LegalDocumentType.SHAREHOLDER_AGREEMENT:
+                return "Shareholder Agreement"
+            case LegalDocumentType.MINUTES_OF_MEETING:
+                return "Minutes of Meeting"
+            case LegalDocumentType.SECRETARY_CERTIFICATE:
+                return "Secretary's Certificate"
+            case LegalDocumentType.GENERAL_INFORMATION_SHEET:
+                return "General Information Sheet"
+            case LegalDocumentType.COMPLAINT:
+                return "Complaint"
+            case LegalDocumentType.AFFIDAVIT:
+                return "Affidavit"
+            case LegalDocumentType.SUBPOENA:
+                return "Subpoena"
+            case LegalDocumentType.COURT_ORDER:
+                return "Court Order"
+            case LegalDocumentType.JUDGMENT:
+                return "Judgment"
+            case LegalDocumentType.SUPREME_COURT_DECISION:
+                return "Supreme Court Decision"
+            case LegalDocumentType.COURT_OF_APPEALS_DECISION:
+                return "Court of Appeals Decision"
+            case LegalDocumentType.MOTION:
+                return "Motion"
+            case LegalDocumentType.SUMMONS:
+                return "Summons"
+            case LegalDocumentType.PLEADING:
+                return "Pleading"
+            case LegalDocumentType.BRIEF_MEMORANDUM:
+                return "Brief/Memorandum"
+            case LegalDocumentType.LAST_WILL_AND_TESTAMENT:
+                return "Last Will and Testament"
+            case LegalDocumentType.DEED_OF_SALE:
+                return "Deed of Sale"
+            case LegalDocumentType.POWER_OF_ATTORNEY:
+                return "Power of Attorney"
+            case LegalDocumentType.TRUST_DEED:
+                return "Trust Deed"
+            case LegalDocumentType.BIRTH_CERTIFICATE:
+                return "Birth Certificate"
+            case LegalDocumentType.MARRIAGE_CONTRACT:
+                return "Marriage Contract"
+            case LegalDocumentType.DEED_OF_DONATION:
+                return "Deed of Donation"
+            case LegalDocumentType.PRENUPTIAL_AGREEMENT:
+                return "Prenuptial Agreement"
+            case LegalDocumentType.PERMIT:
+                return "Permit"
+            case LegalDocumentType.LICENSE:
+                return "License"
+            case LegalDocumentType.GOVERNMENT_ISSUED_ID:
+                return "Government Issued ID"
+            case LegalDocumentType.TAX_DECLARATION:
+                return "Tax Declaration"
+            case LegalDocumentType.TAX_CLEARANCE:
+                return "Tax Clearance"
+            case LegalDocumentType.CERTIFICATE_OF_REGISTRATION:
+                return "Certificate of Registration"
+            case LegalDocumentType.REPUBLIC_ACT:
+                return "Republic Act"
+            case LegalDocumentType.REVENUE_REGULATION:
+                return "Revenue Regulation"
+            case LegalDocumentType.REVENUE_MEMORANDUM_CIRCULAR:
+                return "Revenue Memorandum Circular"
+            case LegalDocumentType.EXECUTIVE_ORDER:
+                return "Executive Order"
+            case LegalDocumentType.MUNICIPAL_ORDINANCE:
+                return "Municipal Ordinance"
+            case LegalDocumentType.PROMISSORY_NOTE:
+                return "Promissory Note"
+            case LegalDocumentType.DEED_OF_MORTGAGE:
+                return "Deed of Mortgage"
+            case LegalDocumentType.LOAN_AGREEMENT:
+                return "Loan Agreement"
+            case LegalDocumentType.INVOICE:
+                return "Invoice"
+            case LegalDocumentType.RECEIPT:
+                return "Receipt"
+            case LegalDocumentType.AUDITED_FINANCIAL_STATEMENT:
+                return "Audited Financial Statement"
+            case LegalDocumentType.PATENT:
+                return "Patent"
+            case LegalDocumentType.TRADEMARK_REGISTRATION:
+                return "Trademark Registration"
+            case LegalDocumentType.COPYRIGHT_REGISTRATION:
+                return "Copyright Registration"
+            case LegalDocumentType.IP_ASSIGNMENT:
+                return "IP Assignment"
+            case LegalDocumentType.CERTIFICATION:
+                return "Certification"
+            case LegalDocumentType.WAIVER:
+                return "Waiver"
+            case LegalDocumentType.NOTICE:
+                return "Notice"
+            case LegalDocumentType.OTHER:
+                return "Other"
