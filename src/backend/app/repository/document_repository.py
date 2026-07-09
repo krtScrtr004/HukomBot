@@ -246,6 +246,27 @@ class DocumentRepository:
             except errors.OperationalError as ex:
                 raise
 
+    async def get_by_digest(self, digest: bytes) -> Document | None:
+        async with self.database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT *
+                        FROM documents
+                        WHERE digest = %s
+                        LIMIT 1
+                        """,
+                        (digest,),
+                    )
+
+                    row = await cur.fetchone()
+
+                await conn.commit()
+                return Document.model_validate(row) if row is not None else None
+            except errors.OperationalError as ex:
+                raise
+
     async def get_upload_status_by_id(self, document_id: UUID) -> UploadStatus | None:
         async with self.database.connection() as conn:
             try:
@@ -270,29 +291,6 @@ class DocumentRepository:
                 )
             except errors.OperationalError as ex:
                 raise
-
-    async def is_exists_by_digest(self, digest: bytes) -> bool:
-        async with self.database.connection() as conn:
-            try:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        SELECT EXISTS(
-                            SELECT 1
-                            FROM documents
-                            WHERE digest = %s
-                        )
-                        """,
-                        (digest,),
-                    )
-                    
-                    row = await cur.fetchone()
-                    
-                await conn.commit()
-                return bool(row)
-            except errors.OperationalError as ex:
-                raise
-            
 
     async def search(self, document: DocumentSearch) -> List:
         async with self.database.connection() as conn:
