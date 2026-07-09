@@ -174,10 +174,10 @@ class DocumentRepository:
         if document.upload_error:
             set_clauses.append("upload_error = %(upload_error)s")
             values["upload_error"] = document.upload_error
-        if document.upload_status:                
+        if document.upload_status:
             set_clauses.append("upload_status = %(upload_status)s")
             values["upload_status"] = document.upload_status
-            
+
             # Set upload_error to None if status is COMPLETED
             if document.upload_status == UploadStatus.COMPLETED:
                 set_clauses.append("upload_error = %(upload_error)s")
@@ -235,6 +235,27 @@ class DocumentRepository:
 
                 await conn.commit()
                 return Document.model_validate(row) if row is not None else None
+            except errors.OperationalError as ex:
+                raise
+
+    async def get_upload_status_by_id(self, document_id: UUID) -> UploadStatus | None:
+        async with self.database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT upload_status
+                        FROM documents
+                        WHERE id = %s
+                        LIMIT 1
+                        """,
+                        (document_id,),
+                    )
+
+                    row = (await cur.fetchone())["upload_status"]
+
+                await conn.commit()
+                return UploadStatus(row) if row is not None else None
             except errors.OperationalError as ex:
                 raise
 
