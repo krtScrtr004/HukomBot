@@ -25,7 +25,7 @@ app.include_router(
 async def handle_database_exception(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content=BaseResponse(error=[f"Database error: {str(exc)}"]).model_dump(),
+        content=BaseResponse(errors=[f"Database error: {str(exc)}"]).model_dump(),
     )
 
 
@@ -33,7 +33,7 @@ async def handle_database_exception(request: Request, exc: Exception):
 async def http_exception(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content=BaseResponse(error=[str(exc)]).model_dump(),
+        content=BaseResponse(errors=[str(exc)]).model_dump(),
     )
 
 
@@ -50,7 +50,7 @@ for db_exec in db_exceptions:
 async def chunk_file_exception(request: Request, exc: ChunkFileException):
     return JSONResponse(
         status_code=exc.status_code if exc.status_code else 400,
-        content=BaseResponse(error=[exc.message]).model_dump(),
+        content=BaseResponse(errors=[exc.message]).model_dump(),
     )
 
 
@@ -60,5 +60,5 @@ async def invalid_document_type_exception(
 ):
     return JSONResponse(
         status_code=exc.status_code if exc.status_code else 422,
-        content=BaseResponse(error=[exc.message]).model_dump(),
+        content=BaseResponse(errors=[exc.message]).model_dump(),
     )
