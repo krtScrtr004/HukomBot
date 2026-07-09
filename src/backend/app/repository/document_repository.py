@@ -271,6 +271,29 @@ class DocumentRepository:
             except errors.OperationalError as ex:
                 raise
 
+    async def is_exists_by_digest(self, digest: bytes) -> bool:
+        async with self.database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT EXISTS(
+                            SELECT 1
+                            FROM documents
+                            WHERE digest = %s
+                        )
+                        """,
+                        (digest,),
+                    )
+                    
+                    row = await cur.fetchone()
+                    
+                await conn.commit()
+                return bool(row)
+            except errors.OperationalError as ex:
+                raise
+            
+
     async def search(self, document: DocumentSearch) -> List:
         async with self.database.connection() as conn:
             try:
