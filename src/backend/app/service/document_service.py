@@ -17,6 +17,7 @@ from backend.app.schema.document_schema import (
     DocumentCreate,
     DocumentUpdate,
     DocumentUploadResponse,
+    DocumentUploadStatusResponse,
     ApproveDocumentUpload
 )
 from backend.app.repository.document_repository import DocumentRepository
@@ -68,7 +69,7 @@ class DocumentService:
         if existing_document:
             logger.info("Document with id: %s already exists", existing_document.id)
             return DocumentUploadResponse(
-                message=["File already exisits"],
+                messages=["File already exisits"],
                 document_id=existing_document.id,
                 status=existing_document.upload_status,
             )
@@ -92,7 +93,7 @@ class DocumentService:
             created_document.id,
         )
         return DocumentUploadResponse(
-            message=["File upload is pending for approval"],
+            messages=["File upload is pending for approval"],
             document_id=created_document.id,
             status=UploadStatus.PENDING,
         )
@@ -109,7 +110,7 @@ class DocumentService:
 
         if document.upload_status == UploadStatus.COMPLETED:
             return DocumentUploadResponse(
-                message=["File upload completed"],
+                messages=["File upload completed"],
                 document_id=document_id,
                 status=UploadStatus.COMPLETED,
             )
@@ -127,7 +128,7 @@ class DocumentService:
         background_tasks.add_task(self._process_document_pdf_upload, document, file)
 
         return DocumentUploadResponse(
-            message=["File upload is ongoing"],
+            messages=["File upload is ongoing"],
             document_id=document_id,
             status=UploadStatus.ONGOING,
         )
@@ -211,3 +212,13 @@ class DocumentService:
             )
 
             logger.exception(str(ex))
+
+    async def get_upload_status(self, document_id: UUID):
+        upload_status = await self.document_repo.get_upload_status_by_id(document_id)
+        if not upload_status:
+            raise HTTPException(status_code=404, detail="Document not found")
+            
+        return DocumentUploadStatusResponse(
+            messages=[f"Document upload status is: {upload_status.display_name()}"],
+            status_value=upload_status
+        )
