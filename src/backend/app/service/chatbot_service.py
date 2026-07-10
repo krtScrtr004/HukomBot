@@ -5,11 +5,8 @@ from backend.app.database.database import Database
 from backend.app.service.llm_service import LLMService
 from backend.app.model.chunk_model import Chunk
 from backend.app.repository.chunk_repository import ChunkRepository
-from backend.app.schema.chunk_schema import (
-    ChunkSearchKeyword,
-    ChunkSearchVector,
-    ChatPipelineResponse,
-)
+from backend.app.schema.chunk_schema import ChunkSearchKeyword, ChunkSearchVector
+from backend.app.schema.chatbot_schema import ChatPipelineResponse
 from backend.app.service.embed_service import EmbedService
 from backend.app.service.reranker_service import RerankService
 from backend.app.exception.chat_exception import ChatException
