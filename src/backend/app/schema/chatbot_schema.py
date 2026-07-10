@@ -14,15 +14,16 @@ from backend.app.schema.base_schema import BaseResponse
 
 
 class ChatPipelineResponse(BaseResponse):
-    conversation_id: UUID
-    answer: str = Field(default=None)
+    conversation_id: UUID = Field(default=None)
+    answer: str
 
     @model_serializer(mode="wrap")
     def custom_serializer(self, handler: SerializerFunctionWrapHandler):
         result = handler(self)
 
         result["data"] = {
-            "answer": result.pop("answer"),
+            "conversation_id": result.pop("conversation_id"),
+            "answer": result.pop("answer")
         }
 
         return result
