@@ -15,10 +15,10 @@ from backend.app.schema.chunk_schema import (
 
 class ChunkRepository:
     def __init__(self, db: Database):
-        self.database = db
+        self.__database = db
 
     async def create(self, chunk: ChunkCreate) -> Chunk:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     cur.execute(
@@ -64,7 +64,7 @@ class ChunkRepository:
         if not chunks:
             return
 
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.executemany(
@@ -117,7 +117,7 @@ class ChunkRepository:
                 raise
 
     async def search(self, chunk: ChunkSearchKeyword) -> List:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -187,7 +187,7 @@ class ChunkRepository:
                 raise
 
     async def search_vector(self, chunk: ChunkSearchVector) -> List[Chunk]:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(

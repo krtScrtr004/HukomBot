@@ -8,10 +8,10 @@ from backend.app.schema.case_analysis_schema import CaseFactCreate
 
 class CaseFactRepository:
     def __init__(self, db: Database):
-        self._database = db
+        self.__database = db
         
     async def create(self, case_fact: CaseFactCreate) -> CaseFact:
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -36,7 +36,7 @@ class CaseFactRepository:
                 raise
             
     async def create_many(self, case_facts: List[CaseFactCreate]) -> List[CaseFact]:
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.executemany(

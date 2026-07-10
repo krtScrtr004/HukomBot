@@ -7,10 +7,10 @@ from typing import List
 
 class UserRepositry:
     def __init__(self, db: Database):
-        self.database = db
+        self.__database = db
 
     async def create(self, user: UserCreate) -> User:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -67,7 +67,7 @@ class UserRepositry:
         )
         
     async def search(self, user: UserSearch) -> List[User]:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 search_comps = [user.display_name, user.email, user.provider.value]
                 terms = " ".join([item for item in search_comps if item])

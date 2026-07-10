@@ -8,12 +8,12 @@ from backend.app.schema.case_analysis_schema import CaseAnalysisVersionFactCreat
 
 class CaseAnalysisVersionFactRepository:
     def __init__(self, db: Database):
-        self._database = db
+        self.__database = db
 
     async def create(
         self, case_analysis_version_fact: CaseAnalysisVersionFactCreate
     ) -> CaseAnalysisVersionFact:
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -39,7 +39,7 @@ class CaseAnalysisVersionFactRepository:
         if not case_analysis_version_facts:
             return []
 
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.executemany(

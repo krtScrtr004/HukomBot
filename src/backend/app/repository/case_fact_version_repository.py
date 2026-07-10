@@ -8,10 +8,10 @@ from backend.app.schema.case_analysis_schema import CaseFactVersionCreate
 
 class CaseFactVersionRepository:
     def __init__(self, db: Database):
-        self._database = db
+        self.__database = db
         
     async def create(self, case_fact_version: CaseFactVersionCreate) -> CaseFactVersion:
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -50,7 +50,7 @@ class CaseFactVersionRepository:
                 raise
 
     async def create_many(self, case_fact_versions: List[CaseFactVersionCreate]) -> List[CaseFactVersion]:
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.executemany(

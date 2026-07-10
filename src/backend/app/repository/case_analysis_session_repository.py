@@ -9,12 +9,12 @@ from backend.app.schema.case_analysis_schema import CaseAnalysisSessionCreate
 
 class CaseAnalysisSessionRepository:
     def __init__(self, db: Database):
-        self._database = db
+        self.__database = db
 
     async def create(
         self, case_analysis_session: CaseAnalysisSessionCreate
     ) -> CaseAnalysisSession:
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -43,7 +43,7 @@ class CaseAnalysisSessionRepository:
                 raise
 
     async def get_by_id(self, id: UUID) -> CaseAnalysisSession | None:
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -66,7 +66,7 @@ class CaseAnalysisSessionRepository:
                 raise
 
     async def delete(self, id: UUID):
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(

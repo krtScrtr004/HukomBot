@@ -14,10 +14,10 @@ from backend.app.schema.document_schema import (
 
 class DocumentRepository:
     def __init__(self, db: Database):
-        self.database = db
+        self.__database = db
 
     async def create(self, document: DocumentCreate) -> Document:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -76,7 +76,7 @@ class DocumentRepository:
         if not documents:
             return
 
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.executemany(
@@ -152,8 +152,8 @@ class DocumentRepository:
         if not document.model_dump(exclude={"id"}, exclude_none=True):
             return
 
-        async with self.database.connection() as conn:
-            query, params = self._build_update_query(document)
+        async with self.__database.connection() as conn:
+            query, params = self.__build_update_query(document)
 
             try:
                 async with conn.cursor() as cur:
@@ -163,7 +163,7 @@ class DocumentRepository:
                 await conn.rollback()
                 raise
 
-    def _build_update_query(self, document: DocumentUpdate) -> tuple[str, tuple]:
+    def __build_update_query(self, document: DocumentUpdate) -> tuple[str, tuple]:
         set_clauses = []
         values = {"id": document.id}
 
@@ -203,7 +203,7 @@ class DocumentRepository:
         return query, values
 
     async def get_by_id(self, id: UUID) -> Document | None:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -226,7 +226,7 @@ class DocumentRepository:
     async def get_by_original_file_name(
         self, original_file_name: str
     ) -> Document | None:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -247,7 +247,7 @@ class DocumentRepository:
                 raise
 
     async def get_by_digest(self, digest: bytes) -> Document | None:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -268,7 +268,7 @@ class DocumentRepository:
                 raise
 
     async def get_upload_status_by_id(self, document_id: UUID) -> UploadStatus | None:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -293,7 +293,7 @@ class DocumentRepository:
                 raise
 
     async def search(self, document: DocumentSearch) -> List:
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 search_comps = [
                     document.original_file_name,
@@ -331,7 +331,7 @@ class DocumentRepository:
                 raise
 
     async def delete(self, id: UUID):
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -351,7 +351,7 @@ class DocumentRepository:
         if not ids:
             return
 
-        async with self.database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     placeholders = ", ".join(["%s"] * len(ids))

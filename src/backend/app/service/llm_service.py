@@ -10,7 +10,7 @@ class LLMService:
     MODEL = "openrouter/free"
 
     def __init__(self):
-        self.client = AsyncOpenAI(
+        self.__client = AsyncOpenAI(
             api_key=LLMService.OPEN_ROUTER_API_KEY,
             base_url="https://openrouter.ai/api/v1",
         )
@@ -22,7 +22,7 @@ class LLMService:
         temperature: float = 0.2,
         max_tokens: int = 1000,
     ) -> str | None:
-        response = await self.client.chat.completions.create(
+        response = await self.__client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,

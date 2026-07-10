@@ -7,10 +7,10 @@ from backend.app.schema.case_analysis_schema import CaseAnalysisVersionCreate
 
 class CaseAnalysisVersionRepository:
     def __init__(self, db: Database):
-        self._database = db
+        self.__database = db
         
     async def create(self, case_analysis_version: CaseAnalysisVersionCreate) -> CaseAnalysisVersion:
-        async with self._database.connection() as conn:
+        async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
