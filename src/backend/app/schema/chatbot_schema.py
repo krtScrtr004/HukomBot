@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import List
+
+from uuid import UUID
+from typing import List, Optional
 from pydantic import (
     BaseModel,
     Field,
@@ -12,6 +14,7 @@ from backend.app.schema.base_schema import BaseResponse
 
 
 class ChatPipelineResponse(BaseResponse):
+    conversation_id: UUID
     answer: str = Field(default=None)
 
     @model_serializer(mode="wrap")
@@ -30,6 +33,7 @@ class ChatPipelineResponse(BaseResponse):
 
 class CaseAnalysisCaseFacts(BaseModel):
     case_facts: List[str] = Field(min_length=1, max_length=10)
+    conversation_id: Optional[UUID] = Field(default=None)
 
     @model_validator(mode="after")
     def is_allowed_case_fact(self) -> CaseAnalysisCaseFacts:
@@ -41,3 +45,5 @@ class CaseAnalysisCaseFacts(BaseModel):
                 raise ValueError(
                     f"Each case fact must be between {MIN_LEN} and {MAX_LEN} only"
                 )
+                
+        return self
