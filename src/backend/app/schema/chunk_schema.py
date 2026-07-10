@@ -1,7 +1,9 @@
 from typing import Optional
-from pydantic import BaseModel, Field
 from uuid import UUID
 from typing import List, Optional
+from pydantic import BaseModel, Field, model_serializer, SerializerFunctionWrapHandler
+
+from backend.app.schema.base_schema import BaseResponse
 
 
 class ChunkCreate(BaseModel):
@@ -22,3 +24,17 @@ class ChunkSearchVector(BaseModel):
     embeddings: List
     limit: int = Field(default=10, gt=0, lt=100)
     offset: int = Field(default=0, ge=0)
+
+
+class ChatPipelineResponse(BaseResponse):
+    answer: str = Field(default=None)
+
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        result = handler(self)
+
+        result["data"] = {
+            "answer": result.pop("answer"),
+        }
+
+        return result
