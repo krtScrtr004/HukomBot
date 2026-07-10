@@ -1,3 +1,4 @@
+from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -6,3 +7,28 @@ from pydantic import BaseModel, Field
 class CaseAnalysisSessionCreate(BaseModel):
     created_at: datetime = Field(default=datetime.now())
     updated_at: datetime = Field(default=datetime.now())
+    
+
+class CaseFactCreate(BaseModel):
+    case_analysis_session_id: UUID
+    created_at: datetime = Field(default=datetime.now())
+
+
+class CaseFactVersionCreate(BaseModel):
+    case_fact_id: UUID
+    version_number: int = Field(default=1)
+    fact: str
+    is_deleted: bool = Field(default=False)
+    created_at: datetime = Field(default=datetime.now())
+    
+
+class CaseAnalysisVersionCreate(BaseModel):
+    case_analysis_session_id: UUID
+    version_number: int = Field(default=1)
+    answer: str
+    created_at: datetime = Field(default=datetime.now())
+
+
+class CaseAnalysisVersionFactCreate(BaseModel):
+    case_analysis_version_id: UUID
+    case_fact_version_id: UUID
