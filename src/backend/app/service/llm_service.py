@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 load_dotenv()
 
@@ -10,19 +10,19 @@ class LLMService:
     MODEL = "openrouter/owl-alpha"
 
     def __init__(self):
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             api_key=LLMService.OPEN_ROUTER_API_KEY,
             base_url="https://openrouter.ai/api/v1",
         )
 
-    def chat(
+    async def chat(
         self,
         prompt: str,
         model: str = MODEL,
         temperature: float = 0.2,
         max_tokens: int = 1000,
     ) -> str | None:
-        response = self.client.chat.completions.create(
+        response = await self.client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
