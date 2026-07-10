@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from uuid import UUID
 from typing import Optional
 from datetime import datetime
@@ -54,6 +55,7 @@ class CaseFactVersion(BaseModel):
 class CaseAnalysisVersion(BaseModel):
     id: UUID
     case_analysis_session_id: UUID
+    version_number: int = Field(default=1)
     answer: str
     created_at: datetime = Field(default=datetime.now())
 
