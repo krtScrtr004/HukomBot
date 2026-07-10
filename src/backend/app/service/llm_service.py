@@ -7,7 +7,7 @@ load_dotenv()
 
 class LLMService:
     OPEN_ROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
-    MODEL = "openrouter/owl-alpha"
+    MODEL = "openrouter/free"
 
     def __init__(self):
         self.client = AsyncOpenAI(
