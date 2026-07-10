@@ -1,11 +1,16 @@
 import ast
+
+from typing import List
+from psycopg import errors
+
 from backend.app.database.database import Database
 from backend.app.model.document_model import Document
 from backend.app.model.chunk_model import Chunk
-from backend.app.schema.chunk_schema import ChunkCreate, ChunkSearchKeyword, ChunkSearchVector
-from typing import List
-from psycopg import errors
-from datetime import datetime
+from backend.app.schema.chunk_schema import (
+    ChunkCreate,
+    ChunkSearchKeyword,
+    ChunkSearchVector,
+)
 
 
 class ChunkRepository:
@@ -18,9 +23,19 @@ class ChunkRepository:
                 async with conn.cursor() as cur:
                     cur.execute(
                         """
-                        INSERT INTO chunks (document_id, chunk_number, chunk_text, embedding, section) 
-                        VALUES (%(document_id)s, %(chunk_number)s, %(chunk_text)s, %(embedding)s, %(section)s) 
-                        RETURNING id
+                        INSERT INTO chunks (
+                            document_id, 
+                            chunk_number, 
+                            chunk_text, 
+                            embedding, 
+                            section
+                        ) VALUES (
+                            %(document_id)s, 
+                            %(chunk_number)s, 
+                            %(chunk_text)s, 
+                            %(embedding)s, 
+                            %(section)s
+                        ) RETURNING id
                         """,
                         (chunk.model_dump(),),
                     )
@@ -54,9 +69,19 @@ class ChunkRepository:
                 async with conn.cursor() as cur:
                     await cur.executemany(
                         """
-                        INSERT INTO chunks (document_id, chunk_number, chunk_text, embedding, section) 
-                        VALUES (%(document_id)s, %(chunk_number)s, %(chunk_text)s, %(embedding)s, %(section)s) 
-                        RETURNING id
+                        INSERT INTO chunks (
+                            document_id, 
+                            chunk_number, 
+                            chunk_text, 
+                            embedding, 
+                            section
+                        ) VALUES (
+                            %(document_id)s, 
+                            %(chunk_number)s, 
+                            %(chunk_text)s, 
+                            %(embedding)s, 
+                            %(section)s
+                        ) RETURNING id
                         """,
                         [chunk.model_dump() for chunk in chunks],
                         returning=True,
@@ -101,15 +126,23 @@ class ChunkRepository:
                             SELECT plainto_tsquery('english', %s) AS q
                         )
                         SELECT
+                            -- Chunk Info
                             c.id AS c_id,
                             c.chunk_number AS c_chunk_number,
                             c.chunk_text AS c_chunk_text,
                             c.embedding AS c_embedding,
                             c.section AS c_section,
                             ts_rank(c.search_vector, q.q) AS c_rank,
+                            
+                            -- Document Info
                             d.id AS d_id,
-                            d.title AS d_title,
+                            d.original_file_name AS d_original_file_name,
+                            d.upload_file_name AS d_upload_file_name,
+                            d.document_type AS d_document_type,
                             d.file_type AS d_file_type,
+                            d.upload_status AS d_upload_status,
+                            d.upload_error AS d_upload_error,
+                            d.digest AS d_digest,
                             d.created_at AS d_created_at
                         FROM chunks c
                         JOIN documents d ON c.document_id = d.id
@@ -133,10 +166,16 @@ class ChunkRepository:
                             chunk_text=row["c_chunk_text"],
                             embedding=ast.literal_eval(row["c_embedding"]),
                             section=row["c_section"],
+                            # Document Prop
                             document=Document(
                                 id=row["d_id"],
-                                title=row["d_title"],
+                                original_file_name=row["d_original_file_name"],
+                                upload_file_name=row["d_upload_file_name"],
+                                document_type=row["d_document_type"],
                                 file_type=row["d_file_type"],
+                                upload_status=row["d_upload_status"],
+                                upload_error=row["d_upload_error"],
+                                digest=row["d_digest"],
                                 created_at=row["d_created_at"],
                             ),
                         )
@@ -154,15 +193,23 @@ class ChunkRepository:
                     await cur.execute(
                         """
                         SELECT 
+                            -- Chunk Info
                             c.id as c_id,
                             c.chunk_number as c_chunk_number,
                             c.chunk_text as c_chunk_text,
                             c.embedding as c_embedding,
                             c.section as c_section,
-                            d.id as d_id,
-                            d.title as d_title,
-                            d.file_type as d_file_type,
-                            d.created_at as d_created_at
+                            
+                            -- Document Info
+                            d.id AS d_id,
+                            d.original_file_name AS d_original_file_name,
+                            d.upload_file_name AS d_upload_file_name,
+                            d.document_type AS d_document_type,
+                            d.file_type AS d_file_type,
+                            d.upload_status AS d_upload_status,
+                            d.upload_error AS d_upload_error,
+                            d.digest AS d_digest,
+                            d.created_at AS d_created_at
                         FROM chunks c
                         JOIN documents d
                             ON c.document_id = d.id
@@ -184,10 +231,16 @@ class ChunkRepository:
                             chunk_text=row["c_chunk_text"],
                             embedding=ast.literal_eval(row["c_embedding"]),
                             section=row["c_section"],
+                            # Document Prop
                             document=Document(
                                 id=row["d_id"],
-                                title=row["d_title"],
+                                original_file_name=row["d_original_file_name"],
+                                upload_file_name=row["d_upload_file_name"],
+                                document_type=row["d_document_type"],
                                 file_type=row["d_file_type"],
+                                upload_status=row["d_upload_status"],
+                                upload_error=row["d_upload_error"],
+                                digest=row["d_digest"],
                                 created_at=row["d_created_at"],
                             ),
                         )
