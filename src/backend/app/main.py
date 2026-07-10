@@ -1,7 +1,10 @@
+import logging
+
 from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
+from backend.app.api.v1.endpoint.chatbot import chatbot_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
 from backend.app.schema.base_schema import BaseResponse
@@ -14,22 +17,33 @@ from backend.app.core.logger import setup_logging
 
 setup_logging()
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(lifespan=lifespan)
 
 # Routers ============================================================
+
 app.include_router(
-    router=document_api_router, prefix="/api/documents", tags=["Documents API"]
+    router=chatbot_api_router, prefix="/api/v1/chatbot", tags=["Chatbot API"]
+)
+
+app.include_router(
+    router=document_api_router, prefix="/api/v1/documents", tags=["Documents API"]
 )
 
 # Exception Handlers ==================================================
 
 async def handle_database_exception(request: Request, exc: Exception):
+    logger.exception("Database error %s", str(exc))
+    
     return JSONResponse(
         status_code=500,
-        content=BaseResponse(errors=[f"Database error: {str(exc)}"]).model_dump(),
+        content=BaseResponse(errors=[f"A database error occured"]).model_dump(),
     )
     
 async def handle_custom_exception(request: Request, exc: Exception):
+    logger.exception(exc.message)
+    
     return JSONResponse(
         status_code=exc.status_code,
         content=BaseResponse(errors=[exc.message]).model_dump(),
@@ -39,16 +53,20 @@ async def handle_custom_exception(request: Request, exc: Exception):
 
 @app.exception_handler(Exception)
 async def http_exception(request: Request, exc: Exception):
+    logger.exception(str(exc))
+
     return JSONResponse(
         status_code=500,
-        content=BaseResponse(errors=[str(exc)]).model_dump(),
+        content=BaseResponse(errors=["An error occured."]).model_dump(),
     )
 
 @app.exception_handler(HTTPException)
 async def http_exception(request: Request, exc: HTTPException):
+    logger.exception(exc.detail)
+    
     return JSONResponse(
         status_code=exc.status_code,
-        content=BaseResponse(errors=[exc.detail]).model_dump(),
+        content=BaseResponse(errors=["An HTTP error occured"]).model_dump(),
     )
 
 # DB Exceptions =========================================================
