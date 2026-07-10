@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Depends
 from contextlib import asynccontextmanager
 
 from backend.app.database.database import Database
+from backend.app.service.chatbot_service import ChatbotService
 from backend.app.service.document_service import DocumentService
 from backend.app.service.file_storage_service import FileStorageService
 
@@ -16,6 +17,10 @@ async def lifespan(app: FastAPI):
 
 def get_db(request: Request) -> Database:
     return request.app.state.db
+
+
+def get_chatbot_service(db: Database = Depends(get_db)) -> ChatbotService:
+    return ChatbotService(db=db)
 
 
 def get_document_service(db: Database = Depends(get_db)) -> DocumentService:
