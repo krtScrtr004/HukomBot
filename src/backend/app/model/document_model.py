@@ -9,12 +9,12 @@ from backend.app.enum.legal_document_type import LegalDocumentType
 
 class Document(BaseModel):
     id: UUID
-    original_file_name: str = Field(min_length=1, max_length=300)
+    original_file_name: str
     upload_file_name: UUID = Field(default=uuid4())
     document_type: LegalDocumentType
-    file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    file_type: Optional[str] = Field(default=None)
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
-    upload_error: Optional[str] = Field(default=None, max_length=500)
+    upload_error: Optional[str] = Field(default=None)
     digest: bytes
     created_at: datetime = Field(default_factory=datetime.now)
     

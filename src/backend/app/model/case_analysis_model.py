@@ -76,8 +76,8 @@ class CaseAnalysisVersionFact(BaseModel):
     case_fact_version_id: UUID
 
     # Navigation prop
-    case_analysis_version: CaseAnalysisSession
-    case_fact_version: CaseFactVersion
+    case_analysis_version: Optional[CaseAnalysisVersion] = Field(default=None)
+    case_fact_version: Optional[CaseFactVersion] = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
 
@@ -87,7 +87,7 @@ class CaseAnalysisVersionFact(BaseModel):
             self.case_analysis_version is not None
             and self.case_analysis_version_id is None
         ):
-            self.case_analysis_version_id = self.case_fact_version.id
+            self.case_analysis_version_id = self.case_analysis_version.id
 
         if self.case_fact_version is not None and self.case_fact_version_id is None:
             self.case_fact_version_id = self.case_fact_version.id
