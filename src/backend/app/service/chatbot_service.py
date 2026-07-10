@@ -5,8 +5,8 @@ from backend.app.util.utility import format_conversation_history
 class ChatbotService:
     def __init__(self):
         self.llm_service = LLMService()
-
-    def extract_issues(self, case_facts: list[str]) -> list[str]:
+        
+    async def extract_issues(self, case_facts: list[str]) -> list[str]:
         facts = "\n".join(f"- {fact}" for fact in case_facts)
 
         prompt = f"""
@@ -77,13 +77,13 @@ class ChatbotService:
         Whether ...
         """
 
-        response = self.llm_service.chat(prompt=prompt, temperature=0.1, max_tokens=500)
+        response = await self.llm_service.chat(prompt=prompt, temperature=0.1, max_tokens=500)
         if not response:
             return []
 
         return [line.strip() for line in response.splitlines() if line.strip()]
 
-    def generate_queries(
+    async def generate_queries(
         self, legal_issues: list[str], query_count: int = 5
     ) -> list[str]:
         issues = "\n".join(f"- {issue}" for issue in legal_issues)
@@ -138,7 +138,7 @@ class ChatbotService:
         Breach of software development service agreement Philippines
         """
 
-        response = self.llm_service.chat(prompt=prompt, temperature=0)
+        response = await self.llm_service.chat(prompt=prompt, temperature=0)
         if not response:
             return [legal_issues[0]] if legal_issues else []
 
@@ -146,7 +146,7 @@ class ChatbotService:
 
         return queries if queries else legal_issues
 
-    def generate_answer(self, case_facts: list[str], context: str):
+    async def generate_answer(self, case_facts: list[str], context: str):
         retrieved_cases = "\n---\n".join(case_facts)
 
         prompt = f"""
@@ -239,7 +239,7 @@ class ChatbotService:
         This analysis is intended solely for legal research and informational purposes. It is based only on the retrieved materials provided and does not constitute legal advice or a substitute for consultation with a qualified legal professional.
         """
 
-        response = self.llm_service.chat(
+        response = await self.llm_service.chat(
             temperature=0,
             prompt=prompt,
         )
@@ -249,7 +249,7 @@ class ChatbotService:
 
         return response
 
-    def contextualize_query(
+    async def contextualize_query(
         self, query: str, conversation_history: list[dict[str, str]]
     ):
         prompt = f"""
@@ -277,7 +277,7 @@ class ChatbotService:
         Standalone Search Query:
         """
 
-        response = self.llm_service.chat(
+        response = await self.llm_service.chat(
             temperature=0,
             prompt=prompt,
         )
@@ -286,7 +286,7 @@ class ChatbotService:
 
         return response
 
-    def expand_query(self, query: str) -> list[str] | None:
+    async def expand_query(self, query: str) -> list[str] | None:
         prompt = f"""
         Generate 5 alternative legal search queries for the following question.
 
@@ -300,7 +300,7 @@ class ChatbotService:
         {query}
         """
 
-        response = self.llm_service.chat(
+        response = await self.llm_service.chat(
             temperature=0,
             prompt=prompt,
         )
