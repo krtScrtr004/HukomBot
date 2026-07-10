@@ -1,12 +1,126 @@
+from typing import List
+from fastapi.concurrency import run_in_threadpool
+
+from backend.app.database.database import Database
 from backend.app.service.llm_service import LLMService
+from backend.app.model.chunk_model import Chunk
+from backend.app.repository.chunk_repository import ChunkRepository
+from backend.app.schema.chunk_schema import (
+    ChunkSearchKeyword,
+    ChunkSearchVector,
+    ChatPipelineResponse,
+)
+from backend.app.service.embed_service import EmbedService
+from backend.app.service.reranker_service import RerankService
+from backend.app.exception.chat_exception import ChatException
+
 from backend.app.util.utility import format_conversation_history
 
 
 class ChatbotService:
-    def __init__(self):
+    def __init__(self, db: Database):
+        self.chunk_repo = ChunkRepository(db)
+
         self.llm_service = LLMService()
-        
-    async def extract_issues(self, case_facts: list[str]) -> list[str]:
+        self.embed_service = EmbedService()
+        self.reranker_service = RerankService()
+
+    async def run_pipeline(self, case_facts: List[str]):
+        # Extract legal issues from case facts
+        legal_issues = await self.extract_issues(case_facts)
+        if not legal_issues:
+            raise ChatException("Cannot extract legal issues from provided case facts")
+
+        # Generate queries from legal issues
+        generated_queries = await self.generate_queries(legal_issues)
+        if not generated_queries:
+            raise ChatException("Cannot generate queries for legal issues extracted")
+
+        # Vector Search
+        vector_results = await self._retrieve_from_vector_search(generated_queries)
+        # Keyword Search
+        keyword_result = await self._retrieve_from_keyword_search(generated_queries)
+
+        # Early exit if no search result found
+        if not vector_results and not keyword_result:
+            return ChatPipelineResponse(
+                messages=["Chat responded successfully"], answer=""
+            )
+
+        deduplicated_result = self._deduplicate_results(vector_results, keyword_result)[
+            :20
+        ]  # Include only the first 20
+        reranked_result = await run_in_threadpool(
+            self.reranker_service.rerank, "\n".join(case_facts), deduplicated_result
+        )
+
+        final_answer = await self.generate_answer(
+            "\n".join(case_facts), self._format_context(reranked_result[:10])
+        )
+
+        return ChatPipelineResponse(
+            messages=["Chat responded successfully"], answer=final_answer
+        )
+
+    async def _retrieve_from_vector_search(self, queries: list[str], limit: int = 20):
+        results = []
+        for query in queries:
+            embedding = await run_in_threadpool(
+                self.embed_service.embed_query, query
+            )  # Create embeddings for query
+            results.extend(
+                await self.chunk_repo.search_vector(
+                    ChunkSearchVector(embeddings=embedding, limit=limit)
+                )
+            )
+
+        return results
+
+    async def _retrieve_from_keyword_search(self, queries: list[str], limit: int = 20):
+        results = []
+        for query in queries:
+            results.extend(
+                await self.chunk_repo.search(
+                    ChunkSearchKeyword(text=query, limit=limit)
+                )
+            )
+
+        return results
+
+    def _deduplicate_results(
+        vector_results: List[Chunk], keyword_results: List[Chunk]
+    ) -> list[Chunk]:
+        unique_results = {}
+
+        combined = vector_results + keyword_results
+        for item in combined:
+            if item.id not in unique_results:
+                unique_results[item.id] = item
+
+        return list(unique_results.values())
+
+    def _format_context(results: List[Chunk]) -> str:
+        formatted_results = []
+        for result in results:
+            document = result.document
+
+            title = f"{document.original_file_name}.{document.file_type.lstrip('.')}"
+            document_type = document.document_type.value
+            chunk_text = result.chunk_text
+            section = result.section if result.section else "Unknown Section"
+
+            formatted_results.append(f"""
+                Title: {title}
+                Document Type: {document_type}
+                Section: {section}
+                
+                Document: 
+                {chunk_text}
+                """)
+
+        return "\n\n---\n\n".join(formatted_results)
+
+    async def extract_issues(self, case_facts: List[str]) -> List[str]:
         facts = "\n".join(f"- {fact}" for fact in case_facts)
 
         prompt = f"""
@@ -77,15 +191,17 @@ class ChatbotService:
         Whether ...
         """
 
-        response = await self.llm_service.chat(prompt=prompt, temperature=0.1, max_tokens=500)
+        response = await self.llm_service.chat(
+            prompt=prompt, temperature=0.1, max_tokens=500
+        )
         if not response:
             return []
 
         return [line.strip() for line in response.splitlines() if line.strip()]
 
     async def generate_queries(
-        self, legal_issues: list[str], query_count: int = 5
-    ) -> list[str]:
+        self, legal_issues: List[str], query_count: int = 5
+    ) -> List[str]:
         issues = "\n".join(f"- {issue}" for issue in legal_issues)
 
         prompt = f"""
@@ -146,7 +262,7 @@ class ChatbotService:
 
         return queries if queries else legal_issues
 
-    async def generate_answer(self, case_facts: list[str], context: str):
+    async def generate_answer(self, case_facts: List[str], context: str):
         retrieved_cases = "\n---\n".join(case_facts)
 
         prompt = f"""
@@ -250,7 +366,7 @@ class ChatbotService:
         return response
 
     async def contextualize_query(
-        self, query: str, conversation_history: list[dict[str, str]]
+        self, query: str, conversation_history: List[dict[str, str]]
     ):
         prompt = f"""
         You are a query contextualization assistant for a Philippine legal retrieval system.
@@ -286,7 +402,7 @@ class ChatbotService:
 
         return response
 
-    async def expand_query(self, query: str) -> list[str] | None:
+    async def expand_query(self, query: str) -> List[str] | None:
         prompt = f"""
         Generate 5 alternative legal search queries for the following question.
 
