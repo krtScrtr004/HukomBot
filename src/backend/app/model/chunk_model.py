@@ -11,7 +11,7 @@ class Chunk(BaseModel):
     id: UUID
     document_id: UUID
     chunk_number: int = Field(gt=0, lt=9999)
-    chunk_text: str = Field(min_length=1, max_length=1000)
+    chunk_text: str = Field(min_length=1, max_length=10000)
     section: Optional[str] = Field(default=None, min_length=2, max_length=25)
     embedding: List
 
