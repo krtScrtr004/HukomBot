@@ -1,72 +1,188 @@
+import logging
+
 from typing import List
 from fastapi.concurrency import run_in_threadpool
 
 from backend.app.database.database import Database
-from backend.app.service.llm_service import LLMService
+
 from backend.app.model.chunk_model import Chunk
-from backend.app.repository.chunk_repository import ChunkRepository
+
 from backend.app.schema.chunk_schema import ChunkSearchKeyword, ChunkSearchVector
-from backend.app.schema.chatbot_schema import ChatPipelineResponse
+from backend.app.schema.chatbot_schema import (
+    CaseAnalysisCaseFacts,
+    ChatPipelineResponse,
+)
+from backend.app.schema.case_analysis_schema import (
+    CaseAnalysisSessionCreate,
+    CaseAnalysisVersionCreate,
+    CaseFactCreate,
+    CaseFactVersionCreate,
+    CaseAnalysisVersionFactCreate,
+)
+
+from backend.app.service.llm_service import LLMService
 from backend.app.service.embed_service import EmbedService
 from backend.app.service.reranker_service import RerankService
 from backend.app.exception.chat_exception import ChatException
 
+from backend.app.repository.chunk_repository import ChunkRepository
+from backend.app.repository.case_fact_repository import CaseFactRepository
+from backend.app.repository.case_fact_version_repository import (
+    CaseFactVersionRepository,
+)
+from backend.app.repository.case_analysis_session_repository import (
+    CaseAnalysisSessionRepository,
+)
+from backend.app.repository.case_analysis_version_repository import (
+    CaseAnalysisVersionRepository,
+)
+from backend.app.repository.case_analysis_version_fact_repository import (
+    CaseAnalysisVersionFactRepository,
+)
+
 from backend.app.util.utility import format_conversation_history
+
+logger = logging.getLogger(__name__)
 
 
 class ChatbotService:
     def __init__(self, db: Database):
-        self.chunk_repo = ChunkRepository(db)
+        self._chunk_repo = ChunkRepository(db)
+        self._case_fact_repo = CaseFactRepository(db)
+        self._case_fact_version_repo = CaseFactVersionRepository(db)
+        self._case_analysis_session_repo = CaseAnalysisSessionRepository(db)
+        self._case_analysis_version_repo = CaseAnalysisVersionRepository(db)
+        self._case_analysis_version_fact_repo = CaseAnalysisVersionFactRepository(db)
 
-        self.llm_service = LLMService()
-        self.embed_service = EmbedService()
-        self.reranker_service = RerankService()
+        self._llm_service = LLMService()
+        self._embed_service = EmbedService()
+        self._reranker_service = RerankService()
 
-    async def run_pipeline(self, case_facts: List[str]):
-        # Extract legal issues from case facts
-        legal_issues = await self.extract_issues(case_facts)
-        if not legal_issues:
-            raise ChatException("Cannot extract legal issues from provided case facts")
+    async def run_case_analysis_pipeline(self, payload: CaseAnalysisCaseFacts):
+        if not payload.conversation_id:
+            return await self._run_fresh_case_analysis_pipeline(payload.case_facts)
 
-        # Generate queries from legal issues
-        generated_queries = await self.generate_queries(legal_issues)
-        if not generated_queries:
-            raise ChatException("Cannot generate queries for legal issues extracted")
+    async def _run_fresh_case_analysis_pipeline(self, case_facts: List[str]):
+        # Create new session
+        session = await self._case_analysis_session_repo.create(
+            CaseAnalysisSessionCreate()
+        )
+        if not session:
+            raise ChatException("Cannot create new case analysis session")
 
-        # Vector Search
-        vector_results = await self._retrieve_from_vector_search(generated_queries)
-        # Keyword Search
-        keyword_result = await self._retrieve_from_keyword_search(generated_queries)
+        logger.info("Created new case analysis session with id: %s", session.id)
 
-        # Early exit if no search result found
-        if not vector_results and not keyword_result:
-            return ChatPipelineResponse(
-                messages=["Chat responded successfully"], answer=""
+        try:
+            # Extract legal issues from case facts
+            legal_issues = await self.extract_issues(case_facts)
+            if not legal_issues:
+                raise ChatException(
+                    "Cannot extract legal issues from provided case facts"
+                )
+
+            # Generate queries from legal issues
+            generated_queries = await self.generate_queries(legal_issues)
+            if not generated_queries:
+                raise ChatException(
+                    "Cannot generate queries for legal issues extracted"
+                )
+
+            # Vector Search
+            vector_results = await self._retrieve_from_vector_search(generated_queries)
+            logger.info(
+                "Fetched %i results from vector search in session %s",
+                len(vector_results),
+                session.id,
             )
 
-        deduplicated_result = self._deduplicate_results(vector_results, keyword_result)[
-            :20
-        ]  # Include only the first 20
-        reranked_result = await run_in_threadpool(
-            self.reranker_service.rerank, "\n".join(case_facts), deduplicated_result
-        )
+            # Keyword Search
+            keyword_result = await self._retrieve_from_keyword_search(generated_queries)
+            logger.info(
+                "Fetched %i results from keyword search in session %s",
+                len(keyword_result),
+                session.id,
+            )
 
-        final_answer = await self.generate_answer(
-            "\n".join(case_facts), self._format_context(reranked_result[:10])
-        )
+            # Early exit if no search result found
+            if not vector_results and not keyword_result:
+                return ChatPipelineResponse(
+                    messages=["Chat responded successfully"],
+                    conversation_id=session.id,
+                    answer="",
+                )
 
-        return ChatPipelineResponse(
-            messages=["Chat responded successfully"], answer=final_answer
-        )
+            deduplicated_result = self._deduplicate_results(
+                vector_results, keyword_result
+            )
+            reranked_result = await run_in_threadpool(
+                self._reranker_service.rerank, "\n".join(case_facts), deduplicated_result
+            )
+
+            final_answer = await self.generate_answer(
+                "\n".join(case_facts), self._format_context(reranked_result[:10])
+            )
+
+            # Create analysis version
+            case_analysis_version = await self._case_analysis_version_repo.create(
+                CaseAnalysisVersionCreate(
+                    case_analysis_session_id=session.id,
+                    version_number=1,  # Always 1st version on fresh conversation
+                    answer=final_answer,
+                )
+            )
+
+            # Create Case Facts
+            case_fact_objs = await self._case_fact_repo.create_many(
+                [
+                    CaseFactCreate(case_analysis_session_id=session.id)
+                    for _ in case_facts
+                ]
+            )
+            case_fact_version_objs = await self._case_fact_version_repo.create_many(
+                [
+                    CaseFactVersionCreate(
+                        case_fact_id=fact.id,
+                        version_number=case_analysis_version.version_number,
+                        fact=case_facts[i],
+                        is_deleted=False,
+                    )
+                    for i, fact in enumerate(case_fact_objs)
+                ]
+            )
+
+            await self._case_analysis_version_fact_repo.create_many(
+                [
+                    CaseAnalysisVersionFactCreate(
+                        case_analysis_version_id=case_analysis_version.id,
+                        case_fact_version_id=case_fact_version_objs[i].id,
+                    )
+                    for i, _ in enumerate(case_facts)
+                ]
+            )
+
+            return ChatPipelineResponse(
+                messages=["Chat responded successfully"],
+                conversation_id=session.id,
+                answer=final_answer,
+            )
+        except Exception as ex:
+            logger.error(
+                "An error occured while running rag pipeline for case analysis with session id: %s",
+                session.id,
+            )
+            await self._case_analysis_session_repo.delete(session.id)
+
+            logger.exception(str(ex))
+            raise
 
     async def _retrieve_from_vector_search(self, queries: list[str], limit: int = 20):
         results = []
         for query in queries:
             embedding = await run_in_threadpool(
-                self.embed_service.embed_query, query
+                self._embed_service.embed_query, query
             )  # Create embeddings for query
             results.extend(
-                await self.chunk_repo.search_vector(
+                await self._chunk_repo.search_vector(
                     ChunkSearchVector(embeddings=embedding, limit=limit)
                 )
             )
@@ -77,7 +193,7 @@ class ChatbotService:
         results = []
         for query in queries:
             results.extend(
-                await self.chunk_repo.search(
+                await self._chunk_repo.search(
                     ChunkSearchKeyword(text=query, limit=limit)
                 )
             )
@@ -85,7 +201,7 @@ class ChatbotService:
         return results
 
     def _deduplicate_results(
-        vector_results: List[Chunk], keyword_results: List[Chunk]
+        self, vector_results: List[Chunk], keyword_results: List[Chunk]
     ) -> list[Chunk]:
         unique_results = {}
 
@@ -96,7 +212,7 @@ class ChatbotService:
 
         return list(unique_results.values())
 
-    def _format_context(results: List[Chunk]) -> str:
+    def _format_context(self, results: List[Chunk]) -> str:
         formatted_results = []
         for result in results:
             document = result.document
@@ -188,7 +304,7 @@ class ChatbotService:
         Whether ...
         """
 
-        response = await self.llm_service.chat(
+        response = await self._llm_service.chat(
             prompt=prompt, temperature=0.1, max_tokens=500
         )
         if not response:
@@ -251,7 +367,7 @@ class ChatbotService:
         Breach of software development service agreement Philippines
         """
 
-        response = await self.llm_service.chat(prompt=prompt, temperature=0)
+        response = await self._llm_service.chat(prompt=prompt, temperature=0)
         if not response:
             return [legal_issues[0]] if legal_issues else []
 
@@ -352,7 +468,7 @@ class ChatbotService:
         This analysis is intended solely for legal research and informational purposes. It is based only on the retrieved materials provided and does not constitute legal advice or a substitute for consultation with a qualified legal professional.
         """
 
-        response = await self.llm_service.chat(
+        response = await self._llm_service.chat(
             temperature=0,
             prompt=prompt,
         )
@@ -390,7 +506,7 @@ class ChatbotService:
         Standalone Search Query:
         """
 
-        response = await self.llm_service.chat(
+        response = await self._llm_service.chat(
             temperature=0,
             prompt=prompt,
         )
@@ -413,7 +529,7 @@ class ChatbotService:
         {query}
         """
 
-        response = await self.llm_service.chat(
+        response = await self._llm_service.chat(
             temperature=0,
             prompt=prompt,
         )
