@@ -335,9 +335,9 @@ class DocumentRepository:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
-                        f"""
+                        """
                         DELETE FROM documents
-                        WHERE id = %s) 
+                        WHERE id = %s
                         """,
                         (id,),
                     )

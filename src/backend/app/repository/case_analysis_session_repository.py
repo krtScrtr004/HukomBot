@@ -17,13 +17,13 @@ class CaseAnalysisSessionRepository:
         async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
-                    cur.execute(
+                    await cur.execute(
                         """
-                        INSERT INTO case_analysis_session (created_at, updated_at) 
+                        INSERT INTO case_analysis_sessions (created_at, updated_at) 
                         VALUES (%(created_at)s, %(updated_at)s) 
                         RETURNING id
                         """,
-                        (case_analysis_session.model_dump(),),
+                        (case_analysis_session.model_dump()),
                     )
 
                     case_analysis_session_id = (await cur.fetchone())["id"]
@@ -49,7 +49,7 @@ class CaseAnalysisSessionRepository:
                     await cur.execute(
                         """
                         SELECT *
-                        FROM case_analysis_session
+                        FROM case_analysis_sessions
                         WHERE id = %s
                         LIMIT 1
                         """,
@@ -63,4 +63,21 @@ class CaseAnalysisSessionRepository:
                     CaseAnalysisSession.model_validate(row) if row is not None else None
                 )
             except errors.OperationalError as ex:
+                raise
+
+    async def delete(self, id: UUID):
+        async with self._database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        DELETE FROM case_analysis_sessions
+                        WHERE id = %s
+                        """,
+                        (id,),
+                    )
+
+                await conn.commit()
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
                 raise
