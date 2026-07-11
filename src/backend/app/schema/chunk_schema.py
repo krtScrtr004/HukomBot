@@ -3,8 +3,8 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-
 class ChunkCreate(BaseModel):
+    id: UUID
     document_id: UUID
     chunk_number: int = Field(gt=0, lt=9999)
     chunk_text: str = Field(min_length=1, max_length=10000)
