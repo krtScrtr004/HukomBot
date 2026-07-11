@@ -4,7 +4,8 @@ from backend.app.model.chunk_model import Chunk
 
 
 class RerankService:
-    __instance = RerankService|None = None
+    __instance: RerankService|None = None
+    
     def __init__(self):
         self.__model = CrossEncoder("BAAI/bge-reranker-v2-m3")
         

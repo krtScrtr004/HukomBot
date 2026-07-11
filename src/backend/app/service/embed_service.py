@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer
 class EmbedService:
     MODEL = "BAAI/bge-base-en-v1.5"
     
-    __instance = EmbedService|None = None
+    __instance: EmbedService|None = None
 
     def __init__(self):
         self.__model = SentenceTransformer(model_name_or_path=EmbedService.MODEL)
