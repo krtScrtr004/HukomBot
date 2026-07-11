@@ -100,7 +100,9 @@ class DocumentService:
             )
         except Exception:
             # Rollback file creation
-            self.__file_storage_service.delete_from_pending(f"{upload_file_name}.{suffix.lstrip(".")}")
+            self.__file_storage_service.delete_from_pending(
+                f"{upload_file_name}.{suffix.lstrip(".")}"
+            )
             raise
 
     async def approve_document_upload(
@@ -130,7 +132,7 @@ class DocumentService:
             if payload.document_type is not None
             else document.document_type
         )
-        background_tasks.add_task(self._process_document_pdf_upload, document, file)
+        background_tasks.add_task(self.__process_document_pdf_upload, document, file)
 
         return DocumentUploadResponse(
             messages=["File upload is ongoing"],
@@ -138,7 +140,7 @@ class DocumentService:
             status=UploadStatus.ONGOING,
         )
 
-    async def _process_document_pdf_upload(self, document: Document, file: Path):
+    async def __process_document_pdf_upload(self, document: Document, file: Path):
         try:
             # Set document upload status to ONGOING
             await self.__document_repo.update(

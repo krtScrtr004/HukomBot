@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Optional, Annotated
+
+from typing import Optional
 from datetime import datetime
 from uuid import UUID, uuid4
 from pydantic import (
@@ -16,7 +17,7 @@ from backend.app.enum.legal_document_type import LegalDocumentType
 
 
 class DocumentCreate(BaseModel):
-    id: UUID
+    id: UUID = Field(default=uuid4())
     original_file_name: str = Field(min_length=1, max_length=300)
     upload_file_name: UUID = Field(default=uuid4())
     document_type: LegalDocumentType

@@ -1,15 +1,17 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
 class ChunkCreate(BaseModel):
-    id: UUID
+    id: UUID = Field(default=uuid4())
     document_id: UUID
     chunk_number: int = Field(gt=0, lt=9999)
     chunk_text: str = Field(min_length=1, max_length=10000)
     section: Optional[str] = Field(default=None, min_length=2, max_length=25)
     embedding: Optional[List] = Field(default=None)
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class ChunkSearchKeyword(BaseModel):

@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, model_validator, EmailStr
+from pydantic import BaseModel, model_validator, EmailStr, Field
 
 from backend.app.model.user_model import UserBase
 from backend.app.enum.oauth_provider import OAuthProvider
 
 
 class UserCreate(UserBase):
-    id: UUID
+    id: UUID = Field(default=uuid4())
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
     token_expires_at: Optional[datetime] = None
+    
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class UserUpdate(BaseModel):

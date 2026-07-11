@@ -1,7 +1,6 @@
 import logging
 
 from typing import List
-from uuid import uuid4
 from fastapi.concurrency import run_in_threadpool
 
 from backend.app.database.database import Database
@@ -66,7 +65,7 @@ class ChatbotService:
             return await self.__run_fresh_case_analysis_pipeline(payload.case_facts)
 
     async def __run_fresh_case_analysis_pipeline(self, case_facts: List[str]):
-        session = CaseAnalysisSessionCreate(id=uuid4())
+        session = CaseAnalysisSessionCreate()
 
         # Extract legal issues from case facts
         legal_issues = await self.extract_issues(case_facts)
