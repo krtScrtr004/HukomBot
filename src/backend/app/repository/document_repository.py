@@ -24,65 +24,68 @@ class DocumentRepository:
     ) -> Document:
         if connection is not None:
             return await self.__create_implement(connection, document)
+
         async with self.__database.connection() as conn:
-            return await self.__create_implement(conn, document)
+            try:
+                result = await self.__create_implement(conn, document)
+                await conn.commit()
+                return result
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
 
     async def __create_implement(
         self,
         conn: AsyncConnection,
         document: DocumentCreate,
     ) -> Document:
-        try:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    """
-                    INSERT INTO documents (
-                        id,
-                        original_file_name, 
-                        upload_file_name, 
-                        document_type, 
-                        file_type, 
-                        upload_status, 
-                        upload_error, 
-                        digest,
-                        created_at
-                    ) VALUES (
-                        %(id)s,
-                        %(original_file_name)s, 
-                        %(upload_file_name)s, 
-                        %(document_type)s, 
-                        %(file_type)s, 
-                        %(upload_status)s, 
-                        %(upload_error)s, 
-                        %(digest)s,
-                        %(created_at)s
-                    )
-                    ON CONFLICT (digest)
-                        DO UPDATE SET
-                            original_file_name  = EXCLUDED.original_file_name,
-                            upload_file_name    = EXCLUDED.upload_file_name,
-                            document_type       = EXCLUDED.document_type,
-                            file_type           = EXCLUDED.file_type,
-                            upload_status       = EXCLUDED.upload_status,
-                            upload_error        = EXCLUDED.upload_error
-                    """,
-                    (document.model_dump()),
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                INSERT INTO documents (
+                    id,
+                    original_file_name, 
+                    upload_file_name, 
+                    document_type, 
+                    file_type, 
+                    upload_status, 
+                    upload_error, 
+                    digest,
+                    created_at
+                ) VALUES (
+                    %(id)s,
+                    %(original_file_name)s, 
+                    %(upload_file_name)s, 
+                    %(document_type)s, 
+                    %(file_type)s, 
+                    %(upload_status)s, 
+                    %(upload_error)s, 
+                    %(digest)s,
+                    %(created_at)s
                 )
-            await conn.commit()
-            return Document(
-                id=document.id,
-                original_file_name=document.original_file_name,
-                upload_file_name=document.upload_file_name,
-                document_type=document.document_type,
-                file_type=document.file_type,
-                upload_status=document.upload_status,
-                upload_error=document.upload_error,
-                digest=document.digest,
-                created_at=document.created_at,
+                ON CONFLICT (digest)
+                    DO UPDATE SET
+                        original_file_name  = EXCLUDED.original_file_name,
+                        upload_file_name    = EXCLUDED.upload_file_name,
+                        document_type       = EXCLUDED.document_type,
+                        file_type           = EXCLUDED.file_type,
+                        upload_status       = EXCLUDED.upload_status,
+                        upload_error        = EXCLUDED.upload_error
+                """,
+                (document.model_dump()),
             )
-        except (errors.IntegrityError, errors.OperationalError) as ex:
-            await conn.rollback()
-            raise
+
+        return Document(
+            id=document.id,
+            original_file_name=document.original_file_name,
+            upload_file_name=document.upload_file_name,
+            document_type=document.document_type,
+            file_type=document.file_type,
+            upload_status=document.upload_status,
+            upload_error=document.upload_error,
+            digest=document.digest,
+            created_at=document.created_at,
+        )
 
     async def create_many(
         self,
@@ -95,75 +98,77 @@ class DocumentRepository:
 
         if connection is not None:
             return await self.__create_many_implement(connection, documents)
+
         async with self.__database.connection() as conn:
-            return await self.__create_many_implement(conn, documents)
+            try:
+                result = await self.__create_many_implement(conn, documents)
+                await conn.commit()
+                return result
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
 
     async def __create_many_implement(
         self,
         conn: AsyncConnection,
         documents: List[DocumentCreate],
     ) -> List[Document]:
-        try:
-            async with conn.cursor() as cur:
-                await cur.executemany(
-                    """
-                    INSERT INTO documents (
-                        id,
-                        original_file_name, 
-                        upload_file_name, 
-                        document_type, 
-                        file_type, 
-                        upload_status, 
-                        upload_error, 
-                        digest,
-                        created_at
-                    ) VALUES (
-                        %(id)s,
-                        %(original_file_name)s, 
-                        %(upload_file_name)s, 
-                        %(document_type)s, 
-                        %(file_type)s, 
-                        %(upload_status)s, 
-                        %(upload_error)s, 
-                        %(digest)s,
-                        %(created_at)s
+        async with conn.cursor() as cur:
+            await cur.executemany(
+                """
+                INSERT INTO documents (
+                    id,
+                    original_file_name, 
+                    upload_file_name, 
+                    document_type, 
+                    file_type, 
+                    upload_status, 
+                    upload_error, 
+                    digest,
+                    created_at
+                ) VALUES (
+                    %(id)s,
+                    %(original_file_name)s, 
+                    %(upload_file_name)s, 
+                    %(document_type)s, 
+                    %(file_type)s, 
+                    %(upload_status)s, 
+                    %(upload_error)s, 
+                    %(digest)s,
+                    %(created_at)s
+                )
+                ON CONFLICT (digest)
+                    DO UPDATE SET 
+                        original_file_name  = EXCLUDED.original_file_name,
+                        upload_file_name    = EXCLUDED.upload_file_name,
+                        document_type       = EXCLUDED.document_type,
+                        file_type           = EXCLUDED.file_type,
+                        upload_status       = EXCLUDED.upload_status,
+                        upload_error        = EXCLUDED.upload_error
+                """,
+                [docu.model_dump() for docu in documents],
+                returning=True,
+            )
+
+            # Retrieve the generated IDs
+            updated = []
+            for i, _ in enumerate(documents):
+                # Update the document's ID attribute
+                updated.append(
+                    Document(
+                        id=documents[i].id,
+                        original_file_name=documents[i].original_file_name,
+                        upload_file_name=documents[i].upload_file_name,
+                        document_type=documents[i].document_type,
+                        file_type=documents[i].file_type,
+                        upload_status=documents[i].upload_status,
+                        upload_error=documents[i].upload_error,
+                        digest=documents[i].digest,
+                        created_at=documents[i].created_at,
                     )
-                    ON CONFLICT (digest)
-                        DO UPDATE SET 
-                            original_file_name  = EXCLUDED.original_file_name,
-                            upload_file_name    = EXCLUDED.upload_file_name,
-                            document_type       = EXCLUDED.document_type,
-                            file_type           = EXCLUDED.file_type,
-                            upload_status       = EXCLUDED.upload_status,
-                            upload_error        = EXCLUDED.upload_error
-                    """,
-                    [docu.model_dump() for docu in documents],
-                    returning=True,
                 )
 
-                # Retrieve the generated IDs
-                updated = []
-                for i, _ in enumerate(documents):
-                    # Update the document's ID attribute
-                    updated.append(
-                        Document(
-                            id=documents[i].id,
-                            original_file_name=documents[i].original_file_name,
-                            upload_file_name=documents[i].upload_file_name,
-                            document_type=documents[i].document_type,
-                            file_type=documents[i].file_type,
-                            upload_status=documents[i].upload_status,
-                            upload_error=documents[i].upload_error,
-                            digest=documents[i].digest,
-                            created_at=documents[i].created_at,
-                        )
-                    )
-
-            await conn.commit()
-            return updated
-        except (errors.IntegrityError, errors.OperationalError) as ex:
-            await conn.rollback()
-            raise
+        return updated
 
     async def update(self, document: DocumentUpdate):
         if not document.model_dump(exclude={"id"}, exclude_none=True):

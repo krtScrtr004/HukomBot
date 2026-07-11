@@ -18,45 +18,46 @@ class CaseAnalysisVersionRepository:
     ) -> CaseAnalysisVersion:
         if connection is not None:
             return await self.__create_implement(connection, case_analysis_version)
+        
         async with self.__database.connection() as conn:
-            return await self.__create_implement(conn, case_analysis_version)
+            try:
+                result = await self.__create_implement(conn, case_analysis_version)
+                await conn.commit()
+                return result
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
 
     async def __create_implement(
         self, conn: AsyncConnection, case_analysis_version: CaseAnalysisVersionCreate
     ):
-        try:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    """
-                    INSERT INTO case_analysis_versions (
-                        id,
-                        case_analysis_session_id,
-                        version_number,
-                        answer,
-                        created_at
-                    ) VALUES (
-                        %(id)s,
-                        %(case_analysis_session_id)s,
-                        %(version_number)s,
-                        %(answer)s,
-                        %(created_at)s
-                    )
-                    """,
-                    (case_analysis_version.model_dump()),
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                INSERT INTO case_analysis_versions (
+                    id,
+                    case_analysis_session_id,
+                    version_number,
+                    answer,
+                    created_at
+                ) VALUES (
+                    %(id)s,
+                    %(case_analysis_session_id)s,
+                    %(version_number)s,
+                    %(answer)s,
+                    %(created_at)s
                 )
-
-            await conn.commit()
-
-            return CaseAnalysisVersion(
-                id=case_analysis_version.id,
-                case_analysis_session_id=case_analysis_version.case_analysis_session_id,
-                version_number=case_analysis_version.version_number,
-                answer=case_analysis_version.answer,
-                created_at=case_analysis_version.created_at,
+                """,
+                (case_analysis_version.model_dump()),
             )
-        except (errors.IntegrityError, errors.OperationalError) as ex:
-            await conn.rollback()
-            raise
+
+        return CaseAnalysisVersion(
+            id=case_analysis_version.id,
+            case_analysis_session_id=case_analysis_version.case_analysis_session_id,
+            version_number=case_analysis_version.version_number,
+            answer=case_analysis_version.answer,
+            created_at=case_analysis_version.created_at,
+        )
 
     async def create_many(
         self,
@@ -70,55 +71,59 @@ class CaseAnalysisVersionRepository:
             return await self.__create_many_implement(
                 connection, case_analysis_versions
             )
+            
         async with self.__database.connection() as conn:
-            return await self.__create_many_implement(conn, case_analysis_versions)
+            try:
+                result = await self.__create_many_implement(
+                    conn, case_analysis_versions
+                )
+                await conn.commit()
+                return result
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
 
     async def __create_many_implement(
         self,
         conn: AsyncConnection,
         case_analysis_versions: List[CaseAnalysisVersionCreate],
     ):
-        try:
-            async with conn.cursor() as cur:
-                await cur.executemany(
-                    """
-                    INSERT INTO case_analysis_versions (
-                        id,
-                        case_analysis_session_id,
-                        version_number,
-                        answer,
-                        created_at
-                    ) VALUES (
-                        %(id)s,
-                        %(case_analysis_session_id)s,
-                        %(version_number)s,
-                        %(answer)s,
-                        %(created_at)s
-                    )
-                    """,
-                    [
-                        analysis_version.model_dump()
-                        for analysis_version in case_analysis_versions
-                    ],
+        async with conn.cursor() as cur:
+            await cur.executemany(
+                """
+                INSERT INTO case_analysis_versions (
+                    id,
+                    case_analysis_session_id,
+                    version_number,
+                    answer,
+                    created_at
+                ) VALUES (
+                    %(id)s,
+                    %(case_analysis_session_id)s,
+                    %(version_number)s,
+                    %(answer)s,
+                    %(created_at)s
                 )
+                """,
+                [
+                    analysis_version.model_dump()
+                    for analysis_version in case_analysis_versions
+                ],
+            )
 
-            # Retrieve the generated IDs
-            updated = []
-            for i, _ in enumerate(case_analysis_versions):
-                updated.append(
-                    CaseAnalysisVersion(
-                        id=case_analysis_versions[i].id,
-                        case_analysis_session_id=case_analysis_versions[
-                            i
-                        ].case_analysis_session_id,
-                        version_number=case_analysis_versions[i].version_number,
-                        answer=case_analysis_versions[i].answer,
-                        created_at=case_analysis_versions[i].created_at,
-                    )
+        # Retrieve the generated IDs
+        updated = []
+        for i, _ in enumerate(case_analysis_versions):
+            updated.append(
+                CaseAnalysisVersion(
+                    id=case_analysis_versions[i].id,
+                    case_analysis_session_id=case_analysis_versions[
+                        i
+                    ].case_analysis_session_id,
+                    version_number=case_analysis_versions[i].version_number,
+                    answer=case_analysis_versions[i].answer,
+                    created_at=case_analysis_versions[i].created_at,
                 )
+            )
 
-            await conn.commit()
-            return updated
-        except (errors.IntegrityError, errors.OperationalError) as ex:
-            await conn.rollback()
-            raise
+        return updated

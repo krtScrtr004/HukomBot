@@ -25,53 +25,55 @@ class ChunkRepository:
     ) -> Chunk:
         if connection is not None:
             return await self.__create_implement(connection, chunk)
+        
         async with self.__database.connection() as conn:
-            return await self.__create_implement(conn, chunk)
+            try:
+                result = await self.__create_implement(conn, chunk)
+                await conn.commit()
+                return result
+            except (
+                errors.ForeignKeyViolation,
+                errors.IntegrityError,
+                errors.OperationalError,
+            ) as ex:
+                await conn.rollback()
+                raise
 
     async def __create_implement(
         self,
         conn: AsyncConnection,
         chunk: ChunkCreate,
     ) -> Chunk:
-        try:
-            async with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO chunks (
-                        id,
-                        document_id, 
-                        chunk_number, 
-                        chunk_text, 
-                        embedding, 
-                        section
-                    ) VALUES (
-                        %(id)s,
-                        %(document_id)s, 
-                        %(chunk_number)s, 
-                        %(chunk_text)s, 
-                        %(embedding)s, 
-                        %(section)s
-                    )
-                    """,
-                    (chunk.model_dump(),),
+        async with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO chunks (
+                    id,
+                    document_id, 
+                    chunk_number, 
+                    chunk_text, 
+                    embedding, 
+                    section
+                ) VALUES (
+                    %(id)s,
+                    %(document_id)s, 
+                    %(chunk_number)s, 
+                    %(chunk_text)s, 
+                    %(embedding)s, 
+                    %(section)s
                 )
-
-            await conn.commit()
-            return Chunk(
-                id=chunk.id,
-                document_id=chunk.document_id,
-                chunk_number=chunk.chunk_number,
-                chunk_text=chunk.chunk_text,
-                section=chunk.section,
-                embedding=chunk.embedding,
+                """,
+                (chunk.model_dump(),),
             )
-        except (
-            errors.ForeignKeyViolation,
-            errors.IntegrityError,
-            errors.OperationalError,
-        ) as ex:
-            await conn.rollback()
-            raise
+
+        return Chunk(
+            id=chunk.id,
+            document_id=chunk.document_id,
+            chunk_number=chunk.chunk_number,
+            chunk_text=chunk.chunk_text,
+            section=chunk.section,
+            embedding=chunk.embedding,
+        )
 
     async def create_many(
         self,
@@ -83,59 +85,61 @@ class ChunkRepository:
 
         if connection is not None:
             return await self.__create_many_implement(connection, chunks)
+        
         async with self.__database.connection() as conn:
-            return await self.__create_many_implement(conn, chunks)
+            try:
+                result = await self.__create_many_implement(conn, chunks)
+                await conn.commit()
+                return result
+            except (
+                errors.ForeignKeyViolation,
+                errors.IntegrityError,
+                errors.OperationalError,
+            ) as ex:
+                await conn.rollback()
+                raise
 
     async def __create_many_implement(
         self,
         conn: AsyncConnection,
         chunks: List[ChunkCreate],
     ) -> List[Chunk]:
-        try:
-            async with conn.cursor() as cur:
-                await cur.executemany(
-                    """
-                    INSERT INTO chunks (
-                        id,
-                        document_id, 
-                        chunk_number, 
-                        chunk_text, 
-                        embedding, 
-                        section
-                    ) VALUES (
-                        %(id)s,
-                        %(document_id)s, 
-                        %(chunk_number)s, 
-                        %(chunk_text)s, 
-                        %(embedding)s, 
-                        %(section)s
+        async with conn.cursor() as cur:
+            await cur.executemany(
+                """
+                INSERT INTO chunks (
+                    id,
+                    document_id, 
+                    chunk_number, 
+                    chunk_text, 
+                    embedding, 
+                    section
+                ) VALUES (
+                    %(id)s,
+                    %(document_id)s, 
+                    %(chunk_number)s, 
+                    %(chunk_text)s, 
+                    %(embedding)s, 
+                    %(section)s
+                )
+                """,
+                [chunk.model_dump() for chunk in chunks],
+            )
+
+            updated = []
+            for i, _ in enumerate(chunks):
+                updated.append(
+                    Chunk(
+                        id=chunks[i].id,
+                        document_id=chunks[i].document_id,
+                        chunk_number=chunks[i].chunk_number,
+                        chunk_text=chunks[i].chunk_text,
+                        section=chunks[i].section,
+                        embedding=chunks[i].embedding,
                     )
-                    """,
-                    [chunk.model_dump() for chunk in chunks],
                 )
 
-                updated = []
-                for i, _ in enumerate(chunks):
-                    updated.append(
-                        Chunk(
-                            id=chunks[i].id,
-                            document_id=chunks[i].document_id,
-                            chunk_number=chunks[i].chunk_number,
-                            chunk_text=chunks[i].chunk_text,
-                            section=chunks[i].section,
-                            embedding=chunks[i].embedding,
-                        )
-                    )
-
-            await conn.commit()
-            return updated
-        except (
-            errors.ForeignKeyViolation,
-            errors.IntegrityError,
-            errors.OperationalError,
-        ) as ex:
-            await conn.rollback()
-            raise
+        return updated
 
     async def search(self, chunk: ChunkSearchKeyword) -> List:
         async with self.__database.connection() as conn:

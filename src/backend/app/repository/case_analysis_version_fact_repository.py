@@ -18,32 +18,34 @@ class CaseAnalysisVersionFactRepository:
     ) -> CaseAnalysisVersionFact:
         if connection is not None:
             return await self.__create_implement(connection, case_analysis_version_fact)
+
         async with self.__database.connection() as conn:
-            return await self.__create_implement(conn, case_analysis_version_fact)
+            try:
+                result = await self.__create_implement(conn, case_analysis_version_fact)
+                await conn.commit()
+                return result
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
 
     async def __create_implement(
         self,
         conn: AsyncConnection,
         case_analysis_version_fact: CaseAnalysisVersionFactCreate,
     ):
-        try:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    """
-                    INSERT INTO case_analysis_version_facts (case_analysis_version_id, case_fact_version_id) 
-                    VALUES (%(case_analysis_version_id)s, %(case_fact_version_id)s)
-                    """,
-                    (case_analysis_version_fact.model_dump()),
-                )
-            await conn.commit()
-
-            return CaseAnalysisVersionFact(
-                case_analysis_version_id=case_analysis_version_fact.case_analysis_version_id,
-                case_fact_version_id=case_analysis_version_fact.case_fact_version_id,
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                INSERT INTO case_analysis_version_facts (case_analysis_version_id, case_fact_version_id) 
+                VALUES (%(case_analysis_version_id)s, %(case_fact_version_id)s)
+                """,
+                (case_analysis_version_fact.model_dump()),
             )
-        except (errors.IntegrityError, errors.OperationalError) as ex:
-            await conn.rollback()
-            raise
+
+        return CaseAnalysisVersionFact(
+            case_analysis_version_id=case_analysis_version_fact.case_analysis_version_id,
+            case_fact_version_id=case_analysis_version_fact.case_fact_version_id,
+        )
 
     async def create_many(
         self,
@@ -57,43 +59,47 @@ class CaseAnalysisVersionFactRepository:
             return await self.__create_many_implement(
                 connection, case_analysis_version_facts
             )
+
         async with self.__database.connection() as conn:
-            return await self.__create_many_implement(conn, case_analysis_version_facts)
+            try:
+                result = await self.__create_many_implement(
+                    conn, case_analysis_version_facts
+                )
+                await conn.commit()
+                return result
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
 
     async def __create_many_implement(
         self,
         conn: AsyncConnection,
         case_analysis_version_facts: List[CaseAnalysisVersionFactCreate],
     ):
-        try:
-            async with conn.cursor() as cur:
-                await cur.executemany(
-                    """
-                    INSERT INTO case_analysis_version_facts (case_analysis_version_id, case_fact_version_id) 
-                    VALUES (%(case_analysis_version_id)s, %(case_fact_version_id)s)
-                    """,
-                    [
-                        analysis_version_fact.model_dump()
-                        for analysis_version_fact in case_analysis_version_facts
-                    ],
-                )
+        async with conn.cursor() as cur:
+            await cur.executemany(
+                """
+                INSERT INTO case_analysis_version_facts (case_analysis_version_id, case_fact_version_id) 
+                VALUES (%(case_analysis_version_id)s, %(case_fact_version_id)s)
+                """,
+                [
+                    analysis_version_fact.model_dump()
+                    for analysis_version_fact in case_analysis_version_facts
+                ],
+            )
 
-            # Retrieve the generated IDs
-            updated = []
-            for i, _ in enumerate(case_analysis_version_facts):
-                updated.append(
-                    CaseAnalysisVersionFact(
-                        case_analysis_version_id=case_analysis_version_facts[
-                            i
-                        ].case_analysis_version_id,
-                        case_fact_version_id=case_analysis_version_facts[
-                            i
-                        ].case_fact_version_id,
-                    )
+        # Retrieve the generated IDs
+        updated = []
+        for i, _ in enumerate(case_analysis_version_facts):
+            updated.append(
+                CaseAnalysisVersionFact(
+                    case_analysis_version_id=case_analysis_version_facts[
+                        i
+                    ].case_analysis_version_id,
+                    case_fact_version_id=case_analysis_version_facts[
+                        i
+                    ].case_fact_version_id,
                 )
+            )
 
-            await conn.commit()
-            return updated
-        except (errors.IntegrityError, errors.OperationalError) as ex:
-            await conn.rollback()
-            raise
+        return updated
