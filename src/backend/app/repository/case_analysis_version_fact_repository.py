@@ -1,5 +1,6 @@
 from typing import List
 from psycopg import errors
+from psycopg import AsyncConnection
 
 from backend.app.database.database import Database
 from backend.app.model.case_analysis_model import CaseAnalysisVersionFact
@@ -11,60 +12,88 @@ class CaseAnalysisVersionFactRepository:
         self.__database = db
 
     async def create(
-        self, case_analysis_version_fact: CaseAnalysisVersionFactCreate
+        self,
+        case_analysis_version_fact: CaseAnalysisVersionFactCreate,
+        connection: AsyncConnection = None,
     ) -> CaseAnalysisVersionFact:
+        if connection is not None:
+            return await self.__create_implement(connection, case_analysis_version_fact)
         async with self.__database.connection() as conn:
-            try:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        INSERT INTO case_analysis_version_facts (case_analysis_version_id, case_fact_version_id) 
-                        VALUES (%(case_analysis_version_id)s, %(case_fact_version_id)s)
-                        """,
-                        (case_analysis_version_fact.model_dump()),
-                    )
-                await conn.commit()
+            return await self.__create_implement(conn, case_analysis_version_fact)
 
-                return CaseAnalysisVersionFact(
-                    case_analysis_version_id=case_analysis_version_fact.case_analysis_version_id,
-                    case_fact_version_id=case_analysis_version_fact.case_fact_version_id,
+    async def __create_implement(
+        self,
+        conn: AsyncConnection,
+        case_analysis_version_fact: CaseAnalysisVersionFactCreate,
+    ):
+        try:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                    INSERT INTO case_analysis_version_facts (case_analysis_version_id, case_fact_version_id) 
+                    VALUES (%(case_analysis_version_id)s, %(case_fact_version_id)s)
+                    """,
+                    (case_analysis_version_fact.model_dump()),
                 )
-            except (errors.IntegrityError, errors.OperationalError) as ex:
-                await conn.rollback()
-                raise
+            await conn.commit()
+
+            return CaseAnalysisVersionFact(
+                case_analysis_version_id=case_analysis_version_fact.case_analysis_version_id,
+                case_fact_version_id=case_analysis_version_fact.case_fact_version_id,
+            )
+        except (errors.IntegrityError, errors.OperationalError) as ex:
+            await conn.rollback()
+            raise
 
     async def create_many(
-        self, case_analysis_version_facts: List[CaseAnalysisVersionFactCreate]
+        self,
+        case_analysis_version_facts: List[CaseAnalysisVersionFactCreate],
+        connection: AsyncConnection = None,
     ) -> List[CaseAnalysisVersionFact]:
         if not case_analysis_version_facts:
             return []
 
+        if connection is not None:
+            return await self.__create_many_implement(
+                connection, case_analysis_version_facts
+            )
         async with self.__database.connection() as conn:
-            try:
-                async with conn.cursor() as cur:
-                    await cur.executemany(
-                        """
-                        INSERT INTO case_analysis_version_facts (case_analysis_version_id, case_fact_version_id) 
-                        VALUES (%(case_analysis_version_id)s, %(case_fact_version_id)s)
-                        """,
-                        [
-                            analysis_version_fact.model_dump()
-                            for analysis_version_fact in case_analysis_version_facts
-                        ],
-                    )
+            return await self.__create_many_implement(conn, case_analysis_version_facts)
 
-                # Retrieve the generated IDs
-                updated = []
-                for i, _ in enumerate(case_analysis_version_facts):
-                    updated.append(
-                        CaseAnalysisVersionFact(
-                            case_analysis_version_id=case_analysis_version_facts[i].case_analysis_version_id,
-                            case_fact_version_id=case_analysis_version_facts[i].case_fact_version_id,
-                        )
+    async def __create_many_implement(
+        self,
+        conn: AsyncConnection,
+        case_analysis_version_facts: List[CaseAnalysisVersionFactCreate],
+    ):
+        try:
+            async with conn.cursor() as cur:
+                await cur.executemany(
+                    """
+                    INSERT INTO case_analysis_version_facts (case_analysis_version_id, case_fact_version_id) 
+                    VALUES (%(case_analysis_version_id)s, %(case_fact_version_id)s)
+                    """,
+                    [
+                        analysis_version_fact.model_dump()
+                        for analysis_version_fact in case_analysis_version_facts
+                    ],
+                )
+
+            # Retrieve the generated IDs
+            updated = []
+            for i, _ in enumerate(case_analysis_version_facts):
+                updated.append(
+                    CaseAnalysisVersionFact(
+                        case_analysis_version_id=case_analysis_version_facts[
+                            i
+                        ].case_analysis_version_id,
+                        case_fact_version_id=case_analysis_version_facts[
+                            i
+                        ].case_fact_version_id,
                     )
-                
-                await conn.commit()
-                return updated
-            except (errors.IntegrityError, errors.OperationalError) as ex:
-                await conn.rollback()
-                raise
+                )
+
+            await conn.commit()
+            return updated
+        except (errors.IntegrityError, errors.OperationalError) as ex:
+            await conn.rollback()
+            raise
