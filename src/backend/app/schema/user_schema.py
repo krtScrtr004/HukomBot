@@ -10,7 +10,7 @@ from backend.app.enum.oauth_provider import OAuthProvider
 
 
 class UserCreate(UserBase):
-    id: UUID = Field(default=uuid4())
+    id: UUID = Field(default_factory=uuid4())
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
     token_expires_at: Optional[datetime] = None

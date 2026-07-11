@@ -6,38 +6,38 @@ from pydantic import BaseModel, Field
 
 
 class CaseAnalysisSessionCreate(BaseModel):
-    id: UUID = Field(default=uuid4())
-    created_at: datetime = Field(default=datetime.now())
-    updated_at: datetime = Field(default=datetime.now())
+    id: UUID = Field(default_factory=uuid4)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
 
 
 class CaseFactCreate(BaseModel):
-    id: UUID = Field(default=uuid4())
+    id: UUID = Field(default_factory=uuid4)
     case_analysis_session_id: UUID
-    created_at: datetime = Field(default=datetime.now())
+    created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
 
 
 class CaseFactVersionCreate(BaseModel):
-    id: UUID = Field(default=uuid4())
+    id: UUID = Field(default_factory=uuid4)
     case_fact_id: UUID
     version_number: int = Field(default=1)
     fact: str
     is_deleted: bool = Field(default=False)
-    created_at: datetime = Field(default=datetime.now())
+    created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
 
 
 class CaseAnalysisVersionCreate(BaseModel):
-    id: UUID = Field(default=uuid4())
+    id: UUID = Field(default_factory=uuid4)
     case_analysis_session_id: UUID
     version_number: int = Field(default=1)
     answer: str
-    created_at: datetime = Field(default=datetime.now())
+    created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
 

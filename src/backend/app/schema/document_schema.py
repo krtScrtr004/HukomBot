@@ -17,9 +17,9 @@ from backend.app.enum.legal_document_type import LegalDocumentType
 
 
 class DocumentCreate(BaseModel):
-    id: UUID = Field(default=uuid4())
+    id: UUID = Field(default_factory=uuid4())
     original_file_name: str = Field(min_length=1, max_length=300)
-    upload_file_name: UUID = Field(default=uuid4())
+    upload_file_name: UUID = Field(default_factory=uuid4())
     document_type: LegalDocumentType
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
