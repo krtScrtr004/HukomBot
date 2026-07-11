@@ -16,6 +16,7 @@ class UserRepositry:
                     await cur.execute(
                         """
                         INSERT INTO user (
+                            id,
                             email, 
                             display_name, 
                             avatar_url, 
@@ -25,6 +26,7 @@ class UserRepositry:
                             refresh_token, 
                             token_expires_at
                         ) VALUES (
+                            %(id)s,
                             %(email)s,
                             %(display_name)s,
                             %(avatar_url)s,
@@ -33,13 +35,12 @@ class UserRepositry:
                             %(access_token)s,
                             %(refresh_token)s,
                             %(token_expires_at)s
-                        ) RETURNING id, is_active, last_login_at, created_at, updated_at
+                        ) RETURNING is_active, last_login_at, created_at, updated_at
                     """,
                         User.model_dump(),
                     )
 
                     row = await cur.fetchone()
-                    user_id = row["id"]
                     user_is_active = row["is_active"]
                     user_last_login_at = row["last_login_at"]
                     user_created_at = row["created_at"]
@@ -51,7 +52,7 @@ class UserRepositry:
                 raise
 
         return User(
-            id=user_id,
+            id=user.id,
             email=user.email,
             display_name=user.display_name,
             avatar_url=user.avatar_url,

@@ -23,6 +23,7 @@ class DocumentRepository:
                     await cur.execute(
                         """
                         INSERT INTO documents (
+                            id,
                             original_file_name, 
                             upload_file_name, 
                             document_type, 
@@ -32,6 +33,7 @@ class DocumentRepository:
                             digest,
                             created_at
                         ) VALUES (
+                            %(id)s,
                             %(original_file_name)s, 
                             %(upload_file_name)s, 
                             %(document_type)s, 
@@ -49,27 +51,24 @@ class DocumentRepository:
                                 file_type           = EXCLUDED.file_type,
                                 upload_status       = EXCLUDED.upload_status,
                                 upload_error        = EXCLUDED.upload_error
-                        RETURNING id
                         """,
                         (document.model_dump()),
                     )
-                    document_id = (await cur.fetchone())["id"]
                 await conn.commit()
+                return Document(
+                    id=document.id,
+                    original_file_name=document.original_file_name,
+                    upload_file_name=document.upload_file_name,
+                    document_type=document.document_type,
+                    file_type=document.file_type,
+                    upload_status=document.upload_status,
+                    upload_error=document.upload_error,
+                    digest=document.digest,
+                    created_at=document.created_at,
+                )
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
                 raise
-
-        return Document(
-            id=document_id,
-            original_file_name=document.original_file_name,
-            upload_file_name=document.upload_file_name,
-            document_type=document.document_type,
-            file_type=document.file_type,
-            upload_status=document.upload_status,
-            upload_error=document.upload_error,
-            digest=document.digest,
-            created_at=document.created_at,
-        )
 
     async def create_many(self, documents: List[DocumentCreate]) -> List[Document]:
         # Return if list is empty
@@ -82,6 +81,7 @@ class DocumentRepository:
                     await cur.executemany(
                         """
                         INSERT INTO documents (
+                            id,
                             original_file_name, 
                             upload_file_name, 
                             document_type, 
@@ -91,6 +91,7 @@ class DocumentRepository:
                             digest,
                             created_at
                         ) VALUES (
+                            %(id)s,
                             %(original_file_name)s, 
                             %(upload_file_name)s, 
                             %(document_type)s, 
@@ -108,7 +109,6 @@ class DocumentRepository:
                                 file_type           = EXCLUDED.file_type,
                                 upload_status       = EXCLUDED.upload_status,
                                 upload_error        = EXCLUDED.upload_error
-                        RETURNING id
                         """,
                         [docu.model_dump() for docu in documents],
                         returning=True,
@@ -116,31 +116,21 @@ class DocumentRepository:
 
                     # Retrieve the generated IDs
                     updated = []
-                    counter = 0
-                    while True:
-                        row = await cur.fetchone()
-                        if row:
-                            # Update the document's ID attribute
-                            updated.append(
-                                Document(
-                                    id=row["id"],
-                                    original_file_name=documents[
-                                        counter
-                                    ].original_file_name,
-                                    upload_file_name=documents[
-                                        counter
-                                    ].upload_file_name,
-                                    document_type=documents[counter].document_type,
-                                    file_type=documents[counter].file_type,
-                                    upload_status=documents[counter].upload_status,
-                                    upload_error=documents[counter].upload_error,
-                                    digest=documents[counter].digest,
-                                    created_at=documents[counter].created_at,
-                                )
+                    for i, _ in enumerate(documents):
+                        # Update the document's ID attribute
+                        updated.append(
+                            Document(
+                                id=documents[i].id,
+                                original_file_name=documents[i].original_file_name,
+                                upload_file_name=documents[i].upload_file_name,
+                                document_type=documents[i].document_type,
+                                file_type=documents[i].file_type,
+                                upload_status=documents[i].upload_status,
+                                upload_error=documents[i].upload_error,
+                                digest=documents[i].digest,
+                                created_at=documents[i].created_at,
                             )
-                            counter += 1
-                        if not cur.nextset():
-                            break
+                        )
 
                 await conn.commit()
                 return updated

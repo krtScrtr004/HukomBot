@@ -24,25 +24,33 @@ class ChunkRepository:
                     cur.execute(
                         """
                         INSERT INTO chunks (
+                            id,
                             document_id, 
                             chunk_number, 
                             chunk_text, 
                             embedding, 
                             section
                         ) VALUES (
+                            %(id)s,
                             %(document_id)s, 
                             %(chunk_number)s, 
                             %(chunk_text)s, 
                             %(embedding)s, 
                             %(section)s
-                        ) RETURNING id
+                        )
                         """,
                         (chunk.model_dump(),),
                     )
 
-                    chunk_id = (await cur.fetchone())["id"]
-
                 await conn.commit()
+                return Chunk(
+                    id=chunk.id,
+                    document_id=chunk.document_id,
+                    chunk_number=chunk.chunk_number,
+                    chunk_text=chunk.chunk_text,
+                    section=chunk.section,
+                    embedding=chunk.embedding,
+                )
             except (
                 errors.ForeignKeyViolation,
                 errors.IntegrityError,
@@ -50,15 +58,6 @@ class ChunkRepository:
             ) as ex:
                 await conn.rollback()
                 raise
-
-        return Chunk(
-            id=chunk_id,
-            document_id=chunk.document_id,
-            chunk_number=chunk.chunk_number,
-            chunk_text=chunk.chunk_text,
-            section=chunk.section,
-            embedding=chunk.embedding,
-        )
 
     async def create_many(self, chunks: List[ChunkCreate]) -> List[Chunk]:
         if not chunks:
@@ -70,41 +69,36 @@ class ChunkRepository:
                     await cur.executemany(
                         """
                         INSERT INTO chunks (
+                            id,
                             document_id, 
                             chunk_number, 
                             chunk_text, 
                             embedding, 
                             section
                         ) VALUES (
+                            %(id)s,
                             %(document_id)s, 
                             %(chunk_number)s, 
                             %(chunk_text)s, 
                             %(embedding)s, 
                             %(section)s
-                        ) RETURNING id
+                        )
                         """,
                         [chunk.model_dump() for chunk in chunks],
-                        returning=True,
                     )
 
                     updated = []
-                    counter = 0
-                    while True:
-                        row = await cur.fetchone()
-                        if row:
-                            updated.append(
-                                Chunk(
-                                    id=row["id"],
-                                    document_id=chunks[counter].document_id,
-                                    chunk_number=chunks[counter].chunk_number,
-                                    chunk_text=chunks[counter].chunk_text,
-                                    section=chunks[counter].section,
-                                    embedding=chunks[counter].embedding,
-                                )
+                    for i, _ in enumerate(chunks):
+                        updated.append(
+                            Chunk(
+                                id=chunks[i].id,
+                                document_id=chunks[i].document_id,
+                                chunk_number=chunks[i].chunk_number,
+                                chunk_text=chunks[i].chunk_text,
+                                section=chunks[i].section,
+                                embedding=chunks[i].embedding,
                             )
-                            counter += 1
-                        if not cur.nextset():
-                            break
+                        )
 
                 await conn.commit()
                 return updated

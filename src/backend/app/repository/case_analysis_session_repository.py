@@ -19,18 +19,16 @@ class CaseAnalysisSessionRepository:
                 async with conn.cursor() as cur:
                     await cur.execute(
                         """
-                        INSERT INTO case_analysis_sessions (created_at, updated_at) 
-                        VALUES (%(created_at)s, %(updated_at)s) 
-                        RETURNING id
+                        INSERT INTO case_analysis_sessions (id, created_at, updated_at) 
+                        VALUES (%(id)s, %(created_at)s, %(updated_at)s) 
                         """,
                         (case_analysis_session.model_dump()),
                     )
 
-                    case_analysis_session_id = (await cur.fetchone())["id"]
                 await conn.commit()
 
                 return CaseAnalysisSession(
-                    id=case_analysis_session_id,
+                    id=case_analysis_session.id,
                     created_at=case_analysis_session.created_at,
                     updated_at=case_analysis_session.updated_at,
                 )
