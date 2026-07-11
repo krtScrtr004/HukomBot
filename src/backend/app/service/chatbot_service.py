@@ -1,6 +1,7 @@
 import logging
 
 from typing import List
+from uuid import uuid4
 from fastapi.concurrency import run_in_threadpool
 
 from backend.app.database.database import Database
@@ -47,6 +48,8 @@ logger = logging.getLogger(__name__)
 
 class ChatbotService:
     def __init__(self, db: Database):
+        self.__db = db
+
         self.__chunk_repo = ChunkRepository(db)
         self.__case_fact_repo = CaseFactRepository(db)
         self.__case_fact_version_repo = CaseFactVersionRepository(db)
@@ -63,117 +66,114 @@ class ChatbotService:
             return await self.__run_fresh_case_analysis_pipeline(payload.case_facts)
 
     async def __run_fresh_case_analysis_pipeline(self, case_facts: List[str]):
-        # Create new session
-        session = await self.__case_analysis_session_repo.create(
-            CaseAnalysisSessionCreate()
+        session = CaseAnalysisSessionCreate(id=uuid4())
+
+        # Extract legal issues from case facts
+        legal_issues = await self.extract_issues(case_facts)
+        if not legal_issues:
+            raise ChatException("Cannot extract legal issues from provided case facts")
+
+        # Generate queries from legal issues
+        generated_queries = await self.generate_queries(legal_issues)
+        if not generated_queries:
+            raise ChatException("Cannot generate queries for legal issues extracted")
+
+        # Vector Search
+        vector_results = await self.__retrieve_from_vector_search(generated_queries)
+        logger.info(
+            "Fetched %i chunks from vector search for sesssion with id",
+            len(vector_results),
+            session.id,
         )
-        if not session:
-            raise ChatException("Cannot create new case analysis session")
 
-        logger.info("Created new case analysis session with id: %s", session.id)
+        # Keyword Search
+        keyword_result = await self.__retrieve_from_keyword_search(generated_queries)
+        logger.info(
+            "Fetched %i chunks from keyword search for sesssion with id",
+            len(keyword_result),
+            session.id,
+        )
 
-        try:
-            # Extract legal issues from case facts
-            legal_issues = await self.extract_issues(case_facts)
-            if not legal_issues:
-                raise ChatException(
-                    "Cannot extract legal issues from provided case facts"
-                )
-
-            # Generate queries from legal issues
-            generated_queries = await self.generate_queries(legal_issues)
-            if not generated_queries:
-                raise ChatException(
-                    "Cannot generate queries for legal issues extracted"
-                )
-
-            # Vector Search
-            vector_results = await self.__retrieve_from_vector_search(generated_queries)
-            logger.info(
-                "Fetched %i results from vector search in session %s",
-                len(vector_results),
-                session.id,
-            )
-
-            # Keyword Search
-            keyword_result = await self.__retrieve_from_keyword_search(generated_queries)
-            logger.info(
-                "Fetched %i results from keyword search in session %s",
-                len(keyword_result),
-                session.id,
-            )
-
-            # Early exit if no search result found
-            if not vector_results and not keyword_result:
-                return ChatPipelineResponse(
-                    messages=["Chat responded successfully"],
-                    conversation_id=session.id,
-                    answer="",
-                )
-
-            deduplicated_result = self.__deduplicate_results(
-                vector_results, keyword_result
-            )
-            reranked_result = await run_in_threadpool(
-                self.__reranker_service.rerank, "\n".join(case_facts), deduplicated_result
-            )
-
-            final_answer = await self.generate_answer(
-                "\n".join(case_facts), self.__format_context(reranked_result[:10])
-            )
-
-            # Create analysis version
-            case_analysis_version = await self.__case_analysis_version_repo.create(
-                CaseAnalysisVersionCreate(
-                    case_analysis_session_id=session.id,
-                    version_number=1,  # Always 1st version on fresh conversation
-                    answer=final_answer,
-                )
-            )
-
-            # Create Case Facts
-            case_fact_objs = await self.__case_fact_repo.create_many(
-                [
-                    CaseFactCreate(case_analysis_session_id=session.id)
-                    for _ in case_facts
-                ]
-            )
-            case_fact_version_objs = await self.__case_fact_version_repo.create_many(
-                [
-                    CaseFactVersionCreate(
-                        case_fact_id=fact.id,
-                        version_number=case_analysis_version.version_number,
-                        fact=case_facts[i],
-                        is_deleted=False,
-                    )
-                    for i, fact in enumerate(case_fact_objs)
-                ]
-            )
-
-            await self.__case_analysis_version_fact_repo.create_many(
-                [
-                    CaseAnalysisVersionFactCreate(
-                        case_analysis_version_id=case_analysis_version.id,
-                        case_fact_version_id=case_fact_version_objs[i].id,
-                    )
-                    for i, _ in enumerate(case_facts)
-                ]
-            )
-
+        # Early exit if no search result found
+        if not vector_results and not keyword_result:
             return ChatPipelineResponse(
                 messages=["Chat responded successfully"],
                 conversation_id=session.id,
-                answer=final_answer,
+                answer="",
             )
-        except Exception as ex:
-            logger.error(
-                "An error occured while running rag pipeline for case analysis with session id: %s",
-                session.id,
-            )
-            await self.__case_analysis_session_repo.delete(session.id)
 
-            logger.exception(str(ex))
-            raise
+        deduplicated_result = self.__deduplicate_results(vector_results, keyword_result)
+        reranked_result = await run_in_threadpool(
+            self.__reranker_service.rerank, "\n".join(case_facts), deduplicated_result
+        )
+
+        final_answer = await self.generate_answer(
+            "\n".join(case_facts), self.__format_context(reranked_result[:10])
+        )
+
+        async with self.__db.connection() as conn:
+            try:
+                # Create session db instance
+                await self.__case_analysis_session_repo.create(session, connection=conn)
+                logger.info("Created new case analysis session with id: %s", session.id)
+
+                # Create analysis version db instance
+                case_analysis_version = await self.__case_analysis_version_repo.create(
+                    CaseAnalysisVersionCreate(
+                        case_analysis_session_id=session.id,
+                        version_number=1,  # Always 1st version on fresh conversation
+                        answer=final_answer,
+                    ),
+                    connection=conn,
+                )
+
+                # Create case facts db instance
+                case_fact_objs = await self.__case_fact_repo.create_many(
+                    [
+                        CaseFactCreate(case_analysis_session_id=session.id)
+                        for _ in case_facts
+                    ], connection=conn
+                )
+                case_fact_version_objs = (
+                    await self.__case_fact_version_repo.create_many(
+                        [
+                            CaseFactVersionCreate(
+                                case_fact_id=fact.id,
+                                version_number=case_analysis_version.version_number,
+                                fact=case_facts[i],
+                                is_deleted=False,
+                            )
+                            for i, fact in enumerate(case_fact_objs)
+                        ], connection=conn
+                    )
+                )
+
+                await self.__case_analysis_version_fact_repo.create_many(
+                    [
+                        CaseAnalysisVersionFactCreate(
+                            case_analysis_version_id=case_analysis_version.id,
+                            case_fact_version_id=case_fact_version_objs[i].id,
+                        )
+                        for i, _ in enumerate(case_facts)
+                    ], connection=conn
+                )
+                
+                await conn.commit()
+
+                return ChatPipelineResponse(
+                    messages=["Chat responded successfully"],
+                    conversation_id=session.id,
+                    answer=final_answer,
+                )
+            except Exception as ex:
+                logger.error(
+                    "An error occured while running rag pipeline for case analysis with session id: %s",
+                    session.id,
+                )
+                await conn.rollback()
+                
+                logger.exception(str(ex))
+                raise
 
     async def __retrieve_from_vector_search(self, queries: list[str], limit: int = 20):
         results = []
