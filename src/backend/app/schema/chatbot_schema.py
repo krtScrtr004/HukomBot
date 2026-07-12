@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import (
     BaseModel,
     Field,
@@ -23,7 +23,7 @@ class ChatPipelineResponse(BaseResponse):
 
         result["data"] = {
             "conversation_id": result.pop("conversation_id"),
-            "answer": result.pop("answer")
+            "answer": result.pop("answer"),
         }
 
         return result
@@ -31,20 +31,37 @@ class ChatPipelineResponse(BaseResponse):
 
 # API Schemas ========================================
 
+CASE_FACT_MIN_LEN = 8
+CASE_FACT_MAX_LEN = 500
+
 
 class CaseAnalysisCaseFacts(BaseModel):
-    case_facts: List[str] = Field(min_length=1, max_length=10)
     conversation_id: Optional[UUID] = Field(default=None)
+    case_facts: List[str] = Field(min_length=1, max_length=10)
 
     @model_validator(mode="after")
     def is_allowed_case_fact(self) -> CaseAnalysisCaseFacts:
-        MIN_LEN = 8
-        MAX_LEN = 500
-
         for case_fact in self.case_facts:
-            if not case_fact or len(case_fact) < MIN_LEN and len(case_fact) > MAX_LEN:
+            if len(case_fact) < CASE_FACT_MIN_LEN or len(case_fact) > CASE_FACT_MAX_LEN:
                 raise ValueError(
-                    f"Each case fact must be between {MIN_LEN} and {MAX_LEN} only"
+                    f"Each case fact must be between {CASE_FACT_MIN_LEN} and {CASE_FACT_MAX_LEN} only"
                 )
-                
+
+        return self
+
+
+class UpdateCaseFactsBody(BaseModel):
+    case_facts: List[Dict[UUID, str]] = Field(min_length=1, max_length=10)
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    @model_validator(mode="after")
+    def is_allowed_case_fact(self) -> UpdateCaseFactsBody:
+        for case_fact in self.case_facts:
+            fact = next(iter(case_fact.values()))
+            if len(fact) < CASE_FACT_MIN_LEN or len(fact) > CASE_FACT_MAX_LEN:
+                raise ValueError(
+                    f"Each case fact must be between {CASE_FACT_MIN_LEN} and {CASE_FACT_MAX_LEN} only"
+                )
+
         return self
