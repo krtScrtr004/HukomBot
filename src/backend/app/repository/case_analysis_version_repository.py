@@ -129,6 +129,35 @@ class CaseAnalysisVersionRepository:
 
         return updated
 
+    async def get_id_by_session_id(
+        self, case_analysis_session_id: UUID
+    ) -> UUID|None:
+        async with self.__database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT cav.id
+                        FROM case_analysis_versions cav
+                        INNER JOIN case_analysis_sessions cas
+                            ON cav.case_analysis_session_id = cas.id
+                        WHERE cas.id = %s
+                        ORDER BY cav.created_at DESC
+                        LIMIT 1
+                        """,
+                        (case_analysis_session_id,),
+                    )
+
+                    row = await cur.fetchone()
+                await conn.commit()
+                return (
+                    row["id"]
+                    if row is not None and row["id"] is not None
+                    else None
+                )
+            except (errors.OperationalError, errors.IntegrityConstraintViolation) as ex:
+                raise
+
     async def get_latest_analysis_version_by_session_id(
         self, case_analysis_session_id: UUID
     ) -> int | None:
