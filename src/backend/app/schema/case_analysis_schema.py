@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -28,6 +29,23 @@ class CaseFactVersionCreate(BaseModel):
     fact: str
     is_deleted: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.now)
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class CaseFactVersionUpdate(BaseModel):
+    id: UUID
+    version_number: Optional[int] = Field(default=None)
+    fact: Optional[str] = Field(default=None)
+    is_deleted: Optional[bool] = Field(default=None)
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class CaseFactVersionGetBySessionId(BaseModel):
+    case_analysis_session_id: UUID
+    limit: int = Field(default=10, gt=0, lt=100)
+    offset: int = Field(default=0, ge=0)
 
     model_config = {"arbitrary_types_allowed": True}
 
