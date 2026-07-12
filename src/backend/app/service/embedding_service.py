@@ -6,8 +6,8 @@ from sentence_transformers import SentenceTransformer
 from backend.app.core.settings import Settings
 
 
-class EmbedService:
-    __instance: EmbedService | None = None
+class EmbeddingService:
+    __instance: EmbeddingService | None = None
 
     def __init__(
         self,
@@ -20,13 +20,13 @@ class EmbedService:
         )
 
     @classmethod
-    def initialize(cls) -> EmbedService:
+    def initialize(cls) -> EmbeddingService:
         if cls.__instance is None:
             cls.__instance = cls()
         return cls.__instance
 
     @classmethod
-    def get_instance(cls) -> EmbedService:
+    def get_instance(cls) -> EmbeddingService:
         if cls.__instance is None:
             return RuntimeError("Embed service is not initialized")
         return cls.__instance

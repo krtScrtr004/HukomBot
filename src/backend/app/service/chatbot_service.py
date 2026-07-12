@@ -21,8 +21,8 @@ from backend.app.schema.case_analysis_schema import (
 )
 
 from backend.app.service.llm_service import LLMService
-from backend.app.service.embed_service import EmbedService
-from backend.app.service.reranker_service import RerankService
+from backend.app.service.embedding_service import EmbeddingService
+from backend.app.service.reranker_service import RerankerService
 from backend.app.exception.chat_exception import ChatException
 
 from backend.app.repository.chunk_repository import ChunkRepository
@@ -46,7 +46,9 @@ logger = logging.getLogger(__name__)
 
 
 class ChatbotService:
-    def __init__(self, db: Database):
+    def __init__(
+        self, db: Database, embedding_service: EmbeddingService, reranker_service: RerankerService
+    ):
         self.__db = db
 
         self.__chunk_repo = ChunkRepository(db)
@@ -57,8 +59,8 @@ class ChatbotService:
         self.__case_analysis_version_fact_repo = CaseAnalysisVersionFactRepository(db)
 
         self.__llm_service = LLMService()
-        self.__embed_service = EmbedService()
-        self.__reranker_service = RerankService()
+        self.__embedding_service = embedding_service
+        self.__reranker_service = reranker_service
 
     async def run_case_analysis_pipeline(self, payload: CaseAnalysisCaseFacts):
         if not payload.conversation_id:
@@ -80,7 +82,7 @@ class ChatbotService:
         # Vector Search
         vector_results = await self.__retrieve_from_vector_search(generated_queries)
         logger.info(
-            "Fetched %i chunks from vector search for sesssion with id",
+            "Fetched %i chunks from vector search for sesssion with id: %s",
             len(vector_results),
             session.id,
         )
@@ -88,16 +90,15 @@ class ChatbotService:
         # Keyword Search
         keyword_result = await self.__retrieve_from_keyword_search(generated_queries)
         logger.info(
-            "Fetched %i chunks from keyword search for sesssion with id",
+            "Fetched %i chunks from keyword search for sesssion with id: %s",
             len(keyword_result),
             session.id,
         )
 
-        # Early exit if no search result found
+        # Early exit if no retrieved chunks
         if not vector_results and not keyword_result:
             return ChatPipelineResponse(
-                messages=["Chat responded successfully"],
-                conversation_id=session.id,
+                messages=["Chat responded successfully", "No results found"],
                 answer="",
             )
 
@@ -110,6 +111,7 @@ class ChatbotService:
             "\n".join(case_facts), self.__format_context(reranked_result[:10])
         )
 
+        # Perform db operation
         async with self.__db.connection() as conn:
             try:
                 # Create session db instance
@@ -131,7 +133,8 @@ class ChatbotService:
                     [
                         CaseFactCreate(case_analysis_session_id=session.id)
                         for _ in case_facts
-                    ], connection=conn
+                    ],
+                    connection=conn,
                 )
                 case_fact_version_objs = (
                     await self.__case_fact_version_repo.create_many(
@@ -143,7 +146,8 @@ class ChatbotService:
                                 is_deleted=False,
                             )
                             for i, fact in enumerate(case_fact_objs)
-                        ], connection=conn
+                        ],
+                        connection=conn,
                     )
                 )
 
@@ -154,11 +158,15 @@ class ChatbotService:
                             case_fact_version_id=case_fact_version_objs[i].id,
                         )
                         for i, _ in enumerate(case_facts)
-                    ], connection=conn
+                    ],
+                    connection=conn,
                 )
-                
+
                 await conn.commit()
 
+                logger.info(
+                    "Responsed to case analysis session id: %s successfully", session.id
+                )
                 return ChatPipelineResponse(
                     messages=["Chat responded successfully"],
                     conversation_id=session.id,
@@ -170,7 +178,7 @@ class ChatbotService:
                     session.id,
                 )
                 await conn.rollback()
-                
+
                 logger.exception(str(ex))
                 raise
 
@@ -178,7 +186,7 @@ class ChatbotService:
         results = []
         for query in queries:
             embedding = await run_in_threadpool(
-                self.__embed_service.embed_query, query
+                self.__embedding_service.embed_query, query
             )  # Create embeddings for query
             results.extend(
                 await self.__chunk_repo.search_vector(

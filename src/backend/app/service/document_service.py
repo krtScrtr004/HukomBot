@@ -22,7 +22,7 @@ from backend.app.schema.document_schema import (
     ApproveDocumentUpload,
 )
 from backend.app.repository.document_repository import DocumentRepository
-from backend.app.service.embed_service import EmbedService
+from backend.app.service.embedding_service import EmbedService
 from backend.app.service.file_storage_service import FileStorageService
 
 from backend.app.exception.chunk_exception import ChunkFileException

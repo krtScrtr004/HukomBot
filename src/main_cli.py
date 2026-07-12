@@ -12,7 +12,7 @@ from backend.app.repository.chunk_repository import ChunkRepository
 from openai import OpenAIError
 from backend.app.util.extract_text_from_pdf import extract_text_from_pdf
 from backend.app.util.timer import timer
-from backend.app.service.embed_service import EmbedService
+from backend.app.service.embedding_service import EmbedService
 from backend.app.service.chatbot_service import ChatbotService
 from backend.app.service.reranker_service import RerankService
 from backend.app.util.utility import get_project_root, is_pdf

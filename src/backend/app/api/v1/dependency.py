@@ -6,8 +6,8 @@ from contextlib import asynccontextmanager
 from backend.app.database.database import Database
 from backend.app.service.chatbot_service import ChatbotService
 from backend.app.service.document_service import DocumentService
-from backend.app.service.embed_service import EmbedService
-from backend.app.service.reranker_service import RerankService
+from backend.app.service.embedding_service import EmbeddingService
+from backend.app.service.reranker_service import RerankerService
 from backend.app.service.file_storage_service import FileStorageService
 
 logger = logging.getLogger(__name__)
@@ -17,10 +17,10 @@ async def lifespan(app: FastAPI):
     app.state.db = Database()
     logging.info("Database initialized successfully")
     
-    app.state.embed_service = EmbedService.initialize()
+    app.state.embedding_service = EmbeddingService.initialize()
     logging.info("Embedding model loaded successfully")
     
-    app.state.rerank_service = RerankService.initialize()
+    app.state.reranker_service = RerankerService.initialize()
     logging.info("Reranker model loaded successfully")
     
     await app.state.db.open()
@@ -31,19 +31,19 @@ async def lifespan(app: FastAPI):
 def get_db(request: Request) -> Database:
     return request.app.state.db
 
-def get_embed_service(request: Request) -> EmbedService:
-    return request.app.state.embed_service.get_instance()
+def get_embedding_service(request: Request) -> EmbeddingService:
+    return request.app.state.embedding_service.get_instance()
 
-def get_rerank_service(request: Request) -> RerankService:
-    return request.app.state.rerank_service.get_instance()
+def get_reranker_service(request: Request) -> RerankerService:
+    return request.app.state.reranker_service.get_instance()
 
 
 def get_chatbot_service(
     db: Database = Depends(get_db),
-    embed_service: EmbedService = Depends(get_embed_service),
-    rerank_service: RerankService = Depends(get_rerank_service)
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
+    reranker_service: RerankerService = Depends(get_reranker_service)
 ) -> ChatbotService:
-    return ChatbotService(db, embed_service, rerank_service)
+    return ChatbotService(db, embedding_service, reranker_service)
 
 
 def get_document_service(db: Database = Depends(get_db)) -> DocumentService:

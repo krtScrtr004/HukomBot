@@ -5,8 +5,8 @@ from backend.app.model.chunk_model import Chunk
 from backend.app.core.settings import Settings
 
 
-class RerankService:
-    __instance: RerankService | None = None
+class RerankerService:
+    __instance: RerankerService | None = None
 
     def __init__(
         self,
@@ -16,13 +16,13 @@ class RerankService:
         self.__model = CrossEncoder(model_name_or_path=model, device=device)
 
     @classmethod
-    def initialize(cls) -> RerankService:
+    def initialize(cls) -> RerankerService:
         if cls.__instance is None:
             cls.__instance = cls()
         return cls.__instance
 
     @classmethod
-    def get_instance(cls) -> RerankService:
+    def get_instance(cls) -> RerankerService:
         if cls.__instance is None:
             return RuntimeError("Rerank service is not initialized")
         return cls.__instance
