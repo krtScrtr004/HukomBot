@@ -12,7 +12,6 @@ from backend.app.schema.base_schema import BaseResponse
 from backend.app.exception.chat_exception import ChatException
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
-from backend.app.exception.case_analysis_exception import CaseAnalysisVersionNotFound
 
 from backend.app.api.v1.dependency import lifespan
 from backend.app.core.logger import setup_logging
@@ -70,6 +69,15 @@ async def http_exception(request: Request, exc: HTTPException):
         status_code=exc.status_code,
         content=BaseResponse(errors=["An HTTP error occured"]).model_dump(),
     )
+    
+@app.exception_handler(ValueError)
+async def http_exception(request: Request, exc: ValueError):
+    logger.exception(str(exc))
+    
+    return JSONResponse(
+        status_code=422,
+        content=BaseResponse(errors=[str(exc)]).model_dump(),
+    )
 
 # DB Exceptions =========================================================
 
@@ -86,7 +94,6 @@ for db_exec in db_exceptions:
 custom_exceptions = [
     ChatException,
     ChunkFileException,
-    CaseAnalysisVersionNotFound,
     InvalidDocumentTypeException,
 ]
 
