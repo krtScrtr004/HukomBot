@@ -3,21 +3,28 @@ from __future__ import annotations
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from backend.app.core.settings import Settings
+
 
 class EmbedService:
-    MODEL = "BAAI/bge-base-en-v1.5"
-    
-    __instance: EmbedService|None = None
+    __instance: EmbedService | None = None
 
-    def __init__(self):
-        self.__model = SentenceTransformer(model_name_or_path=EmbedService.MODEL)
-        
+    def __init__(
+        self,
+        model: str = Settings.EMBEDDING_MODEL,
+        device: str = Settings.EMBEDDING_DEVICE_CPU,
+    ):
+        self.__model = SentenceTransformer(
+            model_name_or_path=model,
+            device=device,
+        )
+
     @classmethod
     def initialize(cls) -> EmbedService:
         if cls.__instance is None:
             cls.__instance = cls()
         return cls.__instance
-    
+
     @classmethod
     def get_instance(cls) -> EmbedService:
         if cls.__instance is None:

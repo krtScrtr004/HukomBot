@@ -2,19 +2,25 @@ from __future__ import annotations
 from sentence_transformers import CrossEncoder
 from backend.app.model.chunk_model import Chunk
 
+from backend.app.core.settings import Settings
+
 
 class RerankService:
-    __instance: RerankService|None = None
-    
-    def __init__(self):
-        self.__model = CrossEncoder("BAAI/bge-reranker-v2-m3")
-        
+    __instance: RerankService | None = None
+
+    def __init__(
+        self,
+        model: str = Settings.RERANKER_MODEL,
+        device: str = Settings.RERANKER_DEVICE_CPU,
+    ):
+        self.__model = CrossEncoder(model_name_or_path=model, device=device)
+
     @classmethod
     def initialize(cls) -> RerankService:
         if cls.__instance is None:
             cls.__instance = cls()
         return cls.__instance
-    
+
     @classmethod
     def get_instance(cls) -> RerankService:
         if cls.__instance is None:

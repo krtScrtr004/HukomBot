@@ -1,24 +1,21 @@
-import os
-from dotenv import load_dotenv
 from openai import AsyncOpenAI
-
-load_dotenv()
+from backend.app.core.settings import Settings
 
 
 class LLMService:
-    OPEN_ROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
-    MODEL = "openrouter/free"
-
-    def __init__(self):
+    __model: str|None = None
+    
+    def __init__(self, model: str = Settings.LLM_MODEL):
         self.__client = AsyncOpenAI(
-            api_key=LLMService.OPEN_ROUTER_API_KEY,
-            base_url="https://openrouter.ai/api/v1",
+            api_key=Settings.LLM_API_KEY,
+            base_url=Settings.LLM_BASE_URL,
         )
+        LLMService.__model = model
 
     async def chat(
         self,
         prompt: str,
-        model: str = MODEL,
+        model: str = __model,
         temperature: float = 0.2,
         max_tokens: int = 1000,
     ) -> str | None:
