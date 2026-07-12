@@ -8,9 +8,11 @@ from backend.app.api.v1.endpoint.chatbot import chatbot_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
 from backend.app.schema.base_schema import BaseResponse
+
+from backend.app.exception.chat_exception import ChatException
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
-from backend.app.exception.chat_exception import ChatException
+from backend.app.exception.case_analysis_exception import CaseAnalysisVersionNotFound
 
 from backend.app.api.v1.dependency import lifespan
 from backend.app.core.logger import setup_logging
@@ -84,7 +86,8 @@ for db_exec in db_exceptions:
 custom_exceptions = [
     ChatException,
     ChunkFileException,
-    InvalidDocumentTypeException
+    CaseAnalysisVersionNotFound,
+    InvalidDocumentTypeException,
 ]
 
 for custom_exec in custom_exceptions:
