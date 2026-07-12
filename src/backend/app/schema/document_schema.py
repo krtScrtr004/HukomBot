@@ -105,5 +105,5 @@ class DocumentUploadStatusResponse(BaseResponse):
 
 # API Schemas ========================================
 
-class ApproveDocumentUpload(BaseModel):
+class ApproveDocumentUploadPayload(BaseModel):
     document_type: Optional[LegalDocumentType] = Field(default=None)

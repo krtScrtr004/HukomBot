@@ -9,7 +9,7 @@ from backend.app.model.chunk_model import Chunk
 
 from backend.app.schema.chunk_schema import ChunkSearchKeyword, ChunkSearchVector
 from backend.app.schema.chatbot_schema import (
-    CaseAnalysisCaseFacts,
+    CaseAnalysisCaseFactsPayload,
     ChatPipelineResponse,
 )
 from backend.app.schema.case_analysis_schema import (
@@ -62,7 +62,7 @@ class ChatbotService:
         self.__embedding_service = embedding_service
         self.__reranker_service = reranker_service
 
-    async def run_case_analysis_pipeline(self, payload: CaseAnalysisCaseFacts):
+    async def run_case_analysis_pipeline(self, payload: CaseAnalysisCaseFactsPayload):
         if not payload.conversation_id:
             return await self.__run_fresh_case_analysis_pipeline(payload.case_facts)
 

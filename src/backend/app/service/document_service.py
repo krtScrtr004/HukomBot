@@ -19,7 +19,7 @@ from backend.app.schema.document_schema import (
     DocumentUpdate,
     DocumentUploadResponse,
     DocumentUploadStatusResponse,
-    ApproveDocumentUpload,
+    ApproveDocumentUploadPayload,
 )
 from backend.app.repository.document_repository import DocumentRepository
 from backend.app.service.embedding_service import EmbedService
@@ -108,7 +108,7 @@ class DocumentService:
     async def approve_document_upload(
         self,
         document_id: UUID,
-        payload: ApproveDocumentUpload,
+        payload: ApproveDocumentUploadPayload,
         background_tasks: BackgroundTasks,
     ):
         document = await self.__document_repo.get_by_id(document_id)
