@@ -211,6 +211,8 @@ class CaseFactVersionRepository:
                         ) latest
                         WHERE latest.is_deleted = FALSE
                         ORDER BY latest.created_at
+                        LIMIT %(limit)s
+                        OFFSET %(offset)s
                         """,
                         param.model_dump(),
                     )
