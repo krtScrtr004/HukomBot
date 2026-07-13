@@ -1,4 +1,5 @@
 from typing import List
+from uuid import UUID
 from psycopg import errors
 from psycopg import AsyncConnection
 
@@ -103,3 +104,37 @@ class CaseAnalysisVersionFactRepository:
             )
 
         return updated
+
+    async def delete_many_by_case_fact_version_id(
+        self, case_fact_version_ids: List[UUID], connection: AsyncConnection = None
+    ):
+        if not case_fact_version_ids:
+            return
+
+        if connection is not None:
+            await self.__delete_many_by_case_fact_version_id_implement(
+                connection, case_fact_version_ids
+            )
+        else:
+            async with self.__database.connection() as conn:
+                try:
+                    await self.__delete_many_by_case_fact_version_id_implement(
+                        conn, case_fact_version_ids
+                    )
+                    await conn.commit()
+                except errors.OperationalError as ex:
+                    await conn.rollback()
+                    raise
+
+    async def __delete_many_by_case_fact_version_id_implement(
+        self, conn: AsyncConnection, case_fact_version_ids: List[UUID]
+    ):
+        async with conn.cursor() as cur:
+            placeholders = ", ".join(["%s"] * len(case_fact_version_ids))
+            await cur.execute(
+                f"""
+                DELETE FROM case_analysis_version_facts
+                WHERE case_fact_version_id IN ({placeholders})
+                """,
+                case_fact_version_ids,
+            )
