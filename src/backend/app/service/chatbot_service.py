@@ -1,6 +1,9 @@
 import logging
 
-from typing import List
+from uuid import UUID
+from typing import List, Dict, Optional
+from fastapi import HTTPException
+from psycopg import AsyncConnection
 from fastapi.concurrency import run_in_threadpool
 
 from backend.app.database.database import Database
@@ -17,6 +20,8 @@ from backend.app.schema.case_analysis_schema import (
     CaseAnalysisVersionCreate,
     CaseFactCreate,
     CaseFactVersionCreate,
+    CaseFactVersionUpdate,
+    CaseFactVersionGetBySessionId,
     CaseAnalysisVersionFactCreate,
 )
 
@@ -47,7 +52,10 @@ logger = logging.getLogger(__name__)
 
 class ChatbotService:
     def __init__(
-        self, db: Database, embedding_service: EmbeddingService, reranker_service: RerankerService
+        self,
+        db: Database,
+        embedding_service: EmbeddingService,
+        reranker_service: RerankerService,
     ):
         self.__db = db
 
@@ -64,11 +72,225 @@ class ChatbotService:
 
     async def run_case_analysis_pipeline(self, payload: CaseAnalysisCaseFactsPayload):
         if not payload.conversation_id:
-            return await self.__run_fresh_case_analysis_pipeline(payload.case_facts)
+            return await self.__run_fresh_case_analysis_pipeline(payload.new_case_facts)
+        else:
+            return await self.__run_existing_case_analysis_pipeline(
+                payload.conversation_id,
+                payload.new_case_facts,
+                payload.updated_case_facts,
+                payload.deleted_case_facts,
+            )
 
     async def __run_fresh_case_analysis_pipeline(self, case_facts: List[str]):
         session = CaseAnalysisSessionCreate()
 
+        final_answer = await self.__process_case_analysis_llm_pipeline(
+            session.id, case_facts
+        )
+
+        # Perform db operation
+        async with self.__db.connection() as conn:
+            try:
+                # Create session db instance
+                await self.__case_analysis_session_repo.create(session, connection=conn)
+                logger.info("Created new case analysis session with id: %s", session.id)
+
+                # Create case facts db instance
+                case_fact_objs = await self.__case_fact_repo.create_many(
+                    [
+                        CaseFactCreate(case_analysis_session_id=session.id)
+                        for _ in case_facts
+                    ],
+                    connection=conn,
+                )
+
+                case_fact_version_objs = await self.__case_fact_version_repo.create_many(
+                    [
+                        CaseFactVersionCreate(
+                            case_fact_id=fact.id,
+                            version_number=1,  # Always 1st version on fresh conversation
+                            fact=case_facts[i],
+                            is_deleted=False,
+                        )
+                        for i, fact in enumerate(case_fact_objs)
+                    ],
+                    connection=conn,
+                )
+
+                # Create analysis version db instance
+                case_analysis_version = await self.__case_analysis_version_repo.create(
+                    CaseAnalysisVersionCreate(
+                        case_analysis_session_id=session.id,
+                        version_number=1,  # Always 1st version on fresh conversation
+                        answer=final_answer,
+                    ),
+                    connection=conn,
+                )
+
+                await self.__case_analysis_version_fact_repo.create_many(
+                    [
+                        CaseAnalysisVersionFactCreate(
+                            case_analysis_version_id=case_analysis_version.id,
+                            case_fact_version_id=case_fact_version_objs[i].id,
+                        )
+                        for i, _ in enumerate(case_facts)
+                    ],
+                    connection=conn,
+                )
+
+                await conn.commit()
+
+                logger.info(
+                    "Responded to case analysis session id: %s successfully", session.id
+                )
+                return ChatPipelineResponse(
+                    messages=["Chat responded successfully"],
+                    conversation_id=session.id,
+                    answer=final_answer,
+                )
+            except Exception as ex:
+                await self.__rollback_case_analysis_pipeline(session.id, conn, ex)
+
+    async def __run_existing_case_analysis_pipeline(
+        self,
+        case_analysis_session_id: UUID,
+        new_case_facts: Optional[List[str]] = None,
+        updated_case_facts: Optional[Dict[UUID, str]] = None,
+        deleted_case_facts: Optional[List[UUID]] = None,
+    ):
+        latest_analysis_version = (
+            await self.__case_analysis_version_repo.get_latest_by_session_id(
+                case_analysis_session_id
+            )
+        )
+        if not latest_analysis_version:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Latest case analysis version for session with id: {case_analysis_session_id} not found",
+            )
+        updated_analysis_version = latest_analysis_version.version_number + 1
+
+        # Perform creation / modification of case facts in the db
+        async with self.__db.connection() as conn:
+            try:                
+                # Create new case facts
+                if new_case_facts:
+                    # Create case facts db instance
+                    case_fact_objs = await self.__case_fact_repo.create_many(
+                        [
+                            CaseFactCreate(
+                                case_analysis_session_id=case_analysis_session_id
+                            )
+                            for _ in new_case_facts
+                        ],
+                        connection=conn,
+                    )
+
+                    # Create case fact version for new case facts
+                    await self.__case_fact_version_repo.create_many(
+                        [
+                            CaseFactVersionCreate(
+                                case_fact_id=fact.id,
+                                version_number=1,
+                                fact=new_case_facts[i],
+                                is_deleted=False,
+                            )
+                            for i, fact in enumerate(case_fact_objs)
+                        ],
+                        connection=conn,
+                    )
+
+                    await conn.commit()
+            
+                # Create new version for updated case facts
+                case_fact_for_update = self.__create_case_fact_version_for_update(updated_case_facts or [])
+                if case_fact_for_update:
+                    await self.__case_fact_version_repo.create_updated_many(
+                        case_fact_for_update, connection=conn,
+                    )
+            
+                # Mark case facts for deletion
+                case_facts_for_deletion = self.__create_case_fact_version_for_deletion(deleted_case_facts or [])
+                if case_facts_for_deletion:
+                    await self.__case_fact_version_repo.update_many(
+                        case_facts=case_facts_for_deletion, connection=conn
+                    )
+            except Exception as ex:
+                await self.__rollback_case_analysis_pipeline(
+                    case_analysis_session_id, conn, ex
+                )
+
+        async with self.__db.connection() as conn:
+            try:
+                # Get latest case analysis version
+                latest_case_fact_objects = (
+                    await self.__case_fact_version_repo.get_latest_by_session_id(
+                        CaseFactVersionGetBySessionId(
+                            case_analysis_session_id=case_analysis_session_id
+                        )
+                    )
+                )
+                if not latest_case_fact_objects:
+                    raise ChatException("Case facts cannot be fetched")
+
+                final_answer = await self.__process_case_analysis_llm_pipeline(
+                    case_analysis_session_id,
+                    [fact.fact for fact in latest_case_fact_objects],
+                )
+
+                # Create analysis version db instance
+                case_analysis_version_fact = (
+                    await self.__case_analysis_version_repo.create(
+                        CaseAnalysisVersionCreate(
+                            case_analysis_session_id=case_analysis_session_id,
+                            version_number=updated_analysis_version,
+                            answer=final_answer,
+                        ),
+                        connection=conn,
+                    )
+                )
+
+                await self.__case_analysis_version_fact_repo.create_many(
+                    [
+                        CaseAnalysisVersionFactCreate(
+                            case_analysis_version_id=case_analysis_version_fact.id,
+                            case_fact_version_id=latest_case_fact_objects[i].id,
+                        )
+                        for i, _ in enumerate(latest_case_fact_objects)
+                    ],
+                    connection=conn,
+                )
+
+                await conn.commit()
+
+                logger.info(
+                    "Responded to case analysis session id: %s successfully",
+                    case_analysis_session_id,
+                )
+
+                return ChatPipelineResponse(
+                    messages=["Chat responded successfully"],
+                    conversation_id=case_analysis_session_id,
+                    answer=final_answer,
+                )
+            except Exception as ex:
+                # Rollback case fact versions and case analysis version facts
+                # if created_case_fact_ids and created_case_fact_version_ids:
+                #     logger.info(
+                #         "Performing rollback to created case fact version object in session id: %s",
+                #         case_analysis_session_id,
+                #     )
+                #     await self.__rollback_new_case_facts(
+                #         created_case_fact_ids, created_case_fact_version_ids
+                #     )
+
+                await self.__rollback_case_analysis_pipeline(
+                    case_analysis_session_id, conn, ex
+                )
+
+    async def __process_case_analysis_llm_pipeline(
+        self, case_analysis_session_id: UUID, case_facts: List[str]
+    ) -> str:
         # Extract legal issues from case facts
         legal_issues = await self.extract_issues(case_facts)
         if not legal_issues:
@@ -84,7 +306,7 @@ class ChatbotService:
         logger.info(
             "Fetched %i chunks from vector search for sesssion with id: %s",
             len(vector_results),
-            session.id,
+            case_analysis_session_id,
         )
 
         # Keyword Search
@@ -92,7 +314,7 @@ class ChatbotService:
         logger.info(
             "Fetched %i chunks from keyword search for sesssion with id: %s",
             len(keyword_result),
-            session.id,
+            case_analysis_session_id,
         )
 
         # Early exit if no retrieved chunks
@@ -111,76 +333,7 @@ class ChatbotService:
             "\n".join(case_facts), self.__format_context(reranked_result[:10])
         )
 
-        # Perform db operation
-        async with self.__db.connection() as conn:
-            try:
-                # Create session db instance
-                await self.__case_analysis_session_repo.create(session, connection=conn)
-                logger.info("Created new case analysis session with id: %s", session.id)
-
-                # Create analysis version db instance
-                case_analysis_version = await self.__case_analysis_version_repo.create(
-                    CaseAnalysisVersionCreate(
-                        case_analysis_session_id=session.id,
-                        version_number=1,  # Always 1st version on fresh conversation
-                        answer=final_answer,
-                    ),
-                    connection=conn,
-                )
-
-                # Create case facts db instance
-                case_fact_objs = await self.__case_fact_repo.create_many(
-                    [
-                        CaseFactCreate(case_analysis_session_id=session.id)
-                        for _ in case_facts
-                    ],
-                    connection=conn,
-                )
-                case_fact_version_objs = (
-                    await self.__case_fact_version_repo.create_many(
-                        [
-                            CaseFactVersionCreate(
-                                case_fact_id=fact.id,
-                                version_number=case_analysis_version.version_number,
-                                fact=case_facts[i],
-                                is_deleted=False,
-                            )
-                            for i, fact in enumerate(case_fact_objs)
-                        ],
-                        connection=conn,
-                    )
-                )
-
-                await self.__case_analysis_version_fact_repo.create_many(
-                    [
-                        CaseAnalysisVersionFactCreate(
-                            case_analysis_version_id=case_analysis_version.id,
-                            case_fact_version_id=case_fact_version_objs[i].id,
-                        )
-                        for i, _ in enumerate(case_facts)
-                    ],
-                    connection=conn,
-                )
-
-                await conn.commit()
-
-                logger.info(
-                    "Responsed to case analysis session id: %s successfully", session.id
-                )
-                return ChatPipelineResponse(
-                    messages=["Chat responded successfully"],
-                    conversation_id=session.id,
-                    answer=final_answer,
-                )
-            except Exception as ex:
-                logger.error(
-                    "An error occured while running rag pipeline for case analysis with session id: %s",
-                    session.id,
-                )
-                await conn.rollback()
-
-                logger.exception(str(ex))
-                raise
+        return final_answer
 
     async def __retrieve_from_vector_search(self, queries: list[str], limit: int = 20):
         results = []
@@ -239,6 +392,89 @@ class ChatbotService:
                 """)
 
         return "\n\n---\n\n".join(formatted_results)
+
+    def __create_case_fact_version_update_objects(
+        self,
+        version_number: int,
+        updated_case_facts: Optional[List[Dict[UUID, str]]] = None,
+        deleted_case_facts: Optional[List[UUID]] = None,
+    ) -> List[CaseFactVersionUpdate]:
+        rets = []
+
+        for case_fact in updated_case_facts:
+            key = next(iter(case_fact.keys()))
+            value = next(iter(case_fact.values()))
+            rets.append(
+                CaseFactVersionUpdate(id=key, version_number=version_number, fact=value)
+            )
+
+        for case_fact_id in deleted_case_facts:
+            rets.append(
+                CaseFactVersionUpdate(
+                    id=case_fact_id,
+                    version_number=version_number,
+                    fact="DELETED",
+                    is_deleted=True,
+                )
+            )
+
+        return rets
+
+    def __create_case_fact_version_for_update(self, updated_case_facts: Dict[UUID, str]): 
+        case_fact_for_update = []
+        for id in updated_case_facts:
+            fact = updated_case_facts[id]
+            if id is not None and fact is not None:
+                case_fact_for_update.append(
+                    CaseFactVersionCreate(
+                        case_fact_id=id,
+                        fact=fact,
+                        is_deleted=False,
+                    )
+                )
+                
+        return case_fact_for_update
+
+    def __create_case_fact_version_for_deletion(self, deleted_case_facts: List[UUID]):
+        case_facts_for_deletion = []
+        for case_fact_id in deleted_case_facts:
+            case_facts_for_deletion.append(
+                CaseFactVersionUpdate(
+                    id=case_fact_id,
+                    fact="DELETED",
+                    is_deleted=True,
+                )
+            )
+            
+        return case_facts_for_deletion
+
+    async def __rollback_case_analysis_pipeline(
+        self, case_analysis_session_id: UUID, conn: AsyncConnection, exc: Exception
+    ):
+        logger.error(
+            "An error occured while running rag pipeline for case analysis with session id: %s",
+            case_analysis_session_id,
+        )
+        await conn.rollback()
+
+        logger.exception(str(exc))
+        raise
+
+    async def __rollback_new_case_facts(
+        self,
+        created_case_fact_ids: List[UUID],
+        created_case_fact_version_ids: List[UUID],
+    ):
+        async with self.__db.connection() as conn:
+            await self.__case_fact_repo.delete_many(
+                created_case_fact_ids, connection=conn
+            )
+            await self.__case_analysis_version_fact_repo.delete_many_by_case_fact_version_id(
+                created_case_fact_version_ids, connection=conn
+            )
+            await self.__case_fact_version_repo.delete_many(
+                created_case_fact_version_ids, connection=conn
+            )
 
     async def extract_issues(self, case_facts: List[str]) -> List[str]:
         facts = "\n".join(f"- {fact}" for fact in case_facts)
