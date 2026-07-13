@@ -132,6 +132,88 @@ class CaseFactVersionRepository:
 
         return updated
 
+    async def create_updated_many(
+        self,
+        case_fact_versions: List[CaseFactVersionCreate],
+        connection: AsyncConnection = None,
+    ) -> List[CaseFactVersion]:
+        if not case_fact_versions:
+            return []
+
+        if connection is not None:
+            return await self.__create__updated_many_implement(connection, case_fact_versions)
+        async with self.__database.connection() as conn:
+            try:
+                result = await self.__create__updated_many_implement(conn, case_fact_versions)
+
+                await conn.commit()
+                return result
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
+
+    async def __create__updated_many_implement(
+        self,
+        conn: AsyncConnection,
+        case_fact_versions: List[CaseFactVersionCreate],
+    ) -> List[CaseFactVersion]:
+        rows = []
+        
+        async with conn.cursor() as cur, conn.transaction():
+            fact_ids = sorted(
+                {fv.case_fact_id for fv in case_fact_versions},
+                key=str,
+            )
+            # Lock rows for update
+            await cur.execute(
+                """
+                SELECT id
+                FROM case_facts
+                WHERE id = ANY(%(case_fact_ids)s)
+                ORDER BY id
+                FOR UPDATE
+                """,
+                {"case_fact_ids": fact_ids},
+            )
+
+            for fact_version in case_fact_versions:
+                await cur.execute(
+                    """
+                    INSERT INTO case_fact_versions (
+                        id,
+                        case_fact_id,
+                        version_number,
+                        fact,
+                        is_deleted,
+                        created_at
+                    )
+                    VALUES (
+                        %(id)s,
+                        %(case_fact_id)s,
+                        (
+                            SELECT COALESCE(MAX(version_number), 0) + 1
+                            FROM case_fact_versions
+                            WHERE case_fact_id = %(case_fact_id)s
+                        ),
+                        %(fact)s,
+                        %(is_deleted)s,
+                        %(created_at)s
+                    )
+                    RETURNING
+                        id,
+                        case_fact_id,
+                        version_number,
+                        fact,
+                        is_deleted,
+                        created_at
+                    """,
+                    fact_version.model_dump(),
+                )
+
+                rows.append(await cur.fetchone())
+
+        return [CaseFactVersion.model_validate(row) for row in rows]
+
     async def update_many(
         self,
         case_facts: List[CaseFactVersionUpdate],
@@ -159,7 +241,7 @@ class CaseFactVersionRepository:
         async with conn.cursor() as cur:
             await cur.execute(query, params)
 
-    def __build_update_many_query(case_facts: List[CaseFactVersionUpdate]):
+    def __build_update_many_query(self, case_facts: List[CaseFactVersionUpdate]):
         values_placeholder = []
         values = {}
         for i, case_fact in enumerate(case_facts):
@@ -226,7 +308,7 @@ class CaseFactVersionRepository:
     async def delete_many(self, ids: List[UUID], connection: AsyncConnection = None):
         if not ids:
             return
-        
+
         if connection is not None:
             await self.__delete_many_implement(connection, ids)
         else:
@@ -234,10 +316,10 @@ class CaseFactVersionRepository:
                 try:
                     await self.__delete_many_implement(conn, ids)
                     await conn.commit()
-                except (errors.OperationalError) as ex:
+                except errors.OperationalError as ex:
                     await conn.rollback()
                     raise
-        
+
     async def __delete_many_implement(self, conn: AsyncConnection, ids: List[UUID]):
         async with conn.cursor() as cur:
             placeholders = ", ".join(["%s"] * len(ids))
@@ -246,5 +328,5 @@ class CaseFactVersionRepository:
                 DELETE FROM case_fact_versions
                 WHERE id IN ({placeholders})
                 """,
-                ids
+                ids,
             )
