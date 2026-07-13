@@ -222,3 +222,29 @@ class CaseFactVersionRepository:
                 return [CaseFactVersion.model_validate(case_fact) for case_fact in row]
             except (errors.OperationalError, errors.IntegrityConstraintViolation) as ex:
                 raise
+
+    async def delete_many(self, ids: List[UUID], connection: AsyncConnection = None):
+        if not ids:
+            return
+        
+        if connection is not None:
+            await self.__delete_many_implement(connection, ids)
+        else:
+            async with self.__database.connection() as conn:
+                try:
+                    await self.__delete_many_implement(conn, ids)
+                    await conn.commit()
+                except (errors.OperationalError) as ex:
+                    await conn.rollback()
+                    raise
+        
+    async def __delete_many_implement(self, conn: AsyncConnection, ids: List[UUID]):
+        async with conn.cursor() as cur:
+            placeholders = ", ".join(["%s"] * len(ids))
+            await cur.execute(
+                f"""
+                DELETE FROM case_fact_versions
+                WHERE id IN ({placeholders})
+                """,
+                ids
+            )
