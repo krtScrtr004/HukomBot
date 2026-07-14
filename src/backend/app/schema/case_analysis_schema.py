@@ -50,6 +50,14 @@ class CaseFactVersionGetBySessionId(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
+class CaseFactVersionGetByVersionNumber(BaseModel):
+    version_number: int
+    limit: int = Field(default=10, gt=0, lt=100)
+    offset: int = Field(default=0, ge=0)
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
 class CaseAnalysisVersionCreate(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     case_analysis_session_id: UUID
