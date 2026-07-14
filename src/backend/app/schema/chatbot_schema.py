@@ -36,7 +36,7 @@ CASE_FACT_MIN_LEN = 8
 CASE_FACT_MAX_LEN = 500
 
 
-class CaseAnalysisCaseFactsPayload(BaseModel):
+class CaseAnalysisPipelineCaseFactsPayload(BaseModel):
     conversation_id: Optional[UUID] = Field(default=None)
     new_case_facts: Optional[List[str]] = Field(
         default=None, min_length=1, max_length=10
@@ -49,7 +49,7 @@ class CaseAnalysisCaseFactsPayload(BaseModel):
     )
 
     @model_validator(mode="after")
-    def atleast_one_list_required(self) -> CaseAnalysisCaseFactsPayload:
+    def atleast_one_list_required(self) -> CaseAnalysisPipelineCaseFactsPayload:
         if (
             not self.new_case_facts
             and not self.updated_case_facts
@@ -69,7 +69,7 @@ class CaseAnalysisCaseFactsPayload(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def is_allowed_case_fact(self) -> CaseAnalysisCaseFactsPayload:
+    def is_allowed_case_fact(self) -> CaseAnalysisPipelineCaseFactsPayload:
         if self.new_case_facts is not None:
             for case_fact in self.new_case_facts:
                 if len(case_fact) < CASE_FACT_MIN_LEN or len(case_fact) > CASE_FACT_MAX_LEN:
