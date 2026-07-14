@@ -9,6 +9,7 @@ from backend.app.schema.case_analysis_schema import (
     CaseFactVersionCreate,
     CaseFactVersionUpdate,
     CaseFactVersionGetBySessionId,
+    CaseFactVersionGetByVersionNumber,
 )
 
 
@@ -219,6 +220,35 @@ class CaseFactVersionRepository:
 
         return query, values
 
+    async def get_by_version_number(self, param: CaseFactVersionGetByVersionNumber):
+        async with self.__database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT cfv.*
+                        FROM case_analysis_version_facts cavf
+                        JOIN case_analysis_versions cav 
+                            ON cav.id = cavf.case_analysis_version_id
+                        JOIN case_fact_versions cfv
+                            ON cfv.id = cavf.case_fact_version_id
+                        JOIN case_facts cf
+                            ON cf.id = cfv.case_fact_id
+                        WHERE cav.version_number = %(version_number)s
+                            AND cfv.is_deleted = FALSE
+                        ORDER BY cfv.created_at
+                        LIMIT %(limit)s
+                        OFFSET %(offset)s
+                        """,
+                        param.model_dump(),
+                    )
+
+                    row = await cur.fetchall()
+                await conn.commit()
+                return [CaseFactVersion.model_validate(case_fact) for case_fact in row]
+            except (errors.OperationalError, errors.IntegrityConstraintViolation) as ex:
+                raise
+            
     async def get_latest_by_session_id(self, param: CaseFactVersionGetBySessionId):
         async with self.__database.connection() as conn:
             try:
