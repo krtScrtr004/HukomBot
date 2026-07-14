@@ -22,7 +22,7 @@ from backend.app.schema.document_schema import (
     ApproveDocumentUploadPayload,
 )
 from backend.app.repository.document_repository import DocumentRepository
-from backend.app.service.embedding_service import EmbedService
+from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.file_storage_service import FileStorageService
 
 from backend.app.exception.chunk_exception import ChunkFileException
@@ -44,7 +44,7 @@ class DocumentService:
         self.__document_repo = DocumentRepository(db=db)
         self.__chunk_repo = ChunkRepository(db=db)
 
-        self.__embed_service = EmbedService()
+        self.__embedding_service = EmbeddingService()
         self.__file_storage_service = FileStorageService()
 
     async def create_pending_document(
@@ -172,7 +172,7 @@ class DocumentService:
                 )
 
             texts = [chunk["document"] for chunk in chunks]
-            embeddings = self.__embed_service.embed_documents(texts)
+            embeddings = self.__embedding_service.embed_documents(texts)
 
             # Map embeddings back to the chunk models
             for i, embedding in enumerate(embeddings):

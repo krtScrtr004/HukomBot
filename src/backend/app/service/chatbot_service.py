@@ -170,9 +170,13 @@ class ChatbotService:
             )
         updated_analysis_version = latest_analysis_version.version_number + 1
 
-        # Perform creation / modification of case facts in the db
+        # Used for performing rollback on phase 1
+        created_new_case_fact_ids = []
+        created_updated_case_fact_version_ids = []
+
+        # PHASE 1: Perform creation / modification of case facts in the db
         async with self.__db.connection() as conn:
-            try:                
+            try:
                 # Create new case facts
                 if new_case_facts:
                     # Create case facts db instance
@@ -185,6 +189,7 @@ class ChatbotService:
                         ],
                         connection=conn,
                     )
+                    created_new_case_fact_ids = [cf.id for cf in case_fact_objs]
 
                     # Create case fact version for new case facts
                     await self.__case_fact_version_repo.create_many(
@@ -200,26 +205,37 @@ class ChatbotService:
                         connection=conn,
                     )
 
-                    await conn.commit()
-            
                 # Create new version for updated case facts
-                case_fact_for_update = self.__create_case_fact_version_for_update(updated_case_facts or [])
+                case_fact_for_update = self.__create_case_fact_version_for_update(
+                    updated_case_facts or []
+                )
                 if case_fact_for_update:
-                    await self.__case_fact_version_repo.create_updated_many(
-                        case_fact_for_update, connection=conn,
+                    case_fact_version_objs = (
+                        await self.__case_fact_version_repo.create_updated_many(
+                            case_fact_for_update,
+                            connection=conn,
+                        )
                     )
-            
-                # Mark case facts for deletion
-                case_facts_for_deletion = self.__create_case_fact_version_for_deletion(deleted_case_facts or [])
+                    created_updated_case_fact_version_ids = [
+                        cfv.id for cfv in case_fact_version_objs
+                    ]
+
+                # Mark case facts for deletion in the db
+                case_facts_for_deletion = self.__create_case_fact_version_for_deletion(
+                    deleted_case_facts or []
+                )
                 if case_facts_for_deletion:
                     await self.__case_fact_version_repo.update_many(
                         case_facts=case_facts_for_deletion, connection=conn
                     )
+
+                await conn.commit()
             except Exception as ex:
                 await self.__rollback_case_analysis_pipeline(
                     case_analysis_session_id, conn, ex
                 )
 
+        # PHASE 2: Generate answer / create analysis version
         async with self.__db.connection() as conn:
             try:
                 # Get latest case analysis version
@@ -232,6 +248,12 @@ class ChatbotService:
                 )
                 if not latest_case_fact_objects:
                     raise ChatException("Case facts cannot be fetched")
+
+                # Remove deleted case facts on latest case analysis so that it wont create case_analysis_version_fact entries
+                if deleted_case_facts:
+                    for cf in latest_case_fact_objects:
+                        if cf.id in deleted_case_facts:
+                            latest_case_fact_objects.remove(cf)
 
                 final_answer = await self.__process_case_analysis_llm_pipeline(
                     case_analysis_session_id,
@@ -274,15 +296,18 @@ class ChatbotService:
                     answer=final_answer,
                 )
             except Exception as ex:
-                # Rollback case fact versions and case analysis version facts
-                # if created_case_fact_ids and created_case_fact_version_ids:
-                #     logger.info(
-                #         "Performing rollback to created case fact version object in session id: %s",
-                #         case_analysis_session_id,
-                #     )
-                #     await self.__rollback_new_case_facts(
-                #         created_case_fact_ids, created_case_fact_version_ids
-                #     )
+                # Rollback phase 1 db modifications
+                if (
+                    created_new_case_fact_ids
+                    or created_updated_case_fact_version_ids
+                    or deleted_case_facts
+                ):
+                    await self.__rollback_phase_one(
+                        conn,
+                        created_new_case_fact_ids,
+                        created_updated_case_fact_version_ids,
+                        deleted_case_facts,
+                    )
 
                 await self.__rollback_case_analysis_pipeline(
                     case_analysis_session_id, conn, ex
@@ -393,34 +418,9 @@ class ChatbotService:
 
         return "\n\n---\n\n".join(formatted_results)
 
-    def __create_case_fact_version_update_objects(
-        self,
-        version_number: int,
-        updated_case_facts: Optional[List[Dict[UUID, str]]] = None,
-        deleted_case_facts: Optional[List[UUID]] = None,
-    ) -> List[CaseFactVersionUpdate]:
-        rets = []
-
-        for case_fact in updated_case_facts:
-            key = next(iter(case_fact.keys()))
-            value = next(iter(case_fact.values()))
-            rets.append(
-                CaseFactVersionUpdate(id=key, version_number=version_number, fact=value)
-            )
-
-        for case_fact_id in deleted_case_facts:
-            rets.append(
-                CaseFactVersionUpdate(
-                    id=case_fact_id,
-                    version_number=version_number,
-                    fact="DELETED",
-                    is_deleted=True,
-                )
-            )
-
-        return rets
-
-    def __create_case_fact_version_for_update(self, updated_case_facts: Dict[UUID, str]): 
+    def __create_case_fact_version_for_update(
+        self, updated_case_facts: Dict[UUID, str]
+    ):
         case_fact_for_update = []
         for id in updated_case_facts:
             fact = updated_case_facts[id]
@@ -432,7 +432,7 @@ class ChatbotService:
                         is_deleted=False,
                     )
                 )
-                
+
         return case_fact_for_update
 
     def __create_case_fact_version_for_deletion(self, deleted_case_facts: List[UUID]):
@@ -441,11 +441,10 @@ class ChatbotService:
             case_facts_for_deletion.append(
                 CaseFactVersionUpdate(
                     id=case_fact_id,
-                    fact="DELETED",
                     is_deleted=True,
                 )
             )
-            
+
         return case_facts_for_deletion
 
     async def __rollback_case_analysis_pipeline(
@@ -460,21 +459,35 @@ class ChatbotService:
         logger.exception(str(exc))
         raise
 
-    async def __rollback_new_case_facts(
+    async def __rollback_phase_one(
         self,
-        created_case_fact_ids: List[UUID],
-        created_case_fact_version_ids: List[UUID],
+        connection: AsyncConnection,
+        created_case_fact_ids: List[UUID] = [],
+        updated_case_fact_version_ids: List[UUID] = [],
+        deleted_case_fact_version_ids: List[UUID] = [],
     ):
-        async with self.__db.connection() as conn:
+        # Rollback new case facts
+        if created_case_fact_ids:
             await self.__case_fact_repo.delete_many(
-                created_case_fact_ids, connection=conn
+                created_case_fact_ids, connection=connection
             )
-            await self.__case_analysis_version_fact_repo.delete_many_by_case_fact_version_id(
-                created_case_fact_version_ids, connection=conn
-            )
+
+        # Rollback updated case fact versions
+        if updated_case_fact_version_ids:
             await self.__case_fact_version_repo.delete_many(
-                created_case_fact_version_ids, connection=conn
+                updated_case_fact_version_ids, connection=connection
             )
+
+        if deleted_case_fact_version_ids:
+            await self.__case_fact_version_repo.update_many(
+                [
+                    CaseFactVersionUpdate(id=cfv, is_deleted=False)
+                    for cfv in deleted_case_fact_version_ids
+                ],
+                connection=connection,
+            )
+            
+        await connection.commit()
 
     async def extract_issues(self, case_facts: List[str]) -> List[str]:
         facts = "\n".join(f"- {fact}" for fact in case_facts)

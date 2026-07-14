@@ -41,7 +41,7 @@ class CaseAnalysisCaseFactsPayload(BaseModel):
     new_case_facts: Optional[List[str]] = Field(
         default=None, min_length=1, max_length=10
     )
-    updated_case_facts: Optional[List[Dict[UUID, str]]] = Field(
+    updated_case_facts: Optional[Dict[UUID, str]] = Field(
         default=None, min_length=1, max_length=10
     )
     deleted_case_facts: Optional[List[UUID]] = Field(
@@ -55,33 +55,30 @@ class CaseAnalysisCaseFactsPayload(BaseModel):
             and not self.updated_case_facts
             and not self.deleted_case_facts
         ):
-            return ValueError("At least one list must have value")
+            raise ValueError("At least one list must have value")
         return self
 
     @model_validator(mode="after")
     def has_conversation_id_update_delete_list(self):
         if (
-            self.updated_case_facts
-            or self.deleted_case_facts
-            and not self.conversation_id
-        ):
-            return ValueError(
+            self.updated_case_facts or self.deleted_case_facts
+        ) and not self.conversation_id:
+            raise ValueError(
                 "Conversation id must be provided when editing / deleting a case fact"
             )
         return self
 
     @model_validator(mode="after")
     def is_allowed_case_fact(self) -> CaseAnalysisCaseFactsPayload:
-        if self.new_case_facts:
+        if self.new_case_facts is not None:
             for case_fact in self.new_case_facts:
                 if len(case_fact) < CASE_FACT_MIN_LEN or len(case_fact) > CASE_FACT_MAX_LEN:
                     raise ValueError(
                         f"Each case fact must be between {CASE_FACT_MIN_LEN} and {CASE_FACT_MAX_LEN} only"
                     )
 
-        if self.updated_case_facts:
-            for case_fact in self.updated_case_facts:
-                fact = next(iter(case_fact.values()))
+        if self.updated_case_facts is not None:
+            for fact in self.updated_case_facts.values():
                 if len(fact) < CASE_FACT_MIN_LEN or len(fact) > CASE_FACT_MAX_LEN:
                     raise ValueError(
                         f"Each case fact must be between {CASE_FACT_MIN_LEN} and {CASE_FACT_MAX_LEN} only"
