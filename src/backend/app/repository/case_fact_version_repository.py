@@ -16,59 +16,6 @@ class CaseFactVersionRepository:
     def __init__(self, db: Database):
         self.__database = db
 
-    async def create(
-        self,
-        case_fact_version: CaseFactVersionCreate,
-        connection: AsyncConnection = None,
-    ) -> CaseFactVersion:
-        if connection is not None:
-            return await self.__create_implement(connection, case_fact_version)
-
-        async with self.__database.connection() as conn:
-            try:
-                result = await self.__create_implement(conn, case_fact_version)
-                await conn.commit()
-                return result
-            except (errors.IntegrityError, errors.OperationalError) as ex:
-                await conn.rollback()
-                raise
-
-    async def __create_implement(
-        self,
-        conn: AsyncConnection,
-        case_fact_version: CaseFactVersionCreate,
-    ) -> CaseFactVersion:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                """
-                INSERT INTO case_fact_versions (
-                    id,
-                    case_fact_id, 
-                    version_number,
-                    fact,
-                    is_deleted,
-                    created_at
-                ) VALUES (
-                    %(id)s,
-                    %(case_fact_id)s, 
-                    %(version_number)s,
-                    %(fact)s,
-                    %(is_deleted)s,
-                    %(created_at)s
-                )
-                """,
-                (case_fact_version.model_dump()),
-            )
-
-        return CaseFactVersion(
-            id=case_fact_version.id,
-            case_fact_id=case_fact_version.case_fact_id,
-            version_number=case_fact_version.version_number,
-            fact=case_fact_version.fact,
-            is_deleted=case_fact_version.is_deleted,
-            created_at=case_fact_version.created_at,
-        )
-
     async def create_many(
         self,
         case_fact_versions: List[CaseFactVersionCreate],
@@ -250,7 +197,6 @@ class CaseFactVersionRepository:
                 f"(%(id{i})s::uuid, %(version_number{i})s::int, %(fact{i})s::text, %(is_deleted{i})s::bool)"
             )
             values[f"id{i}"] = d["id"]
-            values[f"case_fact_id{i}"] = d["case_fact_id"]
             values[f"version_number{i}"] = d["version_number"]
             values[f"fact{i}"] = d["fact"]
             values[f"is_deleted{i}"] = d["is_deleted"]
