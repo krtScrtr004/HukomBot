@@ -1,3 +1,4 @@
+from uuid import UUID
 from typing import List
 from psycopg import errors
 from psycopg import AsyncConnection
@@ -10,43 +11,6 @@ from backend.app.schema.case_analysis_schema import CaseFactCreate
 class CaseFactRepository:
     def __init__(self, db: Database):
         self.__database = db
-
-    async def create(
-        self,
-        case_fact: CaseFactCreate,
-        connection: AsyncConnection = None,
-    ) -> CaseFact:
-        if connection is not None:
-            return await self.__create_implement(connection, case_fact)
-        
-        async with self.__database.connection() as conn:
-            try:
-                result = await self.__create_implement(conn, case_fact)
-                await conn.commit()
-                return result
-            except (errors.IntegrityError, errors.OperationalError) as ex:
-                await conn.rollback()
-                raise
-
-    async def __create_implement(
-        self,
-        conn: AsyncConnection,
-        case_fact: CaseFactCreate,
-    ) -> CaseFact:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                """
-                INSERT INTO case_facts (id, case_analysis_session_id, created_at)
-                VALUES (%(id)s, %(case_analysis_session_id)s, %(created_at)s)
-                """,
-                (case_fact.model_dump()),
-            )
-
-        return CaseFact(
-            id=case_fact.id,
-            case_analysis_session_id=case_fact.case_analysis_session_id,
-            created_at=case_fact.created_at,
-        )
 
     async def create_many(
         self,
@@ -96,3 +60,29 @@ class CaseFactRepository:
                 )
 
         return updated
+    
+    async def delete_many(self, ids: List[UUID], connection: AsyncConnection = None):
+        if not ids:
+            return
+
+        if connection is not None:
+            await self.__delete_many_implement(connection, ids)
+        else:
+            async with self.__database.connection() as conn:
+                try:
+                    await self.__delete_many_implement(conn, ids)
+                    await conn.commit()
+                except errors.OperationalError as ex:
+                    await conn.rollback()
+                    raise
+
+    async def __delete_many_implement(self, conn: AsyncConnection, ids: List[UUID]):
+        async with conn.cursor() as cur:
+            placeholders = ", ".join(["%s"] * len(ids))
+            await cur.execute(
+                f"""
+                DELETE FROM case_facts
+                WHERE id IN ({placeholders})
+                """,
+                ids,
+            )
