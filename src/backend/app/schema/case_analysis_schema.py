@@ -3,7 +3,14 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-# Case Analysis Session ========================================
+
+class CaseAnalysisGetByVersionNumber(BaseModel):
+    version_number: int
+    case_analysis_session_id: Optional[UUID] = Field(default=None)
+    limit: int = Field(default=10, gt=0, lt=100)
+    offset: int = Field(default=0, ge=0)
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class CaseAnalysisSessionCreate(BaseModel):
@@ -44,15 +51,6 @@ class CaseFactVersionUpdate(BaseModel):
 
 class CaseFactVersionGetBySessionId(BaseModel):
     case_analysis_session_id: UUID
-    limit: int = Field(default=10, gt=0, lt=100)
-    offset: int = Field(default=0, ge=0)
-
-    model_config = {"arbitrary_types_allowed": True}
-
-
-class CaseFactVersionGetByVersionNumber(BaseModel):
-    version_number: int
-    case_analysis_session_id: Optional[UUID] = Field(default=None)
     limit: int = Field(default=10, gt=0, lt=100)
     offset: int = Field(default=0, ge=0)
 

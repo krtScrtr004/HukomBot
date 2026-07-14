@@ -9,7 +9,7 @@ from backend.app.schema.case_analysis_schema import (
     CaseFactVersionCreate,
     CaseFactVersionUpdate,
     CaseFactVersionGetBySessionId,
-    CaseFactVersionGetByVersionNumber,
+    CaseAnalysisGetByVersionNumber,
 )
 
 
@@ -220,7 +220,7 @@ class CaseFactVersionRepository:
 
         return query, values
 
-    async def get_by_version_number(self, param: CaseFactVersionGetByVersionNumber):
+    async def get_by_version_number(self, param: CaseAnalysisGetByVersionNumber):
         async with self.__database.connection() as conn:
             try:
                 async with conn.cursor() as cur:                    
