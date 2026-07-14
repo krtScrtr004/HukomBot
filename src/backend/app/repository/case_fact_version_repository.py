@@ -223,18 +223,21 @@ class CaseFactVersionRepository:
     async def get_by_version_number(self, param: CaseFactVersionGetByVersionNumber):
         async with self.__database.connection() as conn:
             try:
-                async with conn.cursor() as cur:
+                async with conn.cursor() as cur:                    
+                    session_id_query = ""
+                    if param.case_analysis_session_id:
+                        session_id_query = "cav.case_analysis_session_id = %(case_analysis_session_id)s AND "
+                    
                     await cur.execute(
-                        """
+                        f"""
                         SELECT cfv.*
                         FROM case_analysis_version_facts cavf
                         JOIN case_analysis_versions cav 
                             ON cav.id = cavf.case_analysis_version_id
                         JOIN case_fact_versions cfv
                             ON cfv.id = cavf.case_fact_version_id
-                        JOIN case_facts cf
-                            ON cf.id = cfv.case_fact_id
-                        WHERE cav.version_number = %(version_number)s
+                        WHERE {session_id_query}
+                            cav.version_number = %(version_number)s
                             AND cfv.is_deleted = FALSE
                         ORDER BY cfv.created_at
                         LIMIT %(limit)s
