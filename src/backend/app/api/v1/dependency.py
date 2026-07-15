@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, Depends
 from contextlib import asynccontextmanager
 
 from backend.app.database.database import Database
-from backend.app.service.chatbot_service import ChatbotService
+from backend.app.service.case_analysis_service import CaseAnalysisService
 from backend.app.service.document_service import DocumentService
 from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.reranker_service import RerankerService
@@ -38,12 +38,12 @@ def get_reranker_service(request: Request) -> RerankerService:
     return request.app.state.reranker_service.get_instance()
 
 
-def get_chatbot_service(
+def get_case_analysis_service(
     db: Database = Depends(get_db),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     reranker_service: RerankerService = Depends(get_reranker_service)
-) -> ChatbotService:
-    return ChatbotService(db, embedding_service, reranker_service)
+) -> CaseAnalysisService:
+    return CaseAnalysisService(db, embedding_service, reranker_service)
 
 
 def get_document_service(db: Database = Depends(get_db)) -> DocumentService:

@@ -4,7 +4,7 @@ from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
-from backend.app.api.v1.endpoint.chatbot import chatbot_api_router
+from backend.app.api.v1.endpoint.case_analysis import case_analysis_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
 from backend.app.schema.mixin import BaseResponse
@@ -26,7 +26,7 @@ app = FastAPI(lifespan=lifespan)
 # Routers ============================================================
 
 app.include_router(
-    router=chatbot_api_router, prefix="/api/v1/chatbot", tags=["Chatbot API"]
+    router=case_analysis_api_router, prefix="/api/v1/case-analysis", tags=["Case Analysis API"]
 )
 
 app.include_router(
