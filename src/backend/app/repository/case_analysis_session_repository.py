@@ -68,3 +68,23 @@ class CaseAnalysisSessionRepository:
                 created_at=case_analysis_session.created_at,
                 updated_at=case_analysis_session.updated_at,
             )
+            
+    async def is_existing_by_id(self, id: UUID) -> bool:
+        async with self.__database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT 1
+                        FROM case_analysis_sessions
+                        WHERE id = %s
+                        LIMIT 1
+                        """,
+                        (id,),
+                    )
+
+                    row = await cur.fetchone()
+                await conn.commit()
+                return row is not None
+            except errors.OperationalError as ex:
+                raise
