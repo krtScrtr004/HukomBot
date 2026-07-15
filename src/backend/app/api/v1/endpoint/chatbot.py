@@ -1,5 +1,6 @@
+from uuid import UUID
 from typing import Annotated
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path
 
 from backend.app.service.chatbot_service import ChatbotService
 from backend.app.schema.chatbot_schema import CaseAnalysisPipelineCaseFactsPayload
@@ -15,3 +16,16 @@ async def run_case_analysis_pipeline(
     service: Annotated[ChatbotService, Depends(get_chatbot_service)],
 ):
     return await service.run_case_analysis_pipeline(payload)
+
+
+@chatbot_api_router.post(
+    "/case-analysis/{case_analysis_session_id}/version/{version_number}"
+)
+async def get_case_analysis_version(
+    case_analysis_session_id: UUID,
+    version_number: Annotated[int, Path(ge=1)],
+    service: Annotated[ChatbotService, Depends(get_chatbot_service)],
+):
+    return await service.get_case_analysis_version(
+        case_analysis_session_id, version_number
+    )
