@@ -16,64 +16,7 @@ from backend.app.schema.chunk_schema import (
 
 class ChunkRepository:
     def __init__(self, db: Database):
-        self.__database = db
-
-    async def create(
-        self,
-        chunk: ChunkCreate,
-        connection: AsyncConnection = None,
-    ) -> Chunk:
-        if connection is not None:
-            return await self.__create_implement(connection, chunk)
-        
-        async with self.__database.connection() as conn:
-            try:
-                result = await self.__create_implement(conn, chunk)
-                await conn.commit()
-                return result
-            except (
-                errors.ForeignKeyViolation,
-                errors.IntegrityError,
-                errors.OperationalError,
-            ) as ex:
-                await conn.rollback()
-                raise
-
-    async def __create_implement(
-        self,
-        conn: AsyncConnection,
-        chunk: ChunkCreate,
-    ) -> Chunk:
-        async with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO chunks (
-                    id,
-                    document_id, 
-                    chunk_number, 
-                    chunk_text, 
-                    embedding, 
-                    section
-                ) VALUES (
-                    %(id)s,
-                    %(document_id)s, 
-                    %(chunk_number)s, 
-                    %(chunk_text)s, 
-                    %(embedding)s, 
-                    %(section)s
-                )
-                """,
-                (chunk.model_dump(),),
-            )
-
-        return Chunk(
-            id=chunk.id,
-            document_id=chunk.document_id,
-            chunk_number=chunk.chunk_number,
-            chunk_text=chunk.chunk_text,
-            section=chunk.section,
-            embedding=chunk.embedding,
-        )
+        self._database = db
 
     async def create_many(
         self,
@@ -84,11 +27,11 @@ class ChunkRepository:
             return []
 
         if connection is not None:
-            return await self.__create_many_implement(connection, chunks)
+            return await self._create_many_implement(connection, chunks)
         
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
-                result = await self.__create_many_implement(conn, chunks)
+                result = await self._create_many_implement(conn, chunks)
                 await conn.commit()
                 return result
             except (
@@ -99,7 +42,7 @@ class ChunkRepository:
                 await conn.rollback()
                 raise
 
-    async def __create_many_implement(
+    async def _create_many_implement(
         self,
         conn: AsyncConnection,
         chunks: List[ChunkCreate],
@@ -142,7 +85,7 @@ class ChunkRepository:
         return updated
 
     async def search(self, chunk: ChunkSearchKeyword) -> List:
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -212,7 +155,7 @@ class ChunkRepository:
                 raise
 
     async def search_vector(self, chunk: ChunkSearchVector) -> List[Chunk]:
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(

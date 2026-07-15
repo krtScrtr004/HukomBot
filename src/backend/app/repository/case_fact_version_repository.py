@@ -15,7 +15,7 @@ from backend.app.schema.case_analysis_schema import (
 
 class CaseFactVersionRepository:
     def __init__(self, db: Database):
-        self.__database = db
+        self._database = db
 
     async def create_many(
         self,
@@ -26,10 +26,10 @@ class CaseFactVersionRepository:
             return []
 
         if connection is not None:
-            return await self.__create_many_implement(connection, case_fact_versions)
-        async with self.__database.connection() as conn:
+            return await self._create_many_implement(connection, case_fact_versions)
+        async with self._database.connection() as conn:
             try:
-                result = await self.__create_many_implement(conn, case_fact_versions)
+                result = await self._create_many_implement(conn, case_fact_versions)
 
                 await conn.commit()
                 return result
@@ -37,7 +37,7 @@ class CaseFactVersionRepository:
                 await conn.rollback()
                 raise
 
-    async def __create_many_implement(
+    async def _create_many_implement(
         self,
         conn: AsyncConnection,
         case_fact_versions: List[CaseFactVersionCreate],
@@ -89,10 +89,10 @@ class CaseFactVersionRepository:
             return []
 
         if connection is not None:
-            return await self.__create__updated_many_implement(connection, case_fact_versions)
-        async with self.__database.connection() as conn:
+            return await self._create_updated_many_implement(connection, case_fact_versions)
+        async with self._database.connection() as conn:
             try:
-                result = await self.__create__updated_many_implement(conn, case_fact_versions)
+                result = await self._create_updated_many_implement(conn, case_fact_versions)
 
                 await conn.commit()
                 return result
@@ -100,7 +100,7 @@ class CaseFactVersionRepository:
                 await conn.rollback()
                 raise
 
-    async def __create__updated_many_implement(
+    async def _create_updated_many_implement(
         self,
         conn: AsyncConnection,
         case_fact_versions: List[CaseFactVersionCreate],
@@ -171,25 +171,25 @@ class CaseFactVersionRepository:
             return
 
         if connection is not None:
-            await self.__update_many_implement(connection, case_facts)
+            await self._update_many_implement(connection, case_facts)
         else:
-            async with self.__database.connection() as conn:
+            async with self._database.connection() as conn:
                 try:
-                    await self.__update_many_implement(conn, case_facts)
+                    await self._update_many_implement(conn, case_facts)
                     await conn.commit()
                 except (errors.IntegrityError, errors.OperationalError) as ex:
                     await conn.rollback()
                     raise
 
-    async def __update_many_implement(
+    async def _update_many_implement(
         self, conn: AsyncConnection, case_facts: List[CaseFactVersionUpdate]
     ):
-        query, params = self.__build_update_many_query(case_facts)
+        query, params = self._build_update_many_query(case_facts)
 
         async with conn.cursor() as cur:
             await cur.execute(query, params)
 
-    def __build_update_many_query(self, case_facts: List[CaseFactVersionUpdate]):
+    def _build_update_many_query(self, case_facts: List[CaseFactVersionUpdate]):
         values_placeholder = []
         values = {}
         for i, case_fact in enumerate(case_facts):
@@ -221,7 +221,7 @@ class CaseFactVersionRepository:
         return query, values
 
     async def get_by_version_number(self, param: CaseAnalysisGetByVersionNumber):
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:                    
                     session_id_query = ""
@@ -253,7 +253,7 @@ class CaseFactVersionRepository:
                 raise
             
     async def get_latest_by_session_id(self, param: CaseFactVersionGetBySessionId):
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -289,17 +289,17 @@ class CaseFactVersionRepository:
             return
 
         if connection is not None:
-            await self.__delete_many_implement(connection, ids)
+            await self._delete_many_implement(connection, ids)
         else:
-            async with self.__database.connection() as conn:
+            async with self._database.connection() as conn:
                 try:
-                    await self.__delete_many_implement(conn, ids)
+                    await self._delete_many_implement(conn, ids)
                     await conn.commit()
                 except errors.OperationalError as ex:
                     await conn.rollback()
                     raise
 
-    async def __delete_many_implement(self, conn: AsyncConnection, ids: List[UUID]):
+    async def _delete_many_implement(self, conn: AsyncConnection, ids: List[UUID]):
         async with conn.cursor() as cur:
             placeholders = ", ".join(["%s"] * len(ids))
             await cur.execute(

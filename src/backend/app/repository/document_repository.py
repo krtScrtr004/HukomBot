@@ -15,7 +15,7 @@ from backend.app.schema.document_schema import (
 
 class DocumentRepository:
     def __init__(self, db: Database):
-        self.__database = db
+        self._database = db
 
     async def create(
         self,
@@ -23,18 +23,18 @@ class DocumentRepository:
         connection: AsyncConnection = None,
     ) -> Document:
         if connection is not None:
-            return await self.__create_implement(connection, document)
+            return await self._create_implement(connection, document)
 
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
-                result = await self.__create_implement(conn, document)
+                result = await self._create_implement(conn, document)
                 await conn.commit()
                 return result
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
                 raise
 
-    async def __create_implement(
+    async def _create_implement(
         self,
         conn: AsyncConnection,
         document: DocumentCreate,
@@ -87,95 +87,12 @@ class DocumentRepository:
             created_at=document.created_at,
         )
 
-    async def create_many(
-        self,
-        documents: List[DocumentCreate],
-        connection: AsyncConnection = None,
-    ) -> List[Document]:
-        # Return if list is empty
-        if not documents:
-            return []
-
-        if connection is not None:
-            return await self.__create_many_implement(connection, documents)
-
-        async with self.__database.connection() as conn:
-            try:
-                result = await self.__create_many_implement(conn, documents)
-                await conn.commit()
-                return result
-            except (errors.IntegrityError, errors.OperationalError) as ex:
-                await conn.rollback()
-                raise
-
-    async def __create_many_implement(
-        self,
-        conn: AsyncConnection,
-        documents: List[DocumentCreate],
-    ) -> List[Document]:
-        async with conn.cursor() as cur:
-            await cur.executemany(
-                """
-                INSERT INTO documents (
-                    id,
-                    original_file_name, 
-                    upload_file_name, 
-                    document_type, 
-                    file_type, 
-                    upload_status, 
-                    upload_error, 
-                    digest,
-                    created_at
-                ) VALUES (
-                    %(id)s,
-                    %(original_file_name)s, 
-                    %(upload_file_name)s, 
-                    %(document_type)s, 
-                    %(file_type)s, 
-                    %(upload_status)s, 
-                    %(upload_error)s, 
-                    %(digest)s,
-                    %(created_at)s
-                )
-                ON CONFLICT (digest)
-                    DO UPDATE SET 
-                        original_file_name  = EXCLUDED.original_file_name,
-                        upload_file_name    = EXCLUDED.upload_file_name,
-                        document_type       = EXCLUDED.document_type,
-                        file_type           = EXCLUDED.file_type,
-                        upload_status       = EXCLUDED.upload_status,
-                        upload_error        = EXCLUDED.upload_error
-                """,
-                [docu.model_dump() for docu in documents],
-                returning=True,
-            )
-
-            # Retrieve the generated IDs
-            updated = []
-            for i, _ in enumerate(documents):
-                # Update the document's ID attribute
-                updated.append(
-                    Document(
-                        id=documents[i].id,
-                        original_file_name=documents[i].original_file_name,
-                        upload_file_name=documents[i].upload_file_name,
-                        document_type=documents[i].document_type,
-                        file_type=documents[i].file_type,
-                        upload_status=documents[i].upload_status,
-                        upload_error=documents[i].upload_error,
-                        digest=documents[i].digest,
-                        created_at=documents[i].created_at,
-                    )
-                )
-
-        return updated
-
     async def update(self, document: DocumentUpdate):
         if not document.model_dump(exclude={"id"}, exclude_none=True):
             return
 
-        async with self.__database.connection() as conn:
-            query, params = self.__build_update_query(document)
+        async with self._database.connection() as conn:
+            query, params = self._build_update_query(document)
 
             try:
                 async with conn.cursor() as cur:
@@ -185,7 +102,7 @@ class DocumentRepository:
                 await conn.rollback()
                 raise
 
-    def __build_update_query(self, document: DocumentUpdate) -> tuple[str, tuple]:
+    def _build_update_query(self, document: DocumentUpdate) -> tuple[str, tuple]:
         set_clauses = []
         values = {"id": document.id}
 
@@ -225,7 +142,7 @@ class DocumentRepository:
         return query, values
 
     async def get_by_id(self, id: UUID) -> Document | None:
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -245,31 +162,8 @@ class DocumentRepository:
             except errors.OperationalError as ex:
                 raise
 
-    async def get_by_original_file_name(
-        self, original_file_name: str
-    ) -> Document | None:
-        async with self.__database.connection() as conn:
-            try:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        SELECT *
-                        FROM documents
-                        WHERE original_file_name = %s
-                        LIMIT 1
-                        """,
-                        (original_file_name.strip(),),
-                    )
-
-                    row = await cur.fetchone()
-
-                await conn.commit()
-                return Document.model_validate(row) if row is not None else None
-            except errors.OperationalError as ex:
-                raise
-
     async def get_by_digest(self, digest: bytes) -> Document | None:
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -290,7 +184,7 @@ class DocumentRepository:
                 raise
 
     async def get_upload_status_by_id(self, document_id: UUID) -> UploadStatus | None:
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -314,66 +208,11 @@ class DocumentRepository:
             except errors.OperationalError as ex:
                 raise
 
-    async def search(self, document: DocumentSearch) -> List:
-        async with self.__database.connection() as conn:
-            try:
-                search_comps = [
-                    document.original_file_name,
-                    document.document_type.value,
-                    document.file_type,
-                ]
-                terms = " ".join([item for item in search_comps if item])
-
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        WITH query AS (
-                            SELECT plainto_tsquery('english', %s) AS q
-                        )
-                        SELECT
-                            d.*,
-                            ts_rank(d.search_vector, q.q) AS rank
-                        FROM documents d, query q
-                        WHERE d.search_vector @@ q.q
-                        ORDER BY rank DESC
-                        LIMIT %s
-                        OFFSET %s
-                        """,
-                        (terms, document.limit, document.offset),
-                    )
-
-                    rows = await cur.fetchall()
-
-                    documents = []
-                    for row in rows:
-                        documents.append(Document.model_validate(row))
-
-                    return documents
-            except errors.OperationalError as ex:
-                raise
-
-    async def delete(self, id: UUID):
-        async with self.__database.connection() as conn:
-            try:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        DELETE FROM documents
-                        WHERE id = %s
-                        """,
-                        (id,),
-                    )
-
-                await conn.commit()
-            except (errors.IntegrityError, errors.OperationalError) as ex:
-                await conn.rollback()
-                raise
-
     async def delete_many(self, ids: List[UUID]):
         if not ids:
             return
 
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     placeholders = ", ".join(["%s"] * len(ids))

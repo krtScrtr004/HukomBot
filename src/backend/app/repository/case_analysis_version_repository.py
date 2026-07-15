@@ -10,7 +10,7 @@ from backend.app.schema.case_analysis_schema import CaseAnalysisVersionCreate, C
 
 class CaseAnalysisVersionRepository:
     def __init__(self, db: Database):
-        self.__database = db
+        self._database = db
 
     async def create(
         self,
@@ -18,18 +18,18 @@ class CaseAnalysisVersionRepository:
         connection: AsyncConnection = None,
     ) -> CaseAnalysisVersion:
         if connection is not None:
-            return await self.__create_implement(connection, case_analysis_version)
+            return await self._create_implement(connection, case_analysis_version)
         
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
-                result = await self.__create_implement(conn, case_analysis_version)
+                result = await self._create_implement(conn, case_analysis_version)
                 await conn.commit()
                 return result
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
                 raise
 
-    async def __create_implement(
+    async def _create_implement(
         self, conn: AsyncConnection, case_analysis_version: CaseAnalysisVersionCreate
     ):
         async with conn.cursor() as cur:
@@ -63,7 +63,7 @@ class CaseAnalysisVersionRepository:
     async def get_latest_by_session_id(
         self, case_analysis_session_id: UUID
     ):
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(
@@ -86,7 +86,7 @@ class CaseAnalysisVersionRepository:
                 raise
             
     async def get_by_version_number(self, param: CaseAnalysisGetByVersionNumber):
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     session_id_query = ""

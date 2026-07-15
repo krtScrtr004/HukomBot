@@ -10,7 +10,7 @@ from backend.app.schema.case_analysis_schema import CaseAnalysisSessionCreate
 
 class CaseAnalysisSessionRepository:
     def __init__(self, db: Database):
-        self.__database = db
+        self._database = db
 
     async def create(
         self,
@@ -18,11 +18,11 @@ class CaseAnalysisSessionRepository:
         connection: AsyncConnection = None,
     ) -> CaseAnalysisSession:
         if connection is not None:
-            return await self.__create_implement(connection, case_analysis_session)
+            return await self._create_implement(connection, case_analysis_session)
 
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
-                result = await self.__create_implement(conn, case_analysis_session)
+                result = await self._create_implement(conn, case_analysis_session)
                 await conn.commit()
                 return result
             except (
@@ -33,25 +33,7 @@ class CaseAnalysisSessionRepository:
                 await conn.rollback()
                 raise
 
-    async def __create_implement(
-        self, conn: AsyncConnection, case_analysis_session: CaseAnalysisSessionCreate
-    ):
-        async with conn.cursor() as cur:
-            await cur.execute(
-                """
-                INSERT INTO case_analysis_sessions (id, created_at, updated_at) 
-                VALUES (%(id)s, %(created_at)s, %(updated_at)s) 
-                """,
-                (case_analysis_session.model_dump()),
-            )
-
-            return CaseAnalysisSession(
-                id=case_analysis_session.id,
-                created_at=case_analysis_session.created_at,
-                updated_at=case_analysis_session.updated_at,
-            )
-
-    async def __create_implement(
+    async def _create_implement(
         self, conn: AsyncConnection, case_analysis_session: CaseAnalysisSessionCreate
     ):
         async with conn.cursor() as cur:
@@ -70,7 +52,7 @@ class CaseAnalysisSessionRepository:
             )
             
     async def is_existing_by_id(self, id: UUID) -> bool:
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 async with conn.cursor() as cur:
                     await cur.execute(

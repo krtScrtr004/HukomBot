@@ -8,7 +8,7 @@ from psycopg import AsyncConnection
 
 class UserRepositry:
     def __init__(self, db: Database):
-        self.__database = db
+        self._database = db
 
     async def create(
         self,
@@ -16,18 +16,18 @@ class UserRepositry:
         connection: AsyncConnection = None,
     ) -> User:
         if connection is not None:
-            return await self.__create_implement(connection, user)
+            return await self._create_implement(connection, user)
 
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
-                result = await self.__create_implement(conn, user)
+                result = await self._create_implement(conn, user)
                 await conn.commit()
                 return result
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
                 raise
 
-    async def __create_implement(
+    async def _create_implement(
         self,
         conn: AsyncConnection,
         user: UserCreate,
@@ -83,7 +83,7 @@ class UserRepositry:
         )
 
     async def search(self, user: UserSearch) -> List[User]:
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
                 search_comps = [user.display_name, user.email, user.provider.value]
                 terms = " ".join([item for item in search_comps if item])

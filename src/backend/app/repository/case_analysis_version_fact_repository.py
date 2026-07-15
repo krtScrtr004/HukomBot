@@ -9,7 +9,7 @@ from backend.app.schema.case_analysis_schema import CaseAnalysisVersionFactCreat
 
 class CaseAnalysisVersionFactRepository:
     def __init__(self, db: Database):
-        self.__database = db
+        self._database = db
 
     async def create_many(
         self,
@@ -20,13 +20,13 @@ class CaseAnalysisVersionFactRepository:
             return []
 
         if connection is not None:
-            return await self.__create_many_implement(
+            return await self._create_many_implement(
                 connection, case_analysis_version_facts
             )
 
-        async with self.__database.connection() as conn:
+        async with self._database.connection() as conn:
             try:
-                result = await self.__create_many_implement(
+                result = await self._create_many_implement(
                     conn, case_analysis_version_facts
                 )
                 await conn.commit()
@@ -35,7 +35,7 @@ class CaseAnalysisVersionFactRepository:
                 await conn.rollback()
                 raise
 
-    async def __create_many_implement(
+    async def _create_many_implement(
         self,
         conn: AsyncConnection,
         case_analysis_version_facts: List[CaseAnalysisVersionFactCreate],
