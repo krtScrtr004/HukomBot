@@ -5,7 +5,7 @@ from psycopg import AsyncConnection
 
 from backend.app.database.database import Database
 from backend.app.model.case_analysis_model import CaseAnalysisVersion
-from backend.app.schema.case_analysis_schema import CaseAnalysisVersionCreate
+from backend.app.schema.case_analysis_schema import CaseAnalysisVersionCreate, CaseAnalysisGetByVersionNumber
 
 
 class CaseAnalysisVersionRepository:
@@ -77,6 +77,30 @@ class CaseAnalysisVersionRepository:
                         LIMIT 1
                         """,
                         (case_analysis_session_id,),
+                    )
+
+                    row = await cur.fetchone()
+                await conn.commit()
+                return CaseAnalysisVersion.model_validate(row) if row is not None else None
+            except (errors.OperationalError, errors.IntegrityConstraintViolation) as ex:
+                raise
+            
+    async def get_by_version_number(self, param: CaseAnalysisGetByVersionNumber):
+        async with self.__database.connection() as conn:
+            try:
+                async with conn.cursor() as cur:
+                    session_id_query = ""
+                    if param.case_analysis_session_id is not None:
+                        session_id_query = "case_analysis_session_id = %(case_analysis_session_id)s AND"
+                        
+                    await cur.execute(
+                        f"""
+                        SELECT *
+                        FROM case_analysis_versions
+                        WHERE {session_id_query} version_number = %(version_number)s
+                        LIMIT 1
+                        """,
+                        param.model_dump(),
                     )
 
                     row = await cur.fetchone()
