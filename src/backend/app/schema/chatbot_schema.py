@@ -11,38 +11,32 @@ from pydantic import (
 )
 
 from backend.app.schema.mixin import ResponseMixin
-from backend.app.model.case_analysis_model import CaseAnalysisVersion, CaseFactVersion
+from backend.app.schema.case_analysis_schema import CaseAnalysisVersionResponse
 
 # API Response ===================================================
 
-class ChatPipelineResponse(ResponseMixin, BaseModel):
-    conversation_id: UUID = Field(default=None)
-    answer: str
+
+class PostCaseAnalysisResponse(ResponseMixin, BaseModel):
+    case_analysis_session_id: UUID = Field(default=None)
+    case_analysis: CaseAnalysisVersionResponse
 
     @model_serializer(mode="wrap")
     def custom_serializer(self, handler: SerializerFunctionWrapHandler):
         result = handler(self)
-
+        
         result["data"] = {
-            "conversation_id": result.pop("conversation_id"),
-            "answer": result.pop("answer"),
+            "case_analysis_session_id": result.pop("case_analysis_session_id"),
+            "case_analysis": result.pop("case_analysis"),
         }
+        result["data"]["case_analysis"].pop("case_facts")
 
         return result
 
 
 class GetCaseAnalysisResponse(ResponseMixin, BaseModel):
-    class CaseAnalysisFact(BaseModel):
-        case_analysis: CaseAnalysisVersion
-        case_facts: List[CaseFactVersion]
-
-        model_config = {"arbitrary_types_allowed": True}
-    
     case_analysis_session_id: UUID
-    case_analysis: List[CaseAnalysisFact]
+    case_analysis: CaseAnalysisVersionResponse
     
-    model_config = {"arbitrary_types_allowed": True}
-
     @model_serializer(mode="wrap")
     def custom_serializer(self, handler: SerializerFunctionWrapHandler):
         result = handler(self)
@@ -62,7 +56,7 @@ CASE_FACT_MAX_LEN = 500
 
 
 class CaseAnalysisPipelineCaseFactsPayload(BaseModel):
-    conversation_id: Optional[UUID] = Field(default=None)
+    case_analysis_session_id: Optional[UUID] = Field(default=None)
     new_case_facts: Optional[List[str]] = Field(
         default=None, min_length=1, max_length=10
     )

@@ -12,7 +12,7 @@ from backend.app.schema.chunk_schema import ChunkSearchKeyword, ChunkSearchVecto
 from backend.app.schema.chatbot_schema import (
     CaseAnalysisPipelineCaseFactsPayload,
     GetCaseAnalysisResponse,
-    ChatPipelineResponse,
+    PostCaseAnalysisResponse,
 )
 from backend.app.schema.case_analysis_schema import (
     CaseAnalysisSessionCreate,
@@ -21,8 +21,10 @@ from backend.app.schema.case_analysis_schema import (
     CaseFactVersionCreate,
     CaseFactVersionUpdate,
     CaseFactVersionGetBySessionId,
+    CaseFactVersionResponse,
     CaseAnalysisGetByVersionNumber,
     CaseAnalysisVersionFactCreate,
+    CaseAnalysisVersionResponse,
 )
 
 from backend.app.service.chatbot_service import ChatbotService
@@ -70,9 +72,7 @@ class CaseAnalysisService:
         self._embedding_service = embedding_service
         self._reranker_service = reranker_service
 
-    async def get_by_version(
-        self, case_analysis_session_id: UUID, version_number: int
-    ):
+    async def get_by_version(self, case_analysis_session_id: UUID, version_number: int):
         await self._ensure_valid_session_id(case_analysis_session_id)
 
         param = CaseAnalysisGetByVersionNumber(
@@ -99,21 +99,29 @@ class CaseAnalysisService:
 
         return GetCaseAnalysisResponse(
             case_analysis_session_id=case_analysis_session_id,
-            case_analysis=[
-                GetCaseAnalysisResponse.CaseAnalysisFact(
-                    case_analysis=case_analysis_version, case_facts=case_fact_versions
-                )
-            ],
+            case_analysis=CaseAnalysisVersionResponse(
+                id=case_analysis_version.id,
+                version_number=version_number,
+                answer=case_analysis_version.answer,
+                created_at=case_analysis_version.created_at,
+                case_facts=[
+                    CaseFactVersionResponse(
+                        case_fact_id=cfv.case_fact_id,
+                        case_fact_version_id=case_analysis_version.id,
+                        version_number=cfv.version_number,
+                        fact=cfv.fact,
+                    )
+                    for cfv in case_fact_versions
+                ],
+            ),
         )
 
-    async def run_pipeline(
-        self, payload: CaseAnalysisPipelineCaseFactsPayload
-    ):
-        if not payload.conversation_id:
+    async def run_pipeline(self, payload: CaseAnalysisPipelineCaseFactsPayload):
+        if not payload.case_analysis_session_id:
             return await self._run_fresh_pipeline(payload.new_case_facts)
         else:
             return await self._run_existing_pipeline(
-                payload.conversation_id,
+                payload.case_analysis_session_id,
                 payload.new_case_facts,
                 payload.updated_case_facts,
                 payload.deleted_case_facts,
@@ -122,9 +130,7 @@ class CaseAnalysisService:
     async def _run_fresh_pipeline(self, case_facts: List[str]):
         session = CaseAnalysisSessionCreate()
 
-        final_answer = await self._process_llm_pipeline(
-            session.id, case_facts
-        )
+        final_answer = await self._process_llm_pipeline(session.id, case_facts)
 
         # Perform db operation
         async with self._db.connection() as conn:
@@ -181,10 +187,16 @@ class CaseAnalysisService:
                 logger.info(
                     "Responded to case analysis session id: %s successfully", session.id
                 )
-                return ChatPipelineResponse(
+                return PostCaseAnalysisResponse(
                     messages=["Chat responded successfully"],
-                    conversation_id=session.id,
-                    answer=final_answer,
+                    case_analysis_session_id=session.id,
+                    case_analysis=CaseAnalysisVersionResponse(
+                        id=case_analysis_version.id,
+                        version_number=case_analysis_version.version_number,
+                        answer=case_analysis_version.answer,
+                        created_at=case_analysis_version.created_at,
+                        case_facts=[],
+                    ),
                 )
             except Exception as ex:
                 await self._rollback_pipeline(session.id, conn, ex)
@@ -270,9 +282,7 @@ class CaseAnalysisService:
 
                 await conn.commit()
             except Exception as ex:
-                await self._rollback_pipeline(
-                    case_analysis_session_id, conn, ex
-                )
+                await self._rollback_pipeline(case_analysis_session_id, conn, ex)
 
         # PHASE 2: Generate answer / create analysis version
         async with self._db.connection() as conn:
@@ -329,10 +339,16 @@ class CaseAnalysisService:
                     case_analysis_session_id,
                 )
 
-                return ChatPipelineResponse(
+                return PostCaseAnalysisResponse(
                     messages=["Chat responded successfully"],
-                    conversation_id=case_analysis_session_id,
-                    answer=final_answer,
+                    case_analysis_session_id=case_analysis_session_id,
+                    case_analysis=CaseAnalysisVersionResponse(
+                        id=case_analysis_version_fact.id,
+                        version_number=case_analysis_version_fact.version_number,
+                        answer=case_analysis_version_fact.answer,
+                        created_at=case_analysis_version_fact.created_at,
+                        case_facts=[],
+                    ),
                 )
             except Exception as ex:
                 # Rollback phase 1 db modifications
@@ -348,9 +364,7 @@ class CaseAnalysisService:
                         deleted_case_facts,
                     )
 
-                await self._rollback_pipeline(
-                    case_analysis_session_id, conn, ex
-                )
+                await self._rollback_pipeline(case_analysis_session_id, conn, ex)
 
     async def _process_llm_pipeline(
         self, case_analysis_session_id: UUID, case_facts: List[str]
@@ -383,7 +397,7 @@ class CaseAnalysisService:
 
         # Early exit if no retrieved chunks
         if not vector_results and not keyword_result:
-            return ChatPipelineResponse(
+            return PostCaseAnalysisResponse(
                 messages=["Chat responded successfully", "No results found"],
                 answer="",
             )
@@ -526,9 +540,7 @@ class CaseAnalysisService:
 
         await connection.commit()
 
-    async def _ensure_valid_session_id(
-        self, case_analysis_session_id: UUID
-    ):
+    async def _ensure_valid_session_id(self, case_analysis_session_id: UUID):
         is_session_existing = await self._case_analysis_session_repo.is_existing_by_id(
             case_analysis_session_id
         )
