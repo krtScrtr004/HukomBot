@@ -87,20 +87,31 @@ class DocumentRepository:
             created_at=document.created_at,
         )
 
-    async def update(self, document: DocumentUpdate):
+    async def update(
+        self,
+        document: DocumentUpdate,
+        connection: AsyncConnection = None,
+    ):
         if not document.model_dump(exclude={"id"}, exclude_none=True):
             return
 
-        async with self._database.connection() as conn:
-            query, params = self._build_update_query(document)
+        if connection is not None:
+            return await self._update_implement(connection, document)
 
+        async with self._database.connection() as conn:
             try:
-                async with conn.cursor() as cur:
-                    await cur.execute(query, params)
+                result = await self._update_implement(conn, document)
                 await conn.commit()
+                return result
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
                 raise
+
+    async def _update_implement(self, conn: AsyncConnection, document: DocumentUpdate):
+        query, params = self._build_update_query(document)
+
+        async with conn.cursor() as cur:
+            await cur.execute(query, params)
 
     def _build_update_query(self, document: DocumentUpdate) -> tuple[str, tuple]:
         set_clauses = []
@@ -141,90 +152,129 @@ class DocumentRepository:
 
         return query, values
 
-    async def get_by_id(self, id: UUID) -> Document | None:
+    async def get_by_id(
+        self, id: UUID, connection: AsyncConnection = None
+    ) -> Document | None:
+        if connection is not None:
+            return await self._get_by_id_implement(connection, id)
+
         async with self._database.connection() as conn:
             try:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        SELECT *
-                        FROM documents
-                        WHERE id = %s
-                        LIMIT 1
-                        """,
-                        (id,),
-                    )
-
-                    row = await cur.fetchone()
-
+                result = await self._get_by_id_implement(conn, id)
                 await conn.commit()
-                return Document.model_validate(row) if row is not None else None
+                return result
             except errors.OperationalError as ex:
+                await conn.rollback()
                 raise
 
-    async def get_by_digest(self, digest: bytes) -> Document | None:
+    async def _get_by_id_implement(self, conn: AsyncConnection, id: UUID):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT *
+                FROM documents
+                WHERE id = %s
+                LIMIT 1
+                """,
+                (id,),
+            )
+
+            row = await cur.fetchone()
+        return Document.model_validate(row) if row is not None else None
+
+    async def get_by_digest(
+        self, digest: bytes, connection: AsyncConnection = None
+    ) -> Document | None:
+        if connection is not None:
+            return await self._get_by_digest_implement(connection, digest)
+
         async with self._database.connection() as conn:
             try:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        SELECT *
-                        FROM documents
-                        WHERE digest = %s
-                        LIMIT 1
-                        """,
-                        (digest,),
-                    )
-
-                    row = await cur.fetchone()
-
+                result = await self._get_by_digest_implement(conn, digest)
                 await conn.commit()
-                return Document.model_validate(row) if row is not None else None
+                return result
             except errors.OperationalError as ex:
+                await conn.rollback()
                 raise
 
-    async def get_upload_status_by_id(self, document_id: UUID) -> UploadStatus | None:
+    async def _get_by_digest_implement(self, conn: AsyncConnection, digest: bytes):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT *
+                FROM documents
+                WHERE digest = %s
+                LIMIT 1
+                """,
+                (digest,),
+            )
+
+            row = await cur.fetchone()
+        return Document.model_validate(row) if row is not None else None
+
+    async def get_upload_status_by_id(
+        self, document_id: UUID, connection: AsyncConnection = None
+    ) -> UploadStatus | None:
+        if connection is not None:
+            return await self._get_upload_status_by_id_implement(
+                connection, document_id
+            )
+
         async with self._database.connection() as conn:
             try:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        SELECT upload_status
-                        FROM documents
-                        WHERE id = %s
-                        LIMIT 1
-                        """,
-                        (document_id,),
-                    )
-
-                    row = await cur.fetchone()
-
-                await conn.commit()
-                return (
-                    UploadStatus(row["upload_status"])
-                    if row is not None and row["upload_status"] is not None
-                    else None
+                result = await self._get_upload_status_by_id_implement(
+                    conn, document_id
                 )
+                await conn.commit()
+                return result
             except errors.OperationalError as ex:
+                await conn.rollback()
                 raise
 
-    async def delete_many(self, ids: List[UUID]):
+    async def _get_upload_status_by_id_implement(
+        self, conn: AsyncConnection, document_id: UUID
+    ):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT upload_status
+                FROM documents
+                WHERE id = %s
+                LIMIT 1
+                """,
+                (document_id,),
+            )
+
+            row = await cur.fetchone()
+        return (
+            UploadStatus(row["upload_status"])
+            if row is not None and row["upload_status"] is not None
+            else None
+        )
+
+    async def delete_many(self, ids: List[UUID], connection: AsyncConnection = None):
         if not ids:
             return
 
+        if connection is not None:
+            return await self._delete_many_implement(connection, ids)
+
         async with self._database.connection() as conn:
             try:
-                async with conn.cursor() as cur:
-                    placeholders = ", ".join(["%s"] * len(ids))
-                    await cur.execute(
-                        f"""
-                        DELETE FROM documents
-                        WHERE id IN ({placeholders})
-                        """,
-                        ids,
-                    )
-
+                result = await self._delete_many_implement(conn, ids)
                 await conn.commit()
+                return result
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
                 raise
+
+    async def _delete_many_implement(self, conn: AsyncConnection, ids: List[UUID]):
+        async with conn.cursor() as cur:
+            placeholders = ", ".join(["%s"] * len(ids))
+            await cur.execute(
+                f"""
+                DELETE FROM documents
+                WHERE id IN ({placeholders})
+                """,
+                ids,
+            )

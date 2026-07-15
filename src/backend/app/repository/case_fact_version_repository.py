@@ -89,10 +89,14 @@ class CaseFactVersionRepository:
             return []
 
         if connection is not None:
-            return await self._create_updated_many_implement(connection, case_fact_versions)
+            return await self._create_updated_many_implement(
+                connection, case_fact_versions
+            )
         async with self._database.connection() as conn:
             try:
-                result = await self._create_updated_many_implement(conn, case_fact_versions)
+                result = await self._create_updated_many_implement(
+                    conn, case_fact_versions
+                )
 
                 await conn.commit()
                 return result
@@ -106,7 +110,7 @@ class CaseFactVersionRepository:
         case_fact_versions: List[CaseFactVersionCreate],
     ) -> List[CaseFactVersion]:
         rows = []
-        
+
         async with conn.cursor() as cur, conn.transaction():
             fact_ids = sorted(
                 {fv.case_fact_id for fv in case_fact_versions},
@@ -220,69 +224,99 @@ class CaseFactVersionRepository:
 
         return query, values
 
-    async def get_by_version_number(self, param: CaseAnalysisGetByVersionNumber):
+    async def get_by_version_number(
+        self,
+        param: CaseAnalysisGetByVersionNumber,
+        connection: AsyncConnection = None,
+    ):
+        if connection is not None:
+            return await self._get_by_version_number_implement(connection, param)
+
         async with self._database.connection() as conn:
             try:
-                async with conn.cursor() as cur:                    
-                    session_id_query = ""
-                    if param.case_analysis_session_id:
-                        session_id_query = "cav.case_analysis_session_id = %(case_analysis_session_id)s AND "
-                    
-                    await cur.execute(
-                        f"""
-                        SELECT cfv.*
-                        FROM case_analysis_version_facts cavf
-                        JOIN case_analysis_versions cav 
-                            ON cav.id = cavf.case_analysis_version_id
-                        JOIN case_fact_versions cfv
-                            ON cfv.id = cavf.case_fact_version_id
-                        WHERE {session_id_query}
-                            cav.version_number = %(version_number)s
-                            AND cfv.is_deleted = FALSE
-                        ORDER BY cfv.created_at
-                        LIMIT %(limit)s
-                        OFFSET %(offset)s
-                        """,
-                        param.model_dump(),
-                    )
-
-                    row = await cur.fetchall()
+                result = await self._get_by_version_number_implement(conn, param)
                 await conn.commit()
-                return [CaseFactVersion.model_validate(case_fact) for case_fact in row]
+                return result
             except (errors.OperationalError, errors.IntegrityConstraintViolation) as ex:
+                await conn.rollback()
                 raise
-            
-    async def get_latest_by_session_id(self, param: CaseFactVersionGetBySessionId):
+
+    async def _get_by_version_number_implement(
+        self, conn: AsyncConnection, param: CaseAnalysisGetByVersionNumber
+    ):
+        async with conn.cursor() as cur:
+            session_id_query = ""
+            if param.case_analysis_session_id:
+                session_id_query = (
+                    "cav.case_analysis_session_id = %(case_analysis_session_id)s AND "
+                )
+
+            await cur.execute(
+                f"""
+                SELECT cfv.*
+                FROM case_analysis_version_facts cavf
+                JOIN case_analysis_versions cav 
+                    ON cav.id = cavf.case_analysis_version_id
+                JOIN case_fact_versions cfv
+                    ON cfv.id = cavf.case_fact_version_id
+                WHERE {session_id_query}
+                    cav.version_number = %(version_number)s
+                    AND cfv.is_deleted = FALSE
+                ORDER BY cfv.created_at
+                LIMIT %(limit)s
+                OFFSET %(offset)s
+                """,
+                param.model_dump(),
+            )
+
+            row = await cur.fetchall()
+        return [CaseFactVersion.model_validate(case_fact) for case_fact in row]
+
+    async def get_latest_by_session_id(
+        self,
+        param: CaseFactVersionGetBySessionId,
+        connection: AsyncConnection = None,
+    ):
+        if connection is not None:
+            return await self._get_latest_by_session_id_implement(connection, param)
+
         async with self._database.connection() as conn:
             try:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        SELECT *
-                        FROM (
-                            SELECT DISTINCT ON (cf.id)
-                                cfv.*
-                            FROM case_facts cf
-                            JOIN case_fact_versions cfv
-                                ON cfv.case_fact_id = cf.id
-                            WHERE cf.case_analysis_session_id = %(case_analysis_session_id)s
-                            ORDER BY
-                                cf.id,
-                                cfv.version_number DESC
-                        ) latest
-                        WHERE latest.is_deleted = FALSE
-                        ORDER BY latest.created_at
-                        LIMIT %(limit)s
-                        OFFSET %(offset)s
-                        """,
-                        param.model_dump(),
-                    )
-
-                    row = await cur.fetchall()
+                result = await self._get_latest_by_session_id_implement(conn, param)
                 await conn.commit()
-                return [CaseFactVersion.model_validate(case_fact) for case_fact in row]
+                return result
             except (errors.OperationalError, errors.IntegrityConstraintViolation) as ex:
+                await conn.rollback()
                 raise
+
+    async def _get_latest_by_session_id_implement(
+        self, conn: AsyncConnection, param: CaseFactVersionGetBySessionId
+    ):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT *
+                FROM (
+                    SELECT DISTINCT ON (cf.id)
+                        cfv.*
+                    FROM case_facts cf
+                    JOIN case_fact_versions cfv
+                        ON cfv.case_fact_id = cf.id
+                    WHERE cf.case_analysis_session_id = %(case_analysis_session_id)s
+                    ORDER BY
+                        cf.id,
+                        cfv.version_number DESC
+                ) latest
+                WHERE latest.is_deleted = FALSE
+                ORDER BY latest.created_at
+                LIMIT %(limit)s
+                OFFSET %(offset)s
+                """,
+                param.model_dump(),
+            )
+
+            row = await cur.fetchall()
+        return [CaseFactVersion.model_validate(case_fact) for case_fact in row]
 
     async def delete_many(self, ids: List[UUID], connection: AsyncConnection = None):
         if not ids:

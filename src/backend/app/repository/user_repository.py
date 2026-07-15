@@ -82,36 +82,47 @@ class UserRepositry:
             updated_at=user_updated_at,
         )
 
-    async def search(self, user: UserSearch) -> List[User]:
+    async def search(
+        self, user: UserSearch, connection: AsyncConnection = None
+    ) -> List[User]:
+        if connection is not None:
+            return await self._search_implement(connection, user)
+
         async with self._database.connection() as conn:
             try:
-                search_comps = [user.display_name, user.email, user.provider.value]
-                terms = " ".join([item for item in search_comps if item])
-
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        WITH query AS (
-                            SELECT plainto_tsquery('english',  %s) AS q
-                        )
-                        SELECT 
-                            u.*,
-                            ts_rank(u.search_vector, q.q) AS rank
-                        FROM users u, query q
-                        WHERE u.search_vector @@ q.q
-                        ORDER BY rank DESC
-                        LIMIT %s
-                        OFFSET %s
-                        """,
-                        (terms, user.limit, user.offset),
-                    )
-
-                    rows = await cur.fetchall()
-
-                    users = []
-                    for row in rows:
-                        users.append(User.model_validate(row))
-
-                    return users
+                result = await self._search_implement(conn, user)
+                await conn.commit()
+                return result
             except errors.OperationalError as ex:
+                await conn.rollback()
                 raise
+
+    async def _search_implement(self, conn: AsyncConnection, user: UserSearch):
+        search_comps = [user.display_name, user.email, user.provider.value]
+        terms = " ".join([item for item in search_comps if item])
+
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                WITH query AS (
+                    SELECT plainto_tsquery('english',  %s) AS q
+                )
+                SELECT 
+                    u.*,
+                    ts_rank(u.search_vector, q.q) AS rank
+                FROM users u, query q
+                WHERE u.search_vector @@ q.q
+                ORDER BY rank DESC
+                LIMIT %s
+                OFFSET %s
+                """,
+                (terms, user.limit, user.offset),
+            )
+
+            rows = await cur.fetchall()
+
+        users = []
+        for row in rows:
+            users.append(User.model_validate(row))
+
+        return users
