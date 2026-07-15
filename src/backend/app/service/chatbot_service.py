@@ -13,6 +13,8 @@ from backend.app.model.chunk_model import Chunk
 from backend.app.schema.chunk_schema import ChunkSearchKeyword, ChunkSearchVector
 from backend.app.schema.chatbot_schema import (
     CaseAnalysisPipelineCaseFactsPayload,
+    GetCaseAnalysisResponse,
+    CaseAnalysisFactResponse,
     ChatPipelineResponse,
 )
 from backend.app.schema.case_analysis_schema import (
@@ -22,13 +24,13 @@ from backend.app.schema.case_analysis_schema import (
     CaseFactVersionCreate,
     CaseFactVersionUpdate,
     CaseFactVersionGetBySessionId,
+    CaseAnalysisGetByVersionNumber,
     CaseAnalysisVersionFactCreate,
 )
 
 from backend.app.service.llm_service import LLMService
 from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.reranker_service import RerankerService
-from backend.app.exception.chat_exception import ChatException
 
 from backend.app.repository.chunk_repository import ChunkRepository
 from backend.app.repository.case_fact_repository import CaseFactRepository
@@ -44,6 +46,9 @@ from backend.app.repository.case_analysis_version_repository import (
 from backend.app.repository.case_analysis_version_fact_repository import (
     CaseAnalysisVersionFactRepository,
 )
+
+from backend.app.exception.chat_exception import ChatException
+from backend.app.exception.not_found_exception import NotFoundException
 
 from backend.app.util.utility import format_conversation_history
 
@@ -70,9 +75,42 @@ class ChatbotService:
         self.__embedding_service = embedding_service
         self.__reranker_service = reranker_service
 
-    async def get_case_analysis_version(self): ...
+    async def get_case_analysis_version(
+        self, case_analysis_session_id: UUID, version_number: int
+    ):
+        await self.__ensure_valid_case_analysis_session_id(case_analysis_session_id)
+        
+        param = CaseAnalysisGetByVersionNumber(
+            case_analysis_session_id=case_analysis_session_id,
+            version_number=version_number,
+        )
 
-    async def run_case_analysis_pipeline(self, payload: CaseAnalysisPipelineCaseFactsPayload):
+        # Get case facts
+        case_fact_versions = await self.__case_fact_version_repo.get_by_version_number(param)
+        if not case_fact_versions:
+            raise NotFoundException(
+                f"No case fact versions found for session {case_analysis_session_id} version {version_number}",
+            )
+            
+        case_analysis_version = await self.__case_analysis_version_repo.get_by_version_number(param)
+        if not case_analysis_version:
+            raise NotFoundException(
+                f"No case analysis versions found for session {case_analysis_session_id} version {version_number}",
+            )
+            
+        return GetCaseAnalysisResponse(
+            case_analysis_session_id=case_analysis_session_id,
+            case_analysis=[
+                CaseAnalysisFactResponse(
+                    case_analysis=case_analysis_version,
+                    case_facts=case_fact_versions
+                )
+            ]
+        )
+
+    async def run_case_analysis_pipeline(
+        self, payload: CaseAnalysisPipelineCaseFactsPayload
+    ):
         if not payload.conversation_id:
             return await self.__run_fresh_case_analysis_pipeline(payload.new_case_facts)
         else:
@@ -160,15 +198,16 @@ class ChatbotService:
         updated_case_facts: Optional[Dict[UUID, str]] = None,
         deleted_case_facts: Optional[List[UUID]] = None,
     ):
+        await self.__ensure_valid_case_analysis_session_id(case_analysis_session_id)
+
         latest_analysis_version = (
             await self.__case_analysis_version_repo.get_latest_by_session_id(
                 case_analysis_session_id
             )
         )
         if not latest_analysis_version:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Latest case analysis version for session with id: {case_analysis_session_id} not found",
+            raise NotFoundException(
+                f"Latest case analysis version for session with id: {case_analysis_session_id} not found"
             )
         updated_analysis_version = latest_analysis_version.version_number + 1
 
@@ -488,7 +527,7 @@ class ChatbotService:
                 ],
                 connection=connection,
             )
-            
+
         await connection.commit()
 
     async def extract_issues(self, case_facts: List[str]) -> List[str]:
@@ -799,3 +838,14 @@ class ChatbotService:
         ]
 
         return [query, *generated_queries]
+
+
+    async def __ensure_valid_case_analysis_session_id(self, case_analysis_session_id: UUID):
+        is_session_existing = await self.__case_analysis_session_repo.is_existing_by_id(
+            case_analysis_session_id
+        )
+        if not is_session_existing:
+            raise NotFoundException(
+                f"Case analysis session with id: {case_analysis_session_id} not found"
+            )
+            
