@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -64,6 +64,13 @@ class CaseFactVersionGetBySessionId(PaginatableMixin, BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
+class CaseFactVersionResponse(BaseModel):
+    case_fact_id: UUID
+    case_fact_version_id: UUID
+    version_number: int
+    fact: str
+
+
 # Case Analysis Version =========================================
 
 
@@ -71,10 +78,18 @@ class CaseAnalysisVersionCreate(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     case_analysis_session_id: UUID
     version_number: int = Field(default=1)
-    answer: str
+    answer: str = Field(min_length=1)
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
+
+
+class CaseAnalysisVersionResponse(BaseModel):
+    id: UUID
+    version_number: int = Field(gt=0)
+    answer: str = Field(min_length=0)
+    created_at: datetime
+    case_facts: List[CaseFactVersionResponse] = Field(default_factory=[])
 
 
 class CaseAnalysisVersionFactCreate(BaseModel):
