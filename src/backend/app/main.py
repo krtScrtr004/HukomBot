@@ -1,5 +1,6 @@
 import logging
 
+from pydantic import BaseModel
 from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
@@ -7,7 +8,7 @@ from fastapi.responses import JSONResponse
 from backend.app.api.v1.endpoint.case_analysis import case_analysis_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
-from backend.app.schema.mixin import BaseResponse
+from backend.app.schema.mixin import ResponseMixin
 
 from backend.app.exception.chat_exception import ChatException
 from backend.app.exception.chunk_exception import ChunkFileException
@@ -22,6 +23,9 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 app = FastAPI(lifespan=lifespan)
+
+class BaseResponse(ResponseMixin, BaseModel):
+    ...
 
 # Routers ============================================================
 

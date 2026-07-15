@@ -66,7 +66,7 @@ class CaseAnalysisService:
         self._case_analysis_version_repo = CaseAnalysisVersionRepository(db)
         self._case_analysis_version_fact_repo = CaseAnalysisVersionFactRepository(db)
 
-        self._chatbot_service = ChatbotService()
+        self._chatbot_service = ChatbotService(db)
         self._embedding_service = embedding_service
         self._reranker_service = reranker_service
 
