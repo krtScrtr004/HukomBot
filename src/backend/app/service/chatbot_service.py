@@ -14,7 +14,6 @@ from backend.app.schema.chunk_schema import ChunkSearchKeyword, ChunkSearchVecto
 from backend.app.schema.chatbot_schema import (
     CaseAnalysisPipelineCaseFactsPayload,
     GetCaseAnalysisResponse,
-    CaseAnalysisFactResponse,
     ChatPipelineResponse,
 )
 from backend.app.schema.case_analysis_schema import (
@@ -101,7 +100,7 @@ class ChatbotService:
         return GetCaseAnalysisResponse(
             case_analysis_session_id=case_analysis_session_id,
             case_analysis=[
-                CaseAnalysisFactResponse(
+                GetCaseAnalysisResponse.CaseAnalysisFact(
                     case_analysis=case_analysis_version,
                     case_facts=case_fact_versions
                 )

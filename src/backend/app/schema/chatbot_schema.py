@@ -32,8 +32,14 @@ class ChatPipelineResponse(ResponseMixin, BaseModel):
 
 
 class GetCaseAnalysisResponse(ResponseMixin, BaseModel):
+    class CaseAnalysisFact(BaseModel):
+        case_analysis: CaseAnalysisVersion
+        case_facts: List[CaseFactVersion]
+
+        model_config = {"arbitrary_types_allowed": True}
+    
     case_analysis_session_id: UUID
-    case_analysis: List[CaseAnalysisFactResponse]
+    case_analysis: List[CaseAnalysisFact]
     
     model_config = {"arbitrary_types_allowed": True}
 
@@ -47,13 +53,6 @@ class GetCaseAnalysisResponse(ResponseMixin, BaseModel):
         }
 
         return result
-
-
-class CaseAnalysisFactResponse(BaseModel):
-    case_analysis: CaseAnalysisVersion
-    case_facts: List[CaseFactVersion]
-
-    model_config = {"arbitrary_types_allowed": True}
 
 
 # API Schemas ========================================
