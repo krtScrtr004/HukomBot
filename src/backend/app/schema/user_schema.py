@@ -7,7 +7,7 @@ from pydantic import BaseModel, model_validator, EmailStr, Field
 
 from backend.app.model.user_model import UserBase
 from backend.app.enum.oauth_provider import OAuthProvider
-from backend.app.schema.base_schema import PaginatableMixin
+from backend.app.schema.mixin import PaginatableMixin
 
 
 class UserCreate(UserBase):

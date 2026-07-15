@@ -2,7 +2,7 @@ from uuid import UUID, uuid4
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from backend.app.schema.base_schema import PaginatableMixin
+from backend.app.schema.mixin import PaginatableMixin
 
 
 class ChunkCreate(BaseModel):

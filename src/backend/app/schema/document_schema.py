@@ -11,7 +11,7 @@ from pydantic import (
     SerializerFunctionWrapHandler,
 )
 
-from backend.app.schema.base_schema import BaseResponse, PaginatableMixin
+from backend.app.schema.mixin import ResponseMixin, PaginatableMixin
 from backend.app.enum.upload_status import UploadStatus
 from backend.app.enum.legal_document_type import LegalDocumentType
 
@@ -70,7 +70,7 @@ class ApproveDocumentUploadPayload(BaseModel):
 # API Response ======================================================
 
 
-class DocumentUploadResponse(BaseResponse):
+class DocumentUploadResponse(ResponseMixin, BaseModel):
     document_id: UUID
     status: UploadStatus = Field(default=UploadStatus.PENDING)
 
@@ -88,7 +88,7 @@ class DocumentUploadResponse(BaseResponse):
         return result
 
 
-class DocumentUploadStatusResponse(BaseResponse):
+class DocumentUploadStatusResponse(ResponseMixin, BaseModel):
     status_value: UploadStatus
 
     model_config = {"arbitrary_types_allowed": True, "use_enum_values": True}

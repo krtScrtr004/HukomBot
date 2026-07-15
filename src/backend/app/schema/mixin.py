@@ -1,5 +1,5 @@
 from typing import Any, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 
 class PaginatableMixin:
@@ -7,7 +7,7 @@ class PaginatableMixin:
     offset: int = Field(default=0, ge=0)
 
 
-class BaseResponse(BaseModel):
+class ResponseMixin:
     messages: List[str] = Field(default_factory=list)
     data: Optional[Any] = None
     errors: List[str] = Field(default_factory=list)

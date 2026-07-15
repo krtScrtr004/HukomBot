@@ -10,11 +10,12 @@ from pydantic import (
     SerializerFunctionWrapHandler,
 )
 
+from backend.app.schema.mixin import ResponseMixin
 from backend.app.model.case_analysis_model import CaseAnalysisVersion, CaseFactVersion
-from backend.app.schema.base_schema import BaseResponse
 
+# API Response ===================================================
 
-class ChatPipelineResponse(BaseResponse):
+class ChatPipelineResponse(ResponseMixin, BaseModel):
     conversation_id: UUID = Field(default=None)
     answer: str
 
@@ -30,7 +31,7 @@ class ChatPipelineResponse(BaseResponse):
         return result
 
 
-class GetCaseAnalysisResponse(BaseResponse):
+class GetCaseAnalysisResponse(ResponseMixin, BaseModel):
     case_analysis_session_id: UUID
     case_analysis: List[CaseAnalysisFactResponse]
     

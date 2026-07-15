@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from backend.app.api.v1.endpoint.chatbot import chatbot_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
-from backend.app.schema.base_schema import BaseResponse
+from backend.app.schema.mixin import BaseResponse
 
 from backend.app.exception.chat_exception import ChatException
 from backend.app.exception.chunk_exception import ChunkFileException
