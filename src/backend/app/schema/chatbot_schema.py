@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from uuid import UUID
-from typing import List, Optional, Dict
+from typing import Any, List, Optional, Dict
 from pydantic import (
     BaseModel,
     Field,
@@ -10,6 +10,7 @@ from pydantic import (
     SerializerFunctionWrapHandler,
 )
 
+from backend.app.model.case_analysis_model import CaseAnalysisVersion, CaseFactVersion
 from backend.app.schema.base_schema import BaseResponse
 
 
@@ -17,7 +18,6 @@ class ChatPipelineResponse(BaseResponse):
     conversation_id: UUID = Field(default=None)
     answer: str
 
-    @classmethod
     @model_serializer(mode="wrap")
     def custom_serializer(self, handler: SerializerFunctionWrapHandler):
         result = handler(self)
@@ -28,6 +28,31 @@ class ChatPipelineResponse(BaseResponse):
         }
 
         return result
+
+
+class GetCaseAnalysisResponse(BaseResponse):
+    case_analysis_session_id: UUID
+    case_analysis: List[CaseAnalysisFactResponse]
+    
+    model_config = {"arbitrary_types_allowed": True}
+
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        result = handler(self)
+
+        result["data"] = {
+            "case_analysis_session_id": result.pop("case_analysis_session_id"),
+            "case_analysis": result.pop("case_analysis"),
+        }
+
+        return result
+
+
+class CaseAnalysisFactResponse(BaseModel):
+    case_analysis: CaseAnalysisVersion
+    case_facts: List[CaseFactVersion]
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 # API Schemas ========================================
@@ -72,7 +97,10 @@ class CaseAnalysisPipelineCaseFactsPayload(BaseModel):
     def is_allowed_case_fact(self) -> CaseAnalysisPipelineCaseFactsPayload:
         if self.new_case_facts is not None:
             for case_fact in self.new_case_facts:
-                if len(case_fact) < CASE_FACT_MIN_LEN or len(case_fact) > CASE_FACT_MAX_LEN:
+                if (
+                    len(case_fact) < CASE_FACT_MIN_LEN
+                    or len(case_fact) > CASE_FACT_MAX_LEN
+                ):
                     raise ValueError(
                         f"Each case fact must be between {CASE_FACT_MIN_LEN} and {CASE_FACT_MAX_LEN} only"
                     )
