@@ -3,7 +3,13 @@ from __future__ import annotations
 from uuid import UUID
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    model_validator,
+    model_serializer,
+    SerializerFunctionWrapHandler,
+)
 
 
 class CaseAnalysisSession(BaseModel):
@@ -31,6 +37,13 @@ class CaseFact(BaseModel):
             self.case_analysis_session_id = self.case_analysis_session.id
         return self
 
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        result = handler(self)
+        result.pop("case_analysis_session")
+        return result
+
+
 
 class CaseFactVersion(BaseModel):
     id: UUID
@@ -51,6 +64,12 @@ class CaseFactVersion(BaseModel):
             self.case_fact_id = self.case_fact.id
         return self
 
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        result = handler(self)
+        result.pop("case_fact")
+        return result
+
 
 class CaseAnalysisVersion(BaseModel):
     id: UUID
@@ -69,6 +88,13 @@ class CaseAnalysisVersion(BaseModel):
         if self.case_analysis_session is not None and self.case_analysis_session_id:
             self.case_analysis_session_id = self.case_analysis_session.id
         return self
+
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        result = handler(self)
+        result.pop("case_analysis_session")
+        return result
+
 
 
 class CaseAnalysisVersionFact(BaseModel):
@@ -93,3 +119,10 @@ class CaseAnalysisVersionFact(BaseModel):
             self.case_fact_version_id = self.case_fact_version.id
 
         return self
+
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        result = handler(self)
+        result.pop("case_analysis_version")
+        result.pop("case_fact_version")
+        return result

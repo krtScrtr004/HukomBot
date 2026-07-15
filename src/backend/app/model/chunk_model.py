@@ -2,7 +2,13 @@ from __future__ import annotations
 from uuid import UUID
 from typing import Optional
 from typing import List, Optional
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    model_validator,
+    model_serializer,
+    SerializerFunctionWrapHandler,
+)
 
 from backend.app.model.document_model import Document
 
@@ -15,7 +21,8 @@ class Chunk(BaseModel):
     section: Optional[str] = Field(default=None)
     embedding: List
 
-    document: Optional[Document] = Field(default=None)  # Navigation prop
+    # Navigation prop
+    document: Optional[Document] = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
 
@@ -25,3 +32,9 @@ class Chunk(BaseModel):
         if self.document is not None and self.document_id is None:
             self.document_id = self.document.id
         return self
+
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        result = handler(self)
+        result.pop("document")
+        return result
