@@ -3,14 +3,17 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field
 
+from backend.app.schema.base_schema import PaginatableMixin
 
-class CaseAnalysisGetByVersionNumber(BaseModel):
+
+class CaseAnalysisGetByVersionNumber(PaginatableMixin, BaseModel):
     version_number: int
     case_analysis_session_id: Optional[UUID] = Field(default=None)
-    limit: int = Field(default=10, gt=0, lt=100)
-    offset: int = Field(default=0, ge=0)
 
     model_config = {"arbitrary_types_allowed": True}
+
+
+# Case Analysis Session ======================================
 
 
 class CaseAnalysisSessionCreate(BaseModel):
@@ -21,12 +24,18 @@ class CaseAnalysisSessionCreate(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
+# Case Fact ==================================================
+
+
 class CaseFactCreate(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     case_analysis_session_id: UUID
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
+
+
+# Case Fact Version ==========================================
 
 
 class CaseFactVersionCreate(BaseModel):
@@ -49,12 +58,13 @@ class CaseFactVersionUpdate(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-class CaseFactVersionGetBySessionId(BaseModel):
+class CaseFactVersionGetBySessionId(PaginatableMixin, BaseModel):
     case_analysis_session_id: UUID
-    limit: int = Field(default=10, gt=0, lt=100)
-    offset: int = Field(default=0, ge=0)
 
     model_config = {"arbitrary_types_allowed": True}
+
+
+# Case Analysis Version =========================================
 
 
 class CaseAnalysisVersionCreate(BaseModel):

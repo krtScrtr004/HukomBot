@@ -2,6 +2,8 @@ from uuid import UUID, uuid4
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+from backend.app.schema.base_schema import PaginatableMixin
+
 
 class ChunkCreate(BaseModel):
     id: UUID = Field(default_factory=uuid4())
@@ -14,13 +16,9 @@ class ChunkCreate(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-class ChunkSearchKeyword(BaseModel):
+class ChunkSearchKeyword(PaginatableMixin, BaseModel):
     text: str = Field(min_length=1, max_length=10000)
-    limit: int = Field(default=10, gt=0, lt=100)
-    offset: int = Field(default=0, ge=0)
 
 
-class ChunkSearchVector(BaseModel):
+class ChunkSearchVector(PaginatableMixin, BaseModel):
     embeddings: List
-    limit: int = Field(default=10, gt=0, lt=100)
-    offset: int = Field(default=0, ge=0)

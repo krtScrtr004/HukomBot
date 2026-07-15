@@ -7,6 +7,7 @@ from pydantic import BaseModel, model_validator, EmailStr, Field
 
 from backend.app.model.user_model import UserBase
 from backend.app.enum.oauth_provider import OAuthProvider
+from backend.app.schema.base_schema import PaginatableMixin
 
 
 class UserCreate(UserBase):
@@ -14,7 +15,7 @@ class UserCreate(UserBase):
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
     token_expires_at: Optional[datetime] = None
-    
+
     model_config = {"arbitrary_types_allowed": True}
 
 
@@ -27,12 +28,10 @@ class UserUpdate(BaseModel):
     avatar_url: Optional[str] = None
 
 
-class UserSearch(BaseModel):
+class UserSearch(PaginatableMixin, BaseModel):
     display_name: Optional[str] = None
     email: Optional[EmailStr] = None
     provider: Optional[OAuthProvider] = None
-    limit: int = 10
-    offset: int = 0
 
     model_config = {"arbitrary_types_allowed": True}
 

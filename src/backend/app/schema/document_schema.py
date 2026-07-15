@@ -11,7 +11,7 @@ from pydantic import (
     SerializerFunctionWrapHandler,
 )
 
-from backend.app.schema.base_schema import BaseResponse
+from backend.app.schema.base_schema import BaseResponse, PaginatableMixin
 from backend.app.enum.upload_status import UploadStatus
 from backend.app.enum.legal_document_type import LegalDocumentType
 
@@ -44,14 +44,12 @@ class DocumentUpdate(BaseModel):
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
-class DocumentSearch(BaseModel):
+class DocumentSearch(PaginatableMixin, BaseModel):
     original_file_name: Optional[str] = Field(
         default=None, min_length=1, max_length=300
     )
     document_type: LegalDocumentType
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
-    limit: int = Field(default=10, gt=0, lt=100)
-    offset: int = Field(default=0, ge=0)
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
@@ -60,6 +58,16 @@ class DocumentSearch(BaseModel):
         if self.original_file_name is None and self.file_type is None:
             raise ValueError("At least one of 'title' or 'file_type' must be provided")
         return self
+
+
+# API Schemas ========================================
+
+
+class ApproveDocumentUploadPayload(BaseModel):
+    document_type: Optional[LegalDocumentType] = Field(default=None)
+
+
+# API Response ======================================================
 
 
 class DocumentUploadResponse(BaseResponse):
@@ -78,32 +86,26 @@ class DocumentUploadResponse(BaseResponse):
         }
 
         return result
-    
+
 
 class DocumentUploadStatusResponse(BaseResponse):
     status_value: UploadStatus
-    
+
     model_config = {"arbitrary_types_allowed": True, "use_enum_values": True}
-    
+
     @model_serializer(mode="wrap")
     def custom_serializer(self, handler: SerializerFunctionWrapHandler):
-        status_display_name =  None
+        status_display_name = None
         if isinstance(self.status_value, UploadStatus):
             status_display_name = self.status_value.display_name()
         else:
             status_display_name = UploadStatus(self.status_value).display_name()
-        
+
         result = handler(self)
 
         result["data"] = {
             "status_value": result.pop("status_value"),
-            "status_display_name": status_display_name
+            "status_display_name": status_display_name,
         }
 
         return result
-
-
-# API Schemas ========================================
-
-class ApproveDocumentUploadPayload(BaseModel):
-    document_type: Optional[LegalDocumentType] = Field(default=None)
