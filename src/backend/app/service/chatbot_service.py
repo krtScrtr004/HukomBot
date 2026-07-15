@@ -61,23 +61,23 @@ class ChatbotService:
         embedding_service: EmbeddingService,
         reranker_service: RerankerService,
     ):
-        self.__db = db
+        self._db = db
 
-        self.__chunk_repo = ChunkRepository(db)
-        self.__case_fact_repo = CaseFactRepository(db)
-        self.__case_fact_version_repo = CaseFactVersionRepository(db)
-        self.__case_analysis_session_repo = CaseAnalysisSessionRepository(db)
-        self.__case_analysis_version_repo = CaseAnalysisVersionRepository(db)
-        self.__case_analysis_version_fact_repo = CaseAnalysisVersionFactRepository(db)
+        self._chunk_repo = ChunkRepository(db)
+        self._case_fact_repo = CaseFactRepository(db)
+        self._case_fact_version_repo = CaseFactVersionRepository(db)
+        self._case_analysis_session_repo = CaseAnalysisSessionRepository(db)
+        self._case_analysis_version_repo = CaseAnalysisVersionRepository(db)
+        self._case_analysis_version_fact_repo = CaseAnalysisVersionFactRepository(db)
 
-        self.__llm_service = LLMService()
-        self.__embedding_service = embedding_service
-        self.__reranker_service = reranker_service
+        self._llm_service = LLMService()
+        self._embedding_service = embedding_service
+        self._reranker_service = reranker_service
 
     async def get_case_analysis_version(
         self, case_analysis_session_id: UUID, version_number: int
     ):
-        await self.__ensure_valid_case_analysis_session_id(case_analysis_session_id)
+        await self._ensure_valid_case_analysis_session_id(case_analysis_session_id)
         
         param = CaseAnalysisGetByVersionNumber(
             case_analysis_session_id=case_analysis_session_id,
@@ -85,13 +85,13 @@ class ChatbotService:
         )
 
         # Get case facts
-        case_fact_versions = await self.__case_fact_version_repo.get_by_version_number(param)
+        case_fact_versions = await self._case_fact_version_repo.get_by_version_number(param)
         if not case_fact_versions:
             raise NotFoundException(
                 f"No case fact versions found for session {case_analysis_session_id} version {version_number}",
             )
             
-        case_analysis_version = await self.__case_analysis_version_repo.get_by_version_number(param)
+        case_analysis_version = await self._case_analysis_version_repo.get_by_version_number(param)
         if not case_analysis_version:
             raise NotFoundException(
                 f"No case analysis versions found for session {case_analysis_session_id} version {version_number}",
@@ -111,31 +111,31 @@ class ChatbotService:
         self, payload: CaseAnalysisPipelineCaseFactsPayload
     ):
         if not payload.conversation_id:
-            return await self.__run_fresh_case_analysis_pipeline(payload.new_case_facts)
+            return await self._run_fresh_case_analysis_pipeline(payload.new_case_facts)
         else:
-            return await self.__run_existing_case_analysis_pipeline(
+            return await self._run_existing_case_analysis_pipeline(
                 payload.conversation_id,
                 payload.new_case_facts,
                 payload.updated_case_facts,
                 payload.deleted_case_facts,
             )
 
-    async def __run_fresh_case_analysis_pipeline(self, case_facts: List[str]):
+    async def _run_fresh_case_analysis_pipeline(self, case_facts: List[str]):
         session = CaseAnalysisSessionCreate()
 
-        final_answer = await self.__process_case_analysis_llm_pipeline(
+        final_answer = await self._process_case_analysis_llm_pipeline(
             session.id, case_facts
         )
 
         # Perform db operation
-        async with self.__db.connection() as conn:
+        async with self._db.connection() as conn:
             try:
                 # Create session db instance
-                await self.__case_analysis_session_repo.create(session, connection=conn)
+                await self._case_analysis_session_repo.create(session, connection=conn)
                 logger.info("Created new case analysis session with id: %s", session.id)
 
                 # Create case facts db instance
-                case_fact_objs = await self.__case_fact_repo.create_many(
+                case_fact_objs = await self._case_fact_repo.create_many(
                     [
                         CaseFactCreate(case_analysis_session_id=session.id)
                         for _ in case_facts
@@ -143,7 +143,7 @@ class ChatbotService:
                     connection=conn,
                 )
 
-                case_fact_version_objs = await self.__case_fact_version_repo.create_many(
+                case_fact_version_objs = await self._case_fact_version_repo.create_many(
                     [
                         CaseFactVersionCreate(
                             case_fact_id=fact.id,
@@ -157,7 +157,7 @@ class ChatbotService:
                 )
 
                 # Create analysis version db instance
-                case_analysis_version = await self.__case_analysis_version_repo.create(
+                case_analysis_version = await self._case_analysis_version_repo.create(
                     CaseAnalysisVersionCreate(
                         case_analysis_session_id=session.id,
                         version_number=1,  # Always 1st version on fresh conversation
@@ -166,7 +166,7 @@ class ChatbotService:
                     connection=conn,
                 )
 
-                await self.__case_analysis_version_fact_repo.create_many(
+                await self._case_analysis_version_fact_repo.create_many(
                     [
                         CaseAnalysisVersionFactCreate(
                             case_analysis_version_id=case_analysis_version.id,
@@ -188,19 +188,19 @@ class ChatbotService:
                     answer=final_answer,
                 )
             except Exception as ex:
-                await self.__rollback_case_analysis_pipeline(session.id, conn, ex)
+                await self._rollback_case_analysis_pipeline(session.id, conn, ex)
 
-    async def __run_existing_case_analysis_pipeline(
+    async def _run_existing_case_analysis_pipeline(
         self,
         case_analysis_session_id: UUID,
         new_case_facts: Optional[List[str]] = None,
         updated_case_facts: Optional[Dict[UUID, str]] = None,
         deleted_case_facts: Optional[List[UUID]] = None,
     ):
-        await self.__ensure_valid_case_analysis_session_id(case_analysis_session_id)
+        await self._ensure_valid_case_analysis_session_id(case_analysis_session_id)
 
         latest_analysis_version = (
-            await self.__case_analysis_version_repo.get_latest_by_session_id(
+            await self._case_analysis_version_repo.get_latest_by_session_id(
                 case_analysis_session_id
             )
         )
@@ -215,12 +215,12 @@ class ChatbotService:
         created_updated_case_fact_version_ids = []
 
         # PHASE 1: Perform creation / modification of case facts in the db
-        async with self.__db.connection() as conn:
+        async with self._db.connection() as conn:
             try:
                 # Create new case facts
                 if new_case_facts:
                     # Create case facts db instance
-                    case_fact_objs = await self.__case_fact_repo.create_many(
+                    case_fact_objs = await self._case_fact_repo.create_many(
                         [
                             CaseFactCreate(
                                 case_analysis_session_id=case_analysis_session_id
@@ -232,7 +232,7 @@ class ChatbotService:
                     created_new_case_fact_ids = [cf.id for cf in case_fact_objs]
 
                     # Create case fact version for new case facts
-                    await self.__case_fact_version_repo.create_many(
+                    await self._case_fact_version_repo.create_many(
                         [
                             CaseFactVersionCreate(
                                 case_fact_id=fact.id,
@@ -246,12 +246,12 @@ class ChatbotService:
                     )
 
                 # Create new version for updated case facts
-                case_fact_for_update = self.__create_case_fact_version_for_update(
+                case_fact_for_update = self._create_case_fact_version_for_update(
                     updated_case_facts or []
                 )
                 if case_fact_for_update:
                     case_fact_version_objs = (
-                        await self.__case_fact_version_repo.create_updated_many(
+                        await self._case_fact_version_repo.create_updated_many(
                             case_fact_for_update,
                             connection=conn,
                         )
@@ -261,26 +261,26 @@ class ChatbotService:
                     ]
 
                 # Mark case facts for deletion in the db
-                case_facts_for_deletion = self.__create_case_fact_version_for_deletion(
+                case_facts_for_deletion = self._create_case_fact_version_for_deletion(
                     deleted_case_facts or []
                 )
                 if case_facts_for_deletion:
-                    await self.__case_fact_version_repo.update_many(
+                    await self._case_fact_version_repo.update_many(
                         case_facts=case_facts_for_deletion, connection=conn
                     )
 
                 await conn.commit()
             except Exception as ex:
-                await self.__rollback_case_analysis_pipeline(
+                await self._rollback_case_analysis_pipeline(
                     case_analysis_session_id, conn, ex
                 )
 
         # PHASE 2: Generate answer / create analysis version
-        async with self.__db.connection() as conn:
+        async with self._db.connection() as conn:
             try:
                 # Get latest case analysis version
                 latest_case_fact_objects = (
-                    await self.__case_fact_version_repo.get_latest_by_session_id(
+                    await self._case_fact_version_repo.get_latest_by_session_id(
                         CaseFactVersionGetBySessionId(
                             case_analysis_session_id=case_analysis_session_id
                         )
@@ -295,14 +295,14 @@ class ChatbotService:
                         if cf.id in deleted_case_facts:
                             latest_case_fact_objects.remove(cf)
 
-                final_answer = await self.__process_case_analysis_llm_pipeline(
+                final_answer = await self._process_case_analysis_llm_pipeline(
                     case_analysis_session_id,
                     [fact.fact for fact in latest_case_fact_objects],
                 )
 
                 # Create analysis version db instance
                 case_analysis_version_fact = (
-                    await self.__case_analysis_version_repo.create(
+                    await self._case_analysis_version_repo.create(
                         CaseAnalysisVersionCreate(
                             case_analysis_session_id=case_analysis_session_id,
                             version_number=updated_analysis_version,
@@ -312,7 +312,7 @@ class ChatbotService:
                     )
                 )
 
-                await self.__case_analysis_version_fact_repo.create_many(
+                await self._case_analysis_version_fact_repo.create_many(
                     [
                         CaseAnalysisVersionFactCreate(
                             case_analysis_version_id=case_analysis_version_fact.id,
@@ -342,18 +342,18 @@ class ChatbotService:
                     or created_updated_case_fact_version_ids
                     or deleted_case_facts
                 ):
-                    await self.__rollback_phase_one(
+                    await self._rollback_phase_one(
                         conn,
                         created_new_case_fact_ids,
                         created_updated_case_fact_version_ids,
                         deleted_case_facts,
                     )
 
-                await self.__rollback_case_analysis_pipeline(
+                await self._rollback_case_analysis_pipeline(
                     case_analysis_session_id, conn, ex
                 )
 
-    async def __process_case_analysis_llm_pipeline(
+    async def _process_case_analysis_llm_pipeline(
         self, case_analysis_session_id: UUID, case_facts: List[str]
     ) -> str:
         # Extract legal issues from case facts
@@ -367,7 +367,7 @@ class ChatbotService:
             raise ChatException("Cannot generate queries for legal issues extracted")
 
         # Vector Search
-        vector_results = await self.__retrieve_from_vector_search(generated_queries)
+        vector_results = await self._retrieve_from_vector_search(generated_queries)
         logger.info(
             "Fetched %i chunks from vector search for sesssion with id: %s",
             len(vector_results),
@@ -375,7 +375,7 @@ class ChatbotService:
         )
 
         # Keyword Search
-        keyword_result = await self.__retrieve_from_keyword_search(generated_queries)
+        keyword_result = await self._retrieve_from_keyword_search(generated_queries)
         logger.info(
             "Fetched %i chunks from keyword search for sesssion with id: %s",
             len(keyword_result),
@@ -389,43 +389,43 @@ class ChatbotService:
                 answer="",
             )
 
-        deduplicated_result = self.__deduplicate_results(vector_results, keyword_result)
+        deduplicated_result = self._deduplicate_results(vector_results, keyword_result)
         reranked_result = await run_in_threadpool(
-            self.__reranker_service.rerank, "\n".join(case_facts), deduplicated_result
+            self._reranker_service.rerank, "\n".join(case_facts), deduplicated_result
         )
 
         final_answer = await self.generate_answer(
-            "\n".join(case_facts), self.__format_context(reranked_result[:10])
+            "\n".join(case_facts), self._format_context(reranked_result[:10])
         )
 
         return final_answer
 
-    async def __retrieve_from_vector_search(self, queries: list[str], limit: int = 20):
+    async def _retrieve_from_vector_search(self, queries: list[str], limit: int = 20):
         results = []
         for query in queries:
             embedding = await run_in_threadpool(
-                self.__embedding_service.embed_query, query
+                self._embedding_service.embed_query, query
             )  # Create embeddings for query
             results.extend(
-                await self.__chunk_repo.search_vector(
+                await self._chunk_repo.search_vector(
                     ChunkSearchVector(embeddings=embedding, limit=limit)
                 )
             )
 
         return results
 
-    async def __retrieve_from_keyword_search(self, queries: list[str], limit: int = 20):
+    async def _retrieve_from_keyword_search(self, queries: list[str], limit: int = 20):
         results = []
         for query in queries:
             results.extend(
-                await self.__chunk_repo.search(
+                await self._chunk_repo.search(
                     ChunkSearchKeyword(text=query, limit=limit)
                 )
             )
 
         return results
 
-    def __deduplicate_results(
+    def _deduplicate_results(
         self, vector_results: List[Chunk], keyword_results: List[Chunk]
     ) -> list[Chunk]:
         unique_results = {}
@@ -437,7 +437,7 @@ class ChatbotService:
 
         return list(unique_results.values())
 
-    def __format_context(self, results: List[Chunk]) -> str:
+    def _format_context(self, results: List[Chunk]) -> str:
         formatted_results = []
         for result in results:
             document = result.document
@@ -458,7 +458,7 @@ class ChatbotService:
 
         return "\n\n---\n\n".join(formatted_results)
 
-    def __create_case_fact_version_for_update(
+    def _create_case_fact_version_for_update(
         self, updated_case_facts: Dict[UUID, str]
     ):
         case_fact_for_update = []
@@ -475,7 +475,7 @@ class ChatbotService:
 
         return case_fact_for_update
 
-    def __create_case_fact_version_for_deletion(self, deleted_case_facts: List[UUID]):
+    def _create_case_fact_version_for_deletion(self, deleted_case_facts: List[UUID]):
         case_facts_for_deletion = []
         for case_fact_id in deleted_case_facts:
             case_facts_for_deletion.append(
@@ -487,7 +487,7 @@ class ChatbotService:
 
         return case_facts_for_deletion
 
-    async def __rollback_case_analysis_pipeline(
+    async def _rollback_case_analysis_pipeline(
         self, case_analysis_session_id: UUID, conn: AsyncConnection, exc: Exception
     ):
         logger.error(
@@ -499,7 +499,7 @@ class ChatbotService:
         logger.exception(str(exc))
         raise
 
-    async def __rollback_phase_one(
+    async def _rollback_phase_one(
         self,
         connection: AsyncConnection,
         created_case_fact_ids: List[UUID] = [],
@@ -508,18 +508,18 @@ class ChatbotService:
     ):
         # Rollback new case facts
         if created_case_fact_ids:
-            await self.__case_fact_repo.delete_many(
+            await self._case_fact_repo.delete_many(
                 created_case_fact_ids, connection=connection
             )
 
         # Rollback updated case fact versions
         if updated_case_fact_version_ids:
-            await self.__case_fact_version_repo.delete_many(
+            await self._case_fact_version_repo.delete_many(
                 updated_case_fact_version_ids, connection=connection
             )
 
         if deleted_case_fact_version_ids:
-            await self.__case_fact_version_repo.update_many(
+            await self._case_fact_version_repo.update_many(
                 [
                     CaseFactVersionUpdate(id=cfv, is_deleted=False)
                     for cfv in deleted_case_fact_version_ids
@@ -600,7 +600,7 @@ class ChatbotService:
         Whether ...
         """
 
-        response = await self.__llm_service.chat(
+        response = await self._llm_service.chat(
             prompt=prompt, temperature=0.1, max_tokens=500
         )
         if not response:
@@ -663,7 +663,7 @@ class ChatbotService:
         Breach of software development service agreement Philippines
         """
 
-        response = await self.__llm_service.chat(prompt=prompt, temperature=0)
+        response = await self._llm_service.chat(prompt=prompt, temperature=0)
         if not response:
             return [legal_issues[0]] if legal_issues else []
 
@@ -764,7 +764,7 @@ class ChatbotService:
         This analysis is intended solely for legal research and informational purposes. It is based only on the retrieved materials provided and does not constitute legal advice or a substitute for consultation with a qualified legal professional.
         """
 
-        response = await self.__llm_service.chat(
+        response = await self._llm_service.chat(
             temperature=0,
             prompt=prompt,
         )
@@ -802,7 +802,7 @@ class ChatbotService:
         Standalone Search Query:
         """
 
-        response = await self.__llm_service.chat(
+        response = await self._llm_service.chat(
             temperature=0,
             prompt=prompt,
         )
@@ -825,7 +825,7 @@ class ChatbotService:
         {query}
         """
 
-        response = await self.__llm_service.chat(
+        response = await self._llm_service.chat(
             temperature=0,
             prompt=prompt,
         )
@@ -839,8 +839,8 @@ class ChatbotService:
         return [query, *generated_queries]
 
 
-    async def __ensure_valid_case_analysis_session_id(self, case_analysis_session_id: UUID):
-        is_session_existing = await self.__case_analysis_session_repo.is_existing_by_id(
+    async def _ensure_valid_case_analysis_session_id(self, case_analysis_session_id: UUID):
+        is_session_existing = await self._case_analysis_session_repo.is_existing_by_id(
             case_analysis_session_id
         )
         if not is_session_existing:

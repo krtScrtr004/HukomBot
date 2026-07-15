@@ -11,8 +11,8 @@ from backend.app.util.utility import get_project_root
 
 class FileStorageService:
     def __init__(self):
-        self.__DATA_PATH = get_project_root() / "data"
-        self.__DATA_PATH.mkdir(parents=True, exist_ok=True)
+        self._DATA_PATH = get_project_root() / "data"
+        self._DATA_PATH.mkdir(parents=True, exist_ok=True)
         
     async def read_file(self, path: Path) -> bytes:
         return await run_in_threadpool(path.read_bytes)
@@ -36,7 +36,7 @@ class FileStorageService:
         destination.unlink()
 
     def __pending_path(self) -> Path:
-        pending_path = self.__DATA_PATH / "pending"
+        pending_path = self._DATA_PATH / "pending"
         pending_path.mkdir(parents=True, exist_ok=True)
 
         return pending_path

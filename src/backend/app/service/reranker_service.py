@@ -6,7 +6,7 @@ from backend.app.core.settings import Settings
 
 
 class RerankerService:
-    __instance: RerankerService | None = None
+    _instance: RerankerService | None = None
 
     def __init__(
         self,
@@ -17,15 +17,15 @@ class RerankerService:
 
     @classmethod
     def initialize(cls) -> RerankerService:
-        if cls.__instance is None:
-            cls.__instance = cls()
-        return cls.__instance
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
 
     @classmethod
     def get_instance(cls) -> RerankerService:
-        if cls.__instance is None:
+        if cls._instance is None:
             return RuntimeError("Rerank service is not initialized")
-        return cls.__instance
+        return cls._instance
 
     def rerank(self, query: str, chunks: list[Chunk]):
         pairs = [(query, chunk.chunk_text) for chunk in chunks]

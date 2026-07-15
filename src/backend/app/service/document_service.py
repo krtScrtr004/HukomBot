@@ -41,11 +41,11 @@ class DocumentService:
     ALLOWED_FILE_TYPES = {"application/pdf"}
 
     def __init__(self, db: Database):
-        self.__document_repo = DocumentRepository(db=db)
-        self.__chunk_repo = ChunkRepository(db=db)
+        self._document_repo = DocumentRepository(db=db)
+        self._chunk_repo = ChunkRepository(db=db)
 
-        self.__embedding_service = EmbeddingService()
-        self.__file_storage_service = FileStorageService()
+        self._embedding_service = EmbeddingService()
+        self._file_storage_service = FileStorageService()
 
     async def create_pending_document(
         self, file: UploadFile, document_type: LegalDocumentType
@@ -65,7 +65,7 @@ class DocumentService:
 
         try:
             # Check for existing document by file digest
-            existing_document = await self.__document_repo.get_by_digest(digest)
+            existing_document = await self._document_repo.get_by_digest(digest)
             if existing_document:
                 logger.info("Document with id: %s already exists", existing_document.id)
                 return DocumentUploadResponse(
@@ -75,11 +75,11 @@ class DocumentService:
                 )
 
             # Save pending document to data/pending/ folder
-            await self.__file_storage_service.save_to_pending(
+            await self._file_storage_service.save_to_pending(
                 upload_file_name, contents, suffix
             )
 
-            created_document = await self.__document_repo.create(
+            created_document = await self._document_repo.create(
                 DocumentCreate(
                     original_file_name=original_file_name,
                     upload_file_name=upload_file_name,
@@ -100,7 +100,7 @@ class DocumentService:
             )
         except Exception:
             # Rollback file creation
-            self.__file_storage_service.delete_from_pending(
+            self._file_storage_service.delete_from_pending(
                 f"{upload_file_name}.{suffix.lstrip(".")}"
             )
             raise
@@ -111,7 +111,7 @@ class DocumentService:
         payload: ApproveDocumentUploadPayload,
         background_tasks: BackgroundTasks,
     ):
-        document = await self.__document_repo.get_by_id(document_id)
+        document = await self._document_repo.get_by_id(document_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
 
@@ -122,7 +122,7 @@ class DocumentService:
                 status=UploadStatus.COMPLETED,
             )
 
-        file = self.__file_storage_service.get_pending_file(
+        file = self._file_storage_service.get_pending_file(
             document.upload_file_name, document.file_type
         )
 
@@ -132,7 +132,7 @@ class DocumentService:
             if payload.document_type is not None
             else document.document_type
         )
-        background_tasks.add_task(self.__process_document_pdf_upload, document, file)
+        background_tasks.add_task(self._process_document_pdf_upload, document, file)
 
         return DocumentUploadResponse(
             messages=["File upload is ongoing"],
@@ -140,10 +140,10 @@ class DocumentService:
             status=UploadStatus.ONGOING,
         )
 
-    async def __process_document_pdf_upload(self, document: Document, file: Path):
+    async def _process_document_pdf_upload(self, document: Document, file: Path):
         try:
             # Set document upload status to ONGOING
-            await self.__document_repo.update(
+            await self._document_repo.update(
                 DocumentUpdate(
                     id=document.id,
                     document_type=document.document_type,
@@ -172,7 +172,7 @@ class DocumentService:
                 )
 
             texts = [chunk["document"] for chunk in chunks]
-            embeddings = self.__embedding_service.embed_documents(texts)
+            embeddings = self._embedding_service.embed_documents(texts)
 
             # Map embeddings back to the chunk models
             for i, embedding in enumerate(embeddings):
@@ -180,10 +180,10 @@ class DocumentService:
                 if chunk_model:
                     chunk_model.embedding = embedding
 
-            await self.__chunk_repo.create_many(list(document_chunks.values()))
+            await self._chunk_repo.create_many(list(document_chunks.values()))
 
             # Set document upload status to COMPLETED
-            await self.__document_repo.update(
+            await self._document_repo.update(
                 DocumentUpdate(
                     id=document.id,
                     upload_status=UploadStatus.COMPLETED,
@@ -201,12 +201,12 @@ class DocumentService:
             )
 
             # Delete file in the server
-            await self.__file_storage_service.delete_from_pending(file.name)
+            await self._file_storage_service.delete_from_pending(file.name)
 
             logger.info("Document %s successfully deleted", file.name)
         except Exception as ex:
             # Set document upload status to FAILED
-            await self.__document_repo.update(
+            await self._document_repo.update(
                 DocumentUpdate(
                     id=document.id,
                     upload_status=UploadStatus.FAILED,
@@ -221,7 +221,7 @@ class DocumentService:
             logger.exception(str(ex))
 
     async def get_upload_status(self, document_id: UUID):
-        upload_status = await self.__document_repo.get_upload_status_by_id(document_id)
+        upload_status = await self._document_repo.get_upload_status_by_id(document_id)
         if not upload_status:
             raise HTTPException(status_code=404, detail="Document not found")
 
