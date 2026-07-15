@@ -5,9 +5,13 @@ load_dotenv()
 
 class Settings:
     # -- LLMService --
-    LLM_API_KEY: str = os.getenv("OPEN_ROUTER_API_KEY")
-    LLM_MODEL: str = "openrouter/free"
-    LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPEN_ROUTER_API_KEY: str = os.getenv("OPEN_ROUTER_API_KEY")
+    OPEN_ROUTER_MODEL: str = "openrouter/free"
+    OPEN_ROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    
+    NVIDIA_API_KEY: str = os.getenv("NVIDIA_API_KEY")
+    NVIDIA_MODEL: str = "z-ai/glm-5.2"
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
     
     
     # -- EmbedService --
