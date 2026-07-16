@@ -6,6 +6,7 @@ class ChunkFileException(AppException):
         self,
         message: str = "Chunks failed to extract.",
         status_code: int = 400,
-        code: str = "CHUNK_EXTRACTION_FAILED",  # <-- Added a machine-readable code
+        code: str = "CHUNK_EXTRACTION_FAILED",
+        details: list[str] = list   
     ):
-        super().__init__(message, status_code, code)
+        super().__init__(message, status_code, code, details)

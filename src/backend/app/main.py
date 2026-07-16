@@ -64,8 +64,13 @@ async def handle_custom_exception(request: Request, exc: Exception):
     status_code = getattr(exc, "status_code", 400)
     message = getattr(exc, "message", "An application rule was violated.")
 
+    error_details = [
+        ErrorDetail(issue=iss)
+        for iss in getattr(exc, "details", [])
+    ]
+
     response_payload = ErrorResponse(
-        error=ErrorPayload(code=code, message=message, details=[])
+        error=ErrorPayload(code=code, message=message, details=error_details)
     )
     return JSONResponse(
         status_code=status_code,
