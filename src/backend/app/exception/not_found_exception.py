@@ -6,6 +6,6 @@ class NotFoundException(AppException):
         self,
         message: str = "Not Found",
         code: str = "ENTITY_NOT_FOUND",
-        details: list[str] = list,
+        details: list[str] = [],
     ):
         super().__init__(message, 404, code, details)
