@@ -1,6 +1,7 @@
 import logging
+import openai
 
-from pydantic import BaseModel
+from pydantic import ValidationError
 from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
@@ -8,7 +9,8 @@ from fastapi.responses import JSONResponse
 from backend.app.api.v1.endpoint.case_analysis import case_analysis_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
-from backend.app.schema.mixin import ResponseMixin
+# Import your new strict schemas here
+from backend.app.schema.response_schema import ErrorResponse, ErrorPayload, ErrorDetail
 
 from backend.app.exception.chat_exception import ChatException
 from backend.app.exception.chunk_exception import ChunkFileException
@@ -19,72 +21,228 @@ from backend.app.api.v1.dependency import lifespan
 from backend.app.core.logger import setup_logging
 
 setup_logging()
-
 logger = logging.getLogger(__name__)
 
 app = FastAPI(lifespan=lifespan)
 
-class BaseResponse(ResponseMixin, BaseModel):
-    ...
-
 # Routers ============================================================
 
 app.include_router(
-    router=case_analysis_api_router, prefix="/api/v1/case-analysis", tags=["Case Analysis API"]
+    router=case_analysis_api_router,
+    prefix="/api/v1/case-analysis",
+    tags=["Case Analysis API"],
 )
 
 app.include_router(
     router=document_api_router, prefix="/api/v1/documents", tags=["Documents API"]
 )
 
-# Exception Handlers ==================================================
+# Helper DB/Custom Mappers ============================================
+
 
 async def handle_database_exception(request: Request, exc: Exception):
-    logger.exception("Database error %s", str(exc))
-    
+    logger.exception("Database error occurred: %s", str(exc))
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="DATABASE_ERROR",
+            message="A database error occurred while processing your request.",
+            details=[ErrorDetail(issue=str(exc))],
+        )
+    )
     return JSONResponse(
         status_code=500,
-        content=BaseResponse(errors=[f"A database error occured"]).model_dump(),
-    )
-    
-async def handle_custom_exception(request: Request, exc: Exception):
-    logger.exception(exc.message)
-    
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=BaseResponse(errors=[exc.message]).model_dump(),
+        content=response_payload.model_dump(),
     )
 
-# Exceptions ===========================================================
+
+async def handle_custom_exception(request: Request, exc: Exception):
+    logger.exception(getattr(exc, "message", str(exc)))
+
+    # Fallbacks in case code or status_code are omitted on custom classes
+    code = getattr(exc, "code", "APPLICATION_ERROR")
+    status_code = getattr(exc, "status_code", 400)
+    message = getattr(exc, "message", "An application rule was violated.")
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(code=code, message=message, details=[])
+    )
+    return JSONResponse(
+        status_code=status_code,
+        content=response_payload.model_dump(),
+    )
+
+
+# Exception Handlers ===================================================
+
 
 @app.exception_handler(Exception)
-async def http_exception(request: Request, exc: Exception):
-    logger.exception(str(exc))
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled runtime error caught: %s", str(exc))
 
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="INTERNAL_SERVER_ERROR",
+            message="An unexpected system error occurred.",
+            details=[],
+        )
+    )
     return JSONResponse(
         status_code=500,
-        content=BaseResponse(errors=["An error occured."]).model_dump(),
+        content=response_payload.model_dump(),
     )
+
 
 @app.exception_handler(HTTPException)
-async def http_exception(request: Request, exc: HTTPException):
-    logger.exception(exc.detail)
-    
+async def fastapi_http_exception_handler(request: Request, exc: HTTPException):
+    logger.exception("FastAPI HTTP exception: %s", exc.detail)
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(code="HTTP_ERROR", message=str(exc.detail), details=[])
+    )
     return JSONResponse(
         status_code=exc.status_code,
-        content=BaseResponse(errors=["An HTTP error occured"]).model_dump(),
-    )
-    
-@app.exception_handler(ValueError)
-async def http_exception(request: Request, exc: ValueError):
-    logger.exception(str(exc))
-    
-    return JSONResponse(
-        status_code=422,
-        content=BaseResponse(errors=[str(exc)]).model_dump(),
+        content=response_payload.model_dump(),
     )
 
-# DB Exceptions =========================================================
+
+@app.exception_handler(ValueError)
+async def value_error_exception_handler(request: Request, exc: ValueError):
+    logger.exception("ValueError encountered: %s", str(exc))
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="VALUE_ERROR",
+            message="The system rejected the processed values.",
+            details=[ErrorDetail(issue=str(exc))],
+        )
+    )
+    return JSONResponse(
+        status_code=422,
+        content=response_payload.model_dump(),
+    )
+
+
+# OpenAI Exception Handlers ============================================
+
+
+@app.exception_handler(openai.RateLimitError)
+async def rate_limit_exception_handler(request: Request, exc: openai.RateLimitError):
+    logger.warning(f"OpenAI Rate Limit hit: {exc.message}")
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="AI_RATE_LIMIT_EXCEEDED",
+            message="Rate limit exceeded. Please try your request again shortly.",
+            details=[],
+        )
+    )
+    return JSONResponse(
+        status_code=429,
+        content=response_payload.model_dump(),
+    )
+
+
+@app.exception_handler(openai.AuthenticationError)
+@app.exception_handler(openai.PermissionDeniedError)
+async def auth_exception_handler(request: Request, exc: openai.APIError):
+    logger.error(f"OpenAI Authentication/Permission Error: {exc.message}")
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="AI_AUTHENTICATION_FAILED",
+            message="Authentication with the core language model provider failed.",
+            details=[],
+        )
+    )
+    return JSONResponse(
+        status_code=401,
+        content=response_payload.model_dump(),
+    )
+
+
+@app.exception_handler(openai.BadRequestError)
+@app.exception_handler(openai.NotFoundError)
+async def bad_request_exception_handler(request: Request, exc: openai.APIError):
+    logger.warning(f"OpenAI Client Error: {exc.message}")
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="AI_INVALID_REQUEST",
+            message=f"Invalid prompt or interface parameters sent: {exc.message}",
+            details=[],
+        )
+    )
+    return JSONResponse(
+        status_code=400,
+        content=response_payload.model_dump(),
+    )
+
+
+@app.exception_handler(openai.APIConnectionError)
+@app.exception_handler(openai.APITimeoutError)
+async def connection_exception_handler(request: Request, exc: openai.OpenAIError):
+    logger.exception("Failed to establish connection to OpenAI/NVIDIA servers.")
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="AI_SERVICE_UNAVAILABLE",
+            message="The AI engine infrastructure is currently unreachable or timed out.",
+            details=[],
+        )
+    )
+    return JSONResponse(
+        status_code=503,
+        content=response_payload.model_dump(),
+    )
+
+
+@app.exception_handler(openai.OpenAIError)
+async def generic_openai_exception_handler(request: Request, exc: openai.OpenAIError):
+    logger.exception(f"Unhandled OpenAI SDK error occurred: {str(exc)}")
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="AI_GENERIC_SDK_ERROR",
+            message="An internal engine abnormality occurred during model inference generation.",
+            details=[ErrorDetail(issue=str(exc))],
+        )
+    )
+    return JSONResponse(
+        status_code=500,
+        content=response_payload.model_dump(),
+    )
+
+
+# Schema Validation Handler ============================================
+
+
+@app.exception_handler(ValidationError)
+async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
+    logger.warning(f"Schema validation failed: {exc.json()}")
+
+    # Format each validation error into our precise ErrorDetail objects
+    error_details = [
+        ErrorDetail(
+            field=" -> ".join(str(loc) for loc in error["loc"]), issue=error["msg"]
+        )
+        for error in exc.errors()
+    ]
+
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="VALIDATION_ERROR",
+            message="The requested structural parameters failed structural data contract assertions.",
+            details=error_details,
+        )
+    )
+    return JSONResponse(
+        status_code=422,
+        content=response_payload.model_dump(),
+    )
+
+
+# DB Exceptions Hooks ==================================================
 
 db_exceptions = [
     errors.IntegrityError,
@@ -94,14 +252,14 @@ db_exceptions = [
 for db_exec in db_exceptions:
     app.add_exception_handler(db_exec, handle_database_exception)
 
-# Custom Exceptions =====================================================
+
+# Custom Exceptions Hooks ==============================================
 
 custom_exceptions = [
     ChatException,
     ChunkFileException,
     InvalidDocumentTypeException,
-    NotFoundException
+    NotFoundException,
 ]
-
 for custom_exec in custom_exceptions:
     app.add_exception_handler(custom_exec, handle_custom_exception)
