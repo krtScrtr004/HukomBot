@@ -26,6 +26,9 @@ async def test_document_upload(client):
     assert (
         data.get("status") and data.get("status") == UploadStatus.ONGOING
     )
+    
+@pytest.mark.asyncio
+
 
 
 def is_valid_uuid_4(str_uuid: str):

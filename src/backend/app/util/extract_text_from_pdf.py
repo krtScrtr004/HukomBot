@@ -9,6 +9,8 @@ from pathlib import Path
 from pypdf import PdfReader
 from transformers import AutoTokenizer
 
+from backend.app.exception.chunk_exception import ChunkFileException
+
 from backend.app.util.utility import get_project_root
 
 PROJECT_ROOT = get_project_root()
@@ -80,14 +82,16 @@ def extract_text_with_ocr_single_page(pdf_path: Path, page_num: int) -> str:
             results = reader.readtext(str(image_path), detail=0)
             text_lines = cast(list[str], results)
             break
-        except torch.OutOfMemoryError:
+        except torch.OutOfMemoryError as ex:
             # Use CPU
             if attempt < OCR_RETRY_COUNT_MAX:
                 del reader
                 clear_cache()
                 reader = cpu_reader
             else:
-                raise
+                raise ChunkFileException(
+                    code="OOM_ERROR", message="An error occured", details=[str(ex)]
+                ) from ex
         except Exception:
             raise
         finally:

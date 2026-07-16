@@ -3,17 +3,19 @@ import asyncio
 import logging
 import hashlib
 
-from uuid import UUID, uuid4
 from pathlib import Path
-from fastapi import UploadFile, BackgroundTasks, HTTPException
+from uuid import UUID, uuid4
+from fastapi import UploadFile, BackgroundTasks
 from fastapi.concurrency import run_in_threadpool
+
+from backend.app.database.database import Database
 
 from backend.app.enum.upload_status import UploadStatus
 from backend.app.enum.legal_document_type import LegalDocumentType
-from backend.app.database.database import Database
-from backend.app.schema.chunk_schema import ChunkCreate
-from backend.app.repository.chunk_repository import ChunkRepository
+
 from backend.app.model.document_model import Document
+
+from backend.app.schema.chunk_schema import ChunkCreate
 from backend.app.schema.document_schema import (
     DocumentCreate,
     DocumentUpdate,
@@ -21,12 +23,17 @@ from backend.app.schema.document_schema import (
     DocumentUploadStatusResponse,
     ApproveDocumentUploadPayload,
 )
+from backend.app.schema.response_schema import SuccessResponse
+
+from backend.app.repository.chunk_repository import ChunkRepository
 from backend.app.repository.document_repository import DocumentRepository
+
 from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.file_storage_service import FileStorageService
 
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
+from backend.app.exception.not_found_exception import NotFoundException
 
 from backend.app.util.extract_text_from_pdf import extract_text_from_pdf
 
@@ -55,7 +62,12 @@ class DocumentService:
         # Check if valid file type
         mime = magic.from_buffer(contents, mime=True)
         if mime not in DocumentService.ALLOWED_FILE_TYPES:
-            raise InvalidDocumentTypeException("File type not allowed")
+            raise InvalidDocumentTypeException(
+                message="File type not allowed",
+                details=[
+                    f"Only {', '.join(type.removeprefix("application/") for type in DocumentService.ALLOWED_FILE_TYPES)} are allowed"
+                ],
+            )
 
         file_path = Path(file.filename)
         original_file_name = file_path.stem
@@ -68,10 +80,13 @@ class DocumentService:
             existing_document = await self._document_repo.get_by_digest(digest)
             if existing_document:
                 logger.info("Document with id: %s already exists", existing_document.id)
-                return DocumentUploadResponse(
-                    messages=["File already exisits"],
-                    document_id=existing_document.id,
-                    status=existing_document.upload_status,
+                return SuccessResponse(
+                    success=True,
+                    message="File already exisits",
+                    data=DocumentUploadResponse(
+                        document_id=existing_document.id,
+                        status=existing_document.upload_status,
+                    ),
                 )
 
             # Save pending document to data/pending/ folder
@@ -93,10 +108,13 @@ class DocumentService:
                 "Document with id: %s inserted in the db and is pending for embedding process",
                 created_document.id,
             )
-            return DocumentUploadResponse(
-                messages=["File upload is pending for approval"],
-                document_id=created_document.id,
-                status=UploadStatus.PENDING,
+            return SuccessResponse(
+                success=True,
+                message=f"File upload is pending for approval",
+                data=DocumentUploadResponse(
+                    document_id=created_document.id,
+                    status=UploadStatus.PENDING,
+                ),
             )
         except Exception:
             # Rollback file creation
@@ -113,13 +131,18 @@ class DocumentService:
     ):
         document = await self._document_repo.get_by_id(document_id)
         if not document:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise NotFoundException(
+                code="DOCUMENT_NOT_FOUND", message="Document not found"
+            )
 
         if document.upload_status == UploadStatus.COMPLETED:
-            return DocumentUploadResponse(
-                messages=["File upload completed"],
-                document_id=document_id,
-                status=UploadStatus.COMPLETED,
+            return SuccessResponse(
+                success=True,
+                message="File upload completed",
+                data=DocumentUploadResponse(
+                    document_id=document_id,
+                    status=UploadStatus.COMPLETED,
+                )
             )
 
         file = self._file_storage_service.get_pending_file(
@@ -134,10 +157,13 @@ class DocumentService:
         )
         background_tasks.add_task(self._process_document_pdf_upload, document, file)
 
-        return DocumentUploadResponse(
-            messages=["File upload is ongoing"],
-            document_id=document_id,
-            status=UploadStatus.ONGOING,
+        return SuccessResponse(
+            success=True,
+            message="File upload is ongoing",
+            data=DocumentUploadResponse(
+                document_id=document_id,
+                status=UploadStatus.ONGOING,
+            ),
         )
 
     async def _process_document_pdf_upload(self, document: Document, file: Path):
@@ -166,7 +192,7 @@ class DocumentService:
             for i, chunk in enumerate(chunks):
                 document_chunks[i] = ChunkCreate(
                     document_id=document.id,
-                    chunk_number=i,
+                    chunk_number=i+1,
                     chunk_text=chunk["document"],
                     section=chunk["section"],
                 )
@@ -223,9 +249,14 @@ class DocumentService:
     async def get_upload_status(self, document_id: UUID):
         upload_status = await self._document_repo.get_upload_status_by_id(document_id)
         if not upload_status:
-            raise HTTPException(status_code=404, detail="Document not found")
+            raise NotFoundException(
+                code="DOCUMENT_NOT_FOUND", message="Document not found"
+            )
 
-        return DocumentUploadStatusResponse(
-            messages=[f"Document upload status is: {upload_status.display_name()}"],
-            status_value=upload_status,
+        return SuccessResponse(
+            success=True,
+            message=f"Document upload status is: {upload_status.display_name()}",
+            data=DocumentUploadStatusResponse(
+                status_value=upload_status,
+            ),
         )

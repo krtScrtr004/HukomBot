@@ -26,6 +26,7 @@ from backend.app.schema.case_analysis_schema import (
     CaseAnalysisVersionFactCreate,
     CaseAnalysisVersionResponse,
 )
+from backend.app.schema.response_schema import SuccessResponse
 
 from backend.app.service.chatbot_service import ChatbotService
 from backend.app.service.embedding_service import EmbeddingService
@@ -86,7 +87,11 @@ class CaseAnalysisService:
         )
         if not case_fact_versions:
             raise NotFoundException(
-                f"No case fact versions found for session {case_analysis_session_id} version {version_number}",
+                code="CASE_FACT_VERSION_NOT_FOUND",
+                messaege="Case analysis fetch failed",
+                details=[
+                    f"No case fact versions found for case analysis session {case_analysis_session_id} version {version_number}"
+                ],
             )
 
         case_analysis_version = (
@@ -94,25 +99,33 @@ class CaseAnalysisService:
         )
         if not case_analysis_version:
             raise NotFoundException(
-                f"No case analysis versions found for session {case_analysis_session_id} version {version_number}",
+                code="CASE_ANALYSIS_NOT_FOUND",
+                messaege="Case analysis fetch failed",
+                details=[
+                    f"No case analysis versions found for session {case_analysis_session_id} version {version_number}"
+                ],
             )
 
-        return GetCaseAnalysisResponse(
-            case_analysis_session_id=case_analysis_session_id,
-            case_analysis=CaseAnalysisVersionResponse(
-                id=case_analysis_version.id,
-                version_number=version_number,
-                answer=case_analysis_version.answer,
-                created_at=case_analysis_version.created_at,
-                case_facts=[
-                    CaseFactVersionResponse(
-                        case_fact_id=cfv.case_fact_id,
-                        case_fact_version_id=case_analysis_version.id,
-                        version_number=cfv.version_number,
-                        fact=cfv.fact,
-                    )
-                    for cfv in case_fact_versions
-                ],
+        return SuccessResponse(
+            success=True,
+            message="Case analysis version fetched successfully",
+            data=GetCaseAnalysisResponse(
+                case_analysis_session_id=case_analysis_session_id,
+                case_analysis=CaseAnalysisVersionResponse(
+                    id=case_analysis_version.id,
+                    version_number=version_number,
+                    answer=case_analysis_version.answer,
+                    created_at=case_analysis_version.created_at,
+                    case_facts=[
+                        CaseFactVersionResponse(
+                            case_fact_id=cfv.case_fact_id,
+                            case_fact_version_id=case_analysis_version.id,
+                            version_number=cfv.version_number,
+                            fact=cfv.fact,
+                        )
+                        for cfv in case_fact_versions
+                    ],
+                ),
             ),
         )
 
@@ -187,15 +200,18 @@ class CaseAnalysisService:
                 logger.info(
                     "Responded to case analysis session id: %s successfully", session.id
                 )
-                return PostCaseAnalysisResponse(
-                    messages=["Chat responded successfully"],
-                    case_analysis_session_id=session.id,
-                    case_analysis=CaseAnalysisVersionResponse(
-                        id=case_analysis_version.id,
-                        version_number=case_analysis_version.version_number,
-                        answer=case_analysis_version.answer,
-                        created_at=case_analysis_version.created_at,
-                        case_facts=[],
+                return SuccessResponse(
+                    success=True,
+                    message="Case analysis created successfully",
+                    data=PostCaseAnalysisResponse(
+                        case_analysis_session_id=session.id,
+                        case_analysis=CaseAnalysisVersionResponse(
+                            id=case_analysis_version.id,
+                            version_number=case_analysis_version.version_number,
+                            answer=case_analysis_version.answer,
+                            created_at=case_analysis_version.created_at,
+                            case_facts=[],
+                        ),
                     ),
                 )
             except Exception as ex:
@@ -217,7 +233,11 @@ class CaseAnalysisService:
         )
         if not latest_analysis_version:
             raise NotFoundException(
-                f"Latest case analysis version for session with id: {case_analysis_session_id} not found"
+                code="CASE_ANALYSIS_VERSION_NOT_FOUND",
+                message="Case analysis failed",
+                details=[
+                    f"Latest case analysis version for session with id: {case_analysis_session_id} not found"
+                ],
             )
         updated_analysis_version = latest_analysis_version.version_number + 1
 
@@ -296,7 +316,13 @@ class CaseAnalysisService:
                     )
                 )
                 if not latest_case_fact_objects:
-                    raise ChatException("Case facts cannot be fetched")
+                    raise NotFoundException(
+                        code="CASE_FACT_NOT_FOUND",
+                        message="Case analysis failed",
+                        details=[
+                            f"Case facts cannot be fetched for case analysis session with id: {case_analysis_session_id}"
+                        ],
+                    )
 
                 # Remove deleted case facts on latest case analysis so that it wont create case_analysis_version_fact entries
                 if deleted_case_facts:
@@ -339,15 +365,18 @@ class CaseAnalysisService:
                     case_analysis_session_id,
                 )
 
-                return PostCaseAnalysisResponse(
-                    messages=["Chat responded successfully"],
-                    case_analysis_session_id=case_analysis_session_id,
-                    case_analysis=CaseAnalysisVersionResponse(
-                        id=case_analysis_version_fact.id,
-                        version_number=case_analysis_version_fact.version_number,
-                        answer=case_analysis_version_fact.answer,
-                        created_at=case_analysis_version_fact.created_at,
-                        case_facts=[],
+                return SuccessResponse(
+                    success=True,
+                    message=f"New case analysis version created successfully",
+                    data=PostCaseAnalysisResponse(
+                        case_analysis_session_id=case_analysis_session_id,
+                        case_analysis=CaseAnalysisVersionResponse(
+                            id=case_analysis_version_fact.id,
+                            version_number=case_analysis_version_fact.version_number,
+                            answer=case_analysis_version_fact.answer,
+                            created_at=case_analysis_version_fact.created_at,
+                            case_facts=[],
+                        ),
                     ),
                 )
             except Exception as ex:
@@ -357,6 +386,10 @@ class CaseAnalysisService:
                     or created_updated_case_fact_version_ids
                     or deleted_case_facts
                 ):
+                    logger.error(
+                        "Performing phase 1 rollback for case analysis session with id: %s",
+                        case_analysis_session_id,
+                    )
                     await self._rollback_phase_one(
                         conn,
                         created_new_case_fact_ids,
@@ -369,15 +402,31 @@ class CaseAnalysisService:
     async def _process_llm_pipeline(
         self, case_analysis_session_id: UUID, case_facts: List[str]
     ) -> str:
+        logger.info(
+            "Attempting to extract legal issues for case analysis with session id: %s",
+            case_analysis_session_id,
+        )
+
         # Extract legal issues from case facts
         legal_issues = await self._chatbot_service.extract_issues(case_facts)
         if not legal_issues:
-            raise ChatException("Cannot extract legal issues from provided case facts")
+            raise ChatException(
+                code="LLM_SERVICE_ERROR",
+                message="Cannot extract legal issues from provided case facts",
+            )
+
+        logger.info(
+            "Attempting to generate legal queries for case analysis with session id: %s",
+            case_analysis_session_id,
+        )
 
         # Generate queries from legal issues
         generated_queries = await self._chatbot_service.generate_queries(legal_issues)
         if not generated_queries:
-            raise ChatException("Cannot generate queries for legal issues extracted")
+            raise ChatException(
+                code="LLM_SERVICE_ERROR",
+                message="Cannot generate queries for legal issues extracted",
+            )
 
         # Vector Search
         vector_results = await self._retrieve_from_vector_search(generated_queries)
@@ -395,18 +444,19 @@ class CaseAnalysisService:
             case_analysis_session_id,
         )
 
-        # Early exit if no retrieved chunks
         if not vector_results and not keyword_result:
-            return PostCaseAnalysisResponse(
-                messages=["Chat responded successfully", "No results found"],
-                answer="",
-            )
+            return ""
 
         deduplicated_result = self._deduplicate_results(vector_results, keyword_result)
         reranked_result = await run_in_threadpool(
             self._reranker_service.rerank, "\n".join(case_facts), deduplicated_result
         )
 
+        logger.info(
+            "Attempting to generate final answer for case analysis with session id: %s",
+            case_analysis_session_id,
+        )
+        
         final_answer = await self._chatbot_service.generate_answer(
             "\n".join(case_facts), self._format_context(reranked_result[:10])
         )
@@ -546,5 +596,5 @@ class CaseAnalysisService:
         )
         if not is_session_existing:
             raise NotFoundException(
-                f"Case analysis session with id: {case_analysis_session_id} not found"
+                code="CASE_ANALYSIS_NOT_FOUND", message="Case analysis not found"
             )
