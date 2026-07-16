@@ -2,52 +2,9 @@ from __future__ import annotations
 
 from uuid import UUID
 from typing import List, Optional, Dict
-from pydantic import (
-    BaseModel,
-    Field,
-    model_validator,
-    model_serializer,
-    SerializerFunctionWrapHandler,
-)
+from pydantic import BaseModel, Field, model_validator
 
-from backend.app.schema.mixin import ResponseMixin
 from backend.app.schema.case_analysis_schema import CaseAnalysisVersionResponse
-
-# API Response ===================================================
-
-
-class PostCaseAnalysisResponse(ResponseMixin, BaseModel):
-    case_analysis_session_id: UUID = Field(default=None)
-    case_analysis: CaseAnalysisVersionResponse
-
-    @model_serializer(mode="wrap")
-    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
-        result = handler(self)
-        
-        result["data"] = {
-            "case_analysis_session_id": result.pop("case_analysis_session_id"),
-            "case_analysis": result.pop("case_analysis"),
-        }
-        result["data"]["case_analysis"].pop("case_facts")
-
-        return result
-
-
-class GetCaseAnalysisResponse(ResponseMixin, BaseModel):
-    case_analysis_session_id: UUID
-    case_analysis: CaseAnalysisVersionResponse
-    
-    @model_serializer(mode="wrap")
-    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
-        result = handler(self)
-
-        result["data"] = {
-            "case_analysis_session_id": result.pop("case_analysis_session_id"),
-            "case_analysis": result.pop("case_analysis"),
-        }
-
-        return result
-
 
 # API Schemas ========================================
 
@@ -107,3 +64,16 @@ class CaseAnalysisPipelineCaseFactsPayload(BaseModel):
                     )
 
         return self
+
+
+# API Response ===================================================
+
+
+class PostCaseAnalysisResponse(BaseModel):
+    case_analysis_session_id: UUID = Field(default=None)
+    case_analysis: CaseAnalysisVersionResponse
+
+
+class GetCaseAnalysisResponse(BaseModel):
+    case_analysis_session_id: UUID
+    case_analysis: CaseAnalysisVersionResponse
