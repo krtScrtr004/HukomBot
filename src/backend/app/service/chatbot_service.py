@@ -7,9 +7,9 @@ from backend.app.util.utility import format_conversation_history
 
 
 class ChatbotService:
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, llm_service: LLMService):
         self._db = db
-        self._llm_service = LLMService()
+        self._llm_service = llm_service
 
     async def extract_issues(self, case_facts: List[str]) -> List[str]:
         facts = "\n".join(f"- {fact}" for fact in case_facts)

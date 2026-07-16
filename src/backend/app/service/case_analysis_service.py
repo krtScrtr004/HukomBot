@@ -57,19 +57,26 @@ class CaseAnalysisService:
     def __init__(
         self,
         db: Database,
+        chunk_repo: ChunkRepository,
+        case_fact_repo: CaseFactRepository,
+        case_fact_version_repo: CaseFactVersionRepository,
+        case_analysis_session_repo: CaseAnalysisVersionRepository,
+        case_analysis_version_repo: CaseAnalysisVersionRepository,
+        case_analysis_version_fact_repo: CaseAnalysisVersionFactRepository,
+        chatbot_service: ChatbotService,
         embedding_service: EmbeddingService,
         reranker_service: RerankerService,
     ):
         self._db = db
 
-        self._chunk_repo = ChunkRepository(db)
-        self._case_fact_repo = CaseFactRepository(db)
-        self._case_fact_version_repo = CaseFactVersionRepository(db)
-        self._case_analysis_session_repo = CaseAnalysisSessionRepository(db)
-        self._case_analysis_version_repo = CaseAnalysisVersionRepository(db)
-        self._case_analysis_version_fact_repo = CaseAnalysisVersionFactRepository(db)
+        self._chunk_repo = chunk_repo
+        self._case_fact_repo = case_fact_repo
+        self._case_fact_version_repo = case_fact_version_repo
+        self._case_analysis_session_repo = case_analysis_session_repo
+        self._case_analysis_version_repo = case_analysis_version_repo
+        self._case_analysis_version_fact_repo = case_analysis_version_fact_repo
 
-        self._chatbot_service = ChatbotService(db)
+        self._chatbot_service = chatbot_service
         self._embedding_service = embedding_service
         self._reranker_service = reranker_service
 
@@ -456,7 +463,7 @@ class CaseAnalysisService:
             "Attempting to generate final answer for case analysis with session id: %s",
             case_analysis_session_id,
         )
-        
+
         final_answer = await self._chatbot_service.generate_answer(
             "\n".join(case_facts), self._format_context(reranked_result[:10])
         )

@@ -47,12 +47,19 @@ ocr_semaphor = asyncio.Semaphore(
 class DocumentService:
     ALLOWED_FILE_TYPES = {"application/pdf"}
 
-    def __init__(self, db: Database):
-        self._document_repo = DocumentRepository(db=db)
-        self._chunk_repo = ChunkRepository(db=db)
+    def __init__(
+        self, 
+        db: Database,
+        document_repo: DocumentRepository,
+        chunk_repo: ChunkRepository,
+        embedding_service: EmbeddingService,
+        file_storage_service: FileStorageService
+    ):
+        self._document_repo = document_repo
+        self._chunk_repo = chunk_repo
 
-        self._embedding_service = EmbeddingService()
-        self._file_storage_service = FileStorageService()
+        self._embedding_service = embedding_service
+        self._file_storage_service = file_storage_service
 
     async def create_pending_document(
         self, file: UploadFile, document_type: LegalDocumentType
@@ -82,7 +89,7 @@ class DocumentService:
                 logger.info("Document with id: %s already exists", existing_document.id)
                 return SuccessResponse(
                     success=True,
-                    message="File already exisits",
+                    message="File already exists",
                     data=DocumentUploadResponse(
                         document_id=existing_document.id,
                         status=existing_document.upload_status,
