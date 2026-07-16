@@ -35,10 +35,10 @@ class CaseAnalysisPipelineCaseFactsPayload(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def has_conversation_id_update_delete_list(self):
+    def has_case_analysis_session_id_update_delete_list(self):
         if (
             self.updated_case_facts or self.deleted_case_facts
-        ) and not self.conversation_id:
+        ) and not self.case_analysis_session_id:
             raise ValueError(
                 "Conversation id must be provided when editing / deleting a case fact"
             )

@@ -11,7 +11,7 @@ from backend.app.schema.mixin import PaginatableMixin
 
 
 class UserCreate(UserBase):
-    id: UUID = Field(default_factory=uuid4())
+    id: UUID = Field(default_factory=uuid4)
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
     token_expires_at: Optional[datetime] = None

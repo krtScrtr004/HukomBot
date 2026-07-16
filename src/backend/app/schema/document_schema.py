@@ -3,23 +3,17 @@ from __future__ import annotations
 from typing import Optional
 from datetime import datetime
 from uuid import UUID, uuid4
-from pydantic import (
-    BaseModel,
-    Field,
-    model_validator,
-    model_serializer,
-    SerializerFunctionWrapHandler,
-)
+from pydantic import BaseModel, Field, model_validator
 
-from backend.app.schema.mixin import ResponseMixin, PaginatableMixin
+from backend.app.schema.mixin import PaginatableMixin
 from backend.app.enum.upload_status import UploadStatus
 from backend.app.enum.legal_document_type import LegalDocumentType
 
 
 class DocumentCreate(BaseModel):
-    id: UUID = Field(default_factory=uuid4())
+    id: UUID = Field(default_factory=uuid4)
     original_file_name: str = Field(min_length=1, max_length=300)
-    upload_file_name: UUID = Field(default_factory=uuid4())
+    upload_file_name: UUID = Field(default_factory=uuid4)
     document_type: LegalDocumentType
     file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
@@ -70,42 +64,14 @@ class ApproveDocumentUploadPayload(BaseModel):
 # API Response ======================================================
 
 
-class DocumentUploadResponse(ResponseMixin, BaseModel):
+class DocumentUploadResponse(BaseModel):
     document_id: UUID
     status: UploadStatus = Field(default=UploadStatus.PENDING)
 
     model_config = {"arbitrary_types_allowed": True, "use_enum_values": True}
 
-    @model_serializer(mode="wrap")
-    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
-        result = handler(self)
 
-        result["data"] = {
-            "document_id": result.pop("document_id"),
-            "status": result.pop("status"),
-        }
-
-        return result
-
-
-class DocumentUploadStatusResponse(ResponseMixin, BaseModel):
+class DocumentUploadStatusResponse(BaseModel):
     status_value: UploadStatus
 
     model_config = {"arbitrary_types_allowed": True, "use_enum_values": True}
-
-    @model_serializer(mode="wrap")
-    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
-        status_display_name = None
-        if isinstance(self.status_value, UploadStatus):
-            status_display_name = self.status_value.display_name()
-        else:
-            status_display_name = UploadStatus(self.status_value).display_name()
-
-        result = handler(self)
-
-        result["data"] = {
-            "status_value": result.pop("status_value"),
-            "status_display_name": status_display_name,
-        }
-
-        return result
