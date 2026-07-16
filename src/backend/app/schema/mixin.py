@@ -5,9 +5,3 @@ from pydantic import Field
 class PaginatableMixin:
     limit: int = Field(default=10, gt=0, lt=100)
     offset: int = Field(default=0, ge=0)
-
-
-class ResponseMixin:
-    messages: List[str] = Field(default_factory=list)
-    data: Optional[Any] = None
-    errors: List[str] = Field(default_factory=list)
