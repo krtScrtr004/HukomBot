@@ -30,7 +30,7 @@ class RerankerService:
     def rerank(self, query: str, chunks: list[Chunk]):
         pairs = [(query, chunk.chunk_text) for chunk in chunks]
 
-        scores = self.__model.predict(pairs)
+        scores = self.__model.predict(pairs, show_progress_bar=False)
         ranked = sorted(zip(chunks, scores), key=lambda x: x[1], reverse=True)
 
         return [chunk for chunk, _ in ranked]
