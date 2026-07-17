@@ -101,3 +101,5 @@ htmlcov/
 # (Recommended for large files — use Git LFS or store externally instead)
 data/
 
+# Temporarily ignore tests
+tests/
