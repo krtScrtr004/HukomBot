@@ -8,5 +8,6 @@ login_page_router = APIRouter()
 
 @login_page_router.get("/")
 def login_page():
+    redirect_url = "http://127.0.0.1:8000/api/v1/auth/google/login"
     template = lookup.get_template("/page/login.html")
-    return HTMLResponse(template.render())
+    return HTMLResponse(template.render(redirect_url=redirect_url))

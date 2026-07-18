@@ -7,5 +7,9 @@
 </head>
 <body>
     <main>${self.main()}</main>
+
+    % if hasattr(self, "script"):
+        ${self.script()}
+    % endif
 </body>
 </html>
