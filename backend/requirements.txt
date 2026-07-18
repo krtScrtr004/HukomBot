@@ -15,3 +15,6 @@ pytest
 pytest-asyncio 
 httpx
 python-multipart
+google-auth
+pyjwt
+itsdangerous
