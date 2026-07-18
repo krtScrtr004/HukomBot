@@ -6,6 +6,7 @@ from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
+from backend.app.api.v1.endpoint.auth import auth_api_router
 from backend.app.api.v1.endpoint.case_analysis import case_analysis_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
@@ -31,6 +32,12 @@ app = FastAPI(lifespan=lifespan)
 # APIs
 
 app.include_router(
+    router=auth_api_router,
+    prefix="/api/v1/auth",
+    tags=["Authentication API"],
+)
+
+app.include_router(
     router=case_analysis_api_router,
     prefix="/api/v1/case-analysis",
     tags=["Case Analysis API"],
@@ -42,10 +49,7 @@ app.include_router(
 
 # Pages
 
-app.include_router(
-    router=login_page_router,
-    prefix="/login"
-)
+app.include_router(router=login_page_router, prefix="/login")
 
 # Helper DB/Custom Mappers ============================================
 
@@ -74,10 +78,7 @@ async def handle_custom_exception(request: Request, exc: Exception):
     status_code = getattr(exc, "status_code", 400)
     message = getattr(exc, "message", "An application rule was violated.")
 
-    error_details = [
-        ErrorDetail(issue=iss)
-        for iss in getattr(exc, "details", [])
-    ]
+    error_details = [ErrorDetail(issue=iss) for iss in getattr(exc, "details", [])]
 
     response_payload = ErrorResponse(
         error=ErrorPayload(code=code, message=message, details=error_details)
