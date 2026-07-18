@@ -4,6 +4,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
+    JWT_SECRET: str = os.getenv("JWT_SECRET")
+    
+    # -- AuthServices  --
+    OAUTH_CLIENT_ID: str = os.getenv("OAUTH_CLIENT_ID")
+    OAUTH_CLIENT_SECRET: str = os.getenv("OAUTH_CLIENT_SECRET")
+    
+    # -- AuthServices  --
+    GOOGLE_OAUTH_REDIRECT_URI: str = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")
+    GOOGLE_AUTH_URL: str = os.getenv("GOOGLE_AUTH_URL")
+    GOOGLE_TOKEN_URL: str = os.getenv("GOOGLE_TOKEN_URL")
+    
+    
     # -- LLMService --
     OPEN_ROUTER_API_KEY: str = os.getenv("OPEN_ROUTER_API_KEY")
     OPEN_ROUTER_MODEL: str = "openrouter/free"
