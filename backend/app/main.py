@@ -9,7 +9,8 @@ from fastapi.responses import JSONResponse
 from backend.app.api.v1.endpoint.case_analysis import case_analysis_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
-# Import your new strict schemas here
+from frontend.router.login import login_page_router
+
 from backend.app.schema.response_schema import ErrorResponse, ErrorPayload, ErrorDetail
 
 from backend.app.exception.chat_exception import ChatException
@@ -27,6 +28,8 @@ app = FastAPI(lifespan=lifespan)
 
 # Routers ============================================================
 
+# APIs
+
 app.include_router(
     router=case_analysis_api_router,
     prefix="/api/v1/case-analysis",
@@ -35,6 +38,13 @@ app.include_router(
 
 app.include_router(
     router=document_api_router, prefix="/api/v1/documents", tags=["Documents API"]
+)
+
+# Pages
+
+app.include_router(
+    router=login_page_router,
+    prefix="/login"
 )
 
 # Helper DB/Custom Mappers ============================================
