@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def get_project_root(level: int = 5) -> Path:
+def get_project_root(level: int = 4) -> Path:
     return Path(__file__).resolve().parents[level - 1]
 
 
