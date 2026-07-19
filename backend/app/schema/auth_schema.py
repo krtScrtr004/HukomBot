@@ -9,7 +9,7 @@ class GoogleOAuthTokenResponse(BaseModel):
     token_type: str
     expires_in: datetime
     
-class GoogleDecodedUserResource(BaseModel):
+class GoogleUserResource(BaseModel):
     sub: str
     first_name: str = Field(alias="given_name")
     last_name: str = Field(alias="family_name")
