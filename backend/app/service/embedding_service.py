@@ -5,7 +5,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 import transformers
 
-from backend.app.core.settings import Settings
+from backend.app.core.settings import settings
 
 
 # Silence transformer/tokenizer warnings and sentence-transformers progress bars
@@ -19,8 +19,8 @@ class EmbeddingService:
 
     def __init__(
         self,
-        model: str = Settings.EMBEDDING_MODEL,
-        device: str = Settings.EMBEDDING_DEVICE_CPU,
+        model: str = settings.EMBEDDING_MODEL,
+        device: str = settings.EMBEDDING_DEVICE_CPU,
     ):
         self._model = SentenceTransformer(
             model_name_or_path=model,

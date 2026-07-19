@@ -2,7 +2,7 @@ from __future__ import annotations
 from sentence_transformers import CrossEncoder
 from backend.app.model.chunk_model import Chunk
 
-from backend.app.core.settings import Settings
+from backend.app.core.settings import settings
 
 
 class RerankerService:
@@ -10,8 +10,8 @@ class RerankerService:
 
     def __init__(
         self,
-        model: str = Settings.RERANKER_MODEL,
-        device: str = Settings.RERANKER_DEVICE_CPU,
+        model: str = settings.RERANKER_MODEL,
+        device: str = settings.RERANKER_DEVICE_CPU,
     ):
         self.__model = CrossEncoder(model_name_or_path=model, device=device)
 
