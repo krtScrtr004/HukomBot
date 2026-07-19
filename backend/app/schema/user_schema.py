@@ -12,12 +12,6 @@ from backend.app.schema.mixin import PaginatableMixin
 
 class UserCreate(UserBase):
     id: UUID = Field(default_factory=uuid4)
-    provider_id: str
-    provider: OAuthProvider
-    first_name: str = Field(min_length=1, max_length=255)
-    last_name: str = Field(min_length=1, max_length=255)
-    email: EmailStr
-    profile_picture: str|None
     
     model_config = {"arbitrary_types_allowed": True}
 
