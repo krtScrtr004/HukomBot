@@ -42,7 +42,8 @@ class UserRepository:
                     last_name,
                     email,
                     provider,
-                    profile_picture
+                    profile_picture, 
+                    role
                 ) VALUES (
                     %(id)s,
                     %(provider_id)s,
@@ -50,7 +51,8 @@ class UserRepository:
                     %(last_name)s,
                     %(email)s,
                     %(provider)s,
-                    %(profile_picture)s
+                    %(profile_picture)s,
+                    %(role)s
                 ) RETURNING is_active, created_at, updated_at
             """,
                 user.model_dump(),
@@ -68,10 +70,11 @@ class UserRepository:
             last_name=user.last_name,
             email=user.email,
             profile_picture=user.profile_picture,
+            role=user.role,
             provider=user.provider,
             is_active=user_is_active,
             created_at=user_created_at,
-            updated_at=user_updated_at,
+            updated_at=user_updated_at
         )
 
     async def get_by_provider_id(
