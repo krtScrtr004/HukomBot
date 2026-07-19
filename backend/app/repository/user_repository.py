@@ -35,9 +35,9 @@ class UserRepository:
         async with conn.cursor() as cur:
             await cur.execute(
                 """
-                INSERT INTO user (
+                INSERT INTO users (
                     id,
-                    provider_id
+                    provider_id,
                     first_name,
                     last_name,
                     email,
@@ -102,14 +102,14 @@ class UserRepository:
             await cur.execute(
                 """
                 SELECT *
-                FROM user 
+                FROM users
                 WHERE provider_id = %s
                 LIMIT 1
                 """,
                 (provider_id,),
             )
 
-            row = cur.fetchone()
+            row = await cur.fetchone()
 
         return User.model_validate(row) if row is not None else None
 
