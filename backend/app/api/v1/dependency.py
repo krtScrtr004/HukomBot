@@ -20,6 +20,7 @@ from backend.app.repository.case_fact_version_repository import (
 )
 from backend.app.repository.chunk_repository import ChunkRepository
 from backend.app.repository.document_repository import DocumentRepository
+from backend.app.repository.user_repository import UserRepository
 
 from backend.app.service.chatbot_service import ChatbotService
 from backend.app.service.case_analysis_service import CaseAnalysisService
@@ -55,10 +56,6 @@ def get_db(request: Request) -> Database:
 
 def get_embedding_service(request: Request) -> EmbeddingService:
     return request.app.state.embedding_service.get_instance()
-
-
-def get_google_oauth_service() -> GoogleOAuthService:
-    return GoogleOAuthService()
 
 
 def get_llm_service() -> LLMService:
@@ -107,6 +104,10 @@ def get_case_analysis_version_fact_repository(
 
 def get_document_repository(db: Database = Depends(get_db)) -> DocumentRepository:
     return DocumentRepository(db=db)
+
+
+def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
+    return UserRepository(db=db)
 
 
 def get_chatbot_service(
@@ -166,3 +167,10 @@ def get_document_service(
         embedding_service=embedding_service,
         file_storage_service=file_storage_service,
     )
+
+
+def get_google_oauth_service(
+    db: Database = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> GoogleOAuthService:
+    return GoogleOAuthService(db=db, user_repo=user_repo)
