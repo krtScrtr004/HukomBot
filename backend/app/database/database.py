@@ -1,20 +1,19 @@
 import os
 from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
-from dotenv import load_dotenv
 
-load_dotenv()
+from backend.app.core.settings import settings
 
 class Database:
     _pool: AsyncConnectionPool | None = None
 
     def __init__(self):
         if Database._pool is None:
-            DB_HOST = os.getenv("DB_HOST")
-            DB_PORT = os.getenv("DB_PORT")
-            DB_NAME = os.getenv("DB_NAME")
-            DB_USER = os.getenv("DB_USER")
-            DB_PASSWORD = os.getenv("DB_PASSWORD")
+            DB_HOST = settings.DB_HOST
+            DB_PORT = settings.DB_PORT
+            DB_NAME = settings.DB_NAME
+            DB_USER = settings.DB_USER
+            DB_PASSWORD = settings.DB_PASSWORD
 
             if not all([DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD]):
                 raise RuntimeError("Required database configuration missing")

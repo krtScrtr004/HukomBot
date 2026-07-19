@@ -7,10 +7,17 @@ class Settings(BaseSettings):
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
+        "extra": "ignore"
     }
+    
+    # -- Database --
+    DB_HOST: str
+    DB_PORT: str
+    DB_NAME: str
+    DB_USER: str
+    DB_PASSWORD: str
 
     # -- Auth --
-    JWT_SECRET: str
     OAUTH_CLIENT_ID: str
     OAUTH_CLIENT_SECRET: str
 
