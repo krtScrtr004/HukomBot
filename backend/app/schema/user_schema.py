@@ -42,3 +42,11 @@ class UserSearch(PaginatableMixin, BaseModel):
                 "At least one of 'first_name', 'last_name', 'email', or 'provider' must be provided"
             )
         return self
+
+
+class UserResponse(BaseModel):
+    id: UUID
+    first_name: str
+    last_name: str
+    email: EmailStr
+    role: UserRole    
