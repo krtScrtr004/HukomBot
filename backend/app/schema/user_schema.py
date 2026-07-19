@@ -6,6 +6,7 @@ from datetime import datetime
 from pydantic import BaseModel, model_validator, EmailStr, Field
 
 from backend.app.model.user_model import UserBase
+from backend.app.enum.user_role import UserRole
 from backend.app.enum.oauth_provider import OAuthProvider
 from backend.app.schema.mixin import PaginatableMixin
 
@@ -21,6 +22,9 @@ class UserUpdate(BaseModel):
     first_name: str|None = Field(default=None, min_length=1, max_length=255)
     last_name: str|None = Field(default=None, min_length=1, max_length=255)
     profile_picture: str|None = Field(default=None)
+    role: UserRole|None = Field(default=None)
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class UserSearch(PaginatableMixin, BaseModel):
