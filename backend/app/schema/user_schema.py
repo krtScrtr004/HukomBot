@@ -12,33 +12,35 @@ from backend.app.schema.mixin import PaginatableMixin
 
 class UserCreate(UserBase):
     id: UUID = Field(default_factory=uuid4)
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    token_expires_at: Optional[datetime] = None
-
+    provider_id: str
+    provider: OAuthProvider
+    first_name: str = Field(min_length=1, max_length=255)
+    last_name: str = Field(min_length=1, max_length=255)
+    email: EmailStr
+    profile_picture: str|None
+    
     model_config = {"arbitrary_types_allowed": True}
 
 
 class UserUpdate(BaseModel):
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    token_expires_at: Optional[datetime] = None
-    last_login_at: Optional[datetime] = None
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
+    id: UUID
+    first_name: str|None = Field(default=None, min_length=1, max_length=255)
+    last_name: str|None = Field(default=None, min_length=1, max_length=255)
+    profile_picture: str|None = Field(default=None)
 
 
 class UserSearch(PaginatableMixin, BaseModel):
-    display_name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    provider: Optional[OAuthProvider] = None
+    first_name: str|None = Field(default=None, min_length=1, max_length=255)
+    last_name: str|None = Field(default=None, min_length=1, max_length=255)
+    email: EmailStr|None = Field(default=None)
+    provider: OAuthProvider|None = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True}
 
     @model_validator(mode="after")
     def at_least_one_required(self) -> UserSearch:
-        if not any(self.display_name, self.email, self.provider):
+        if not any(self.first_name, self.last_name, self.email, self.provider):
             raise ValueError(
-                "At least one of 'display_name', 'email', or 'provider' must be provided"
+                "At least one of 'first_name', 'last_name', 'email', or 'provider' must be provided"
             )
         return self
