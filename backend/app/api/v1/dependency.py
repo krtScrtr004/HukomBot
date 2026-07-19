@@ -22,11 +22,12 @@ from backend.app.repository.chunk_repository import ChunkRepository
 from backend.app.repository.document_repository import DocumentRepository
 from backend.app.repository.user_repository import UserRepository
 
+from backend.app.service.auth_service import AuthService
 from backend.app.service.chatbot_service import ChatbotService
 from backend.app.service.case_analysis_service import CaseAnalysisService
 from backend.app.service.document_service import DocumentService
 from backend.app.service.embedding_service import EmbeddingService
-from backend.app.service.google_oauth_service import GoogleOAuthService
+from backend.app.service.google_service import GoogleService
 from backend.app.service.llm_service import LLMService
 from backend.app.service.reranker_service import RerankerService
 from backend.app.service.file_storage_service import FileStorageService
@@ -110,6 +111,13 @@ def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
     return UserRepository(db=db)
 
 
+def get_auth_service(
+    db: Database = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> AuthService:
+    return AuthService(db=db, user_repo=user_repo)
+
+
 def get_chatbot_service(
     db: Database = Depends(get_db), llm_service: LLMService = Depends(get_llm_service)
 ) -> ChatbotService:
@@ -169,8 +177,5 @@ def get_document_service(
     )
 
 
-def get_google_oauth_service(
-    db: Database = Depends(get_db),
-    user_repo: UserRepository = Depends(get_user_repository),
-) -> GoogleOAuthService:
-    return GoogleOAuthService(db=db, user_repo=user_repo)
+def get_google_service() -> GoogleService:
+    return GoogleService()
