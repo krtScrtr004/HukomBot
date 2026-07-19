@@ -18,6 +18,7 @@ from backend.app.exception.chat_exception import ChatException
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
 from backend.app.exception.not_found_exception import NotFoundException
+from backend.app.exception.oauth_exception import OAuthException, GoogleEmailNotVerifiedException
 
 from backend.app.api.v1.dependency import lifespan
 from backend.app.core.logger import setup_logging
@@ -274,8 +275,10 @@ for db_exec in db_exceptions:
 custom_exceptions = [
     ChatException,
     ChunkFileException,
+    GoogleEmailNotVerifiedException,
     InvalidDocumentTypeException,
     NotFoundException,
+    OAuthException
 ]
 for custom_exec in custom_exceptions:
     app.add_exception_handler(custom_exec, handle_custom_exception)
