@@ -6,7 +6,7 @@ from backend.app.model.user_model import User
 from backend.app.schema.user_schema import UserCreate, UserSearch
 
 
-class UserRepositry:
+class UserRepository:
     def __init__(self, db: Database):
         self._database = db
 
@@ -69,11 +69,46 @@ class UserRepositry:
             email=user.email,
             profile_picture=user.profile_picture,
             provider=user.provider,
-            provider_id=user.provider_id,
             is_active=user_is_active,
             created_at=user_created_at,
             updated_at=user_updated_at,
         )
+
+    async def get_by_provider_id(
+        self, provider_id: str, connection: AsyncConnection = None
+    ):
+        if not provider_id:
+            return None
+        
+        if connection is not None:
+            return await self._get_by_provider_id_implement(connection, provider_id)
+        
+        async with self._database.connection() as conn:
+            try:
+                result = await self._get_by_provider_id_implement(conn, user)
+                await conn.commit()
+                return result
+            except errors.OperationalError as ex:
+                await conn.rollback()
+                raise
+
+    async def _get_by_provider_id_implement(
+        self, conn: AsyncConnection, provider_id: str
+    ) -> User | None:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT *
+                FROM user 
+                WHERE provider_id = %s
+                LIMIT 1
+                """,
+                (provider_id,),
+            )
+
+            row = cur.fetchone()
+
+        return User.model_validate(row) if row is not None else None
 
     async def search(
         self, user: UserSearch, connection: AsyncConnection = None
