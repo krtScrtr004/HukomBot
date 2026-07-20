@@ -6,6 +6,9 @@ from pydantic import ValidationError
 from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
+from starlette.middleware.sessions import SessionMiddleware
+
+from backend.app.core.settings import settings
 
 from backend.app.api.v1.endpoint.auth import auth_api_router
 from backend.app.api.v1.endpoint.case_analysis import case_analysis_api_router
@@ -19,7 +22,10 @@ from backend.app.exception.chat_exception import ChatException
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
 from backend.app.exception.not_found_exception import NotFoundException
-from backend.app.exception.oauth_exception import OAuthException, GoogleEmailNotVerifiedException
+from backend.app.exception.oauth_exception import (
+    OAuthException,
+    GoogleEmailNotVerifiedException,
+)
 
 from backend.app.api.v1.dependency import lifespan
 from backend.app.core.logger import setup_logging
@@ -52,6 +58,13 @@ app.include_router(
 # Pages
 
 app.include_router(router=login_page_router, prefix="/login")
+
+
+# Middlewares =========================================================
+
+
+app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET)
+
 
 # Helper DB/Custom Mappers ============================================
 
@@ -139,19 +152,22 @@ async def value_error_exception_handler(request: Request, exc: ValueError):
         status_code=422,
         content=response_payload.model_dump(),
     )
-    
+
 
 # JWT Exception Handlers
 
+
 @app.exception_handler(jwt.ExpiredSignatureError)
-async def jwt_expired_exception_handler(request: Request, exc: jwt.ExpiredSignatureError):
+async def jwt_expired_exception_handler(
+    request: Request, exc: jwt.ExpiredSignatureError
+):
     logger.warning("User attempted authentication with an expired JWT token.")
-    
+
     response_payload = ErrorResponse(
         error=ErrorPayload(
             code="TOKEN_EXPIRED",
             message="Your session has expired. Please log in again.",
-            details=[]
+            details=[],
         )
     )
     return JSONResponse(
@@ -163,12 +179,12 @@ async def jwt_expired_exception_handler(request: Request, exc: jwt.ExpiredSignat
 @app.exception_handler(jwt.InvalidTokenError)
 async def jwt_invalid_exception_handler(request: Request, exc: jwt.InvalidTokenError):
     logger.warning(f"Invalid JWT authentication attempt: {str(exc)}")
-    
+
     response_payload = ErrorResponse(
         error=ErrorPayload(
             code="INVALID_TOKEN",
             message="The authentication token provided is malformed or invalid.",
-            details=[]
+            details=[],
         )
     )
     return JSONResponse(
@@ -315,7 +331,7 @@ custom_exceptions = [
     GoogleEmailNotVerifiedException,
     InvalidDocumentTypeException,
     NotFoundException,
-    OAuthException
+    OAuthException,
 ]
 for custom_exec in custom_exceptions:
     app.add_exception_handler(custom_exec, handle_custom_exception)
