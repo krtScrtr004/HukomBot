@@ -1,6 +1,9 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, EmailStr
 
+class LoginResponse(BaseModel):
+    token: str
+
 class GoogleOAuthTokenResponse(BaseModel):
     access_token: str
     refresh_token: str|None = Field(default=None)
