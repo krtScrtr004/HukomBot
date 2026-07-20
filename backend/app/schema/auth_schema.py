@@ -1,19 +1,22 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, AliasChoices
+
 
 class LoginResponse(BaseModel):
     token: str
 
+
 class GoogleOAuthTokenResponse(BaseModel):
     access_token: str
-    refresh_token: str|None = Field(default=None)
+    refresh_token: str | None = Field(default=None)
     id_token: str
     scope: str
     token_type: str
     expires_in: datetime
-    
-class GoogleUserResource(BaseModel):
-    sub: str
+
+
+class AuthUser(BaseModel):
+    provider_id: str = Field(validation_alias=AliasChoices("sub"))
     first_name: str = Field(alias="given_name")
     last_name: str = Field(alias="family_name")
     email: EmailStr

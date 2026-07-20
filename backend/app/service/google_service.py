@@ -10,7 +10,7 @@ from backend.app.core.settings import settings
 
 from backend.app.schema.auth_schema import (
     GoogleOAuthTokenResponse,
-    GoogleUserResource,
+    AuthUser,
 )
 
 from backend.app.exception.oauth_exception import (
@@ -70,9 +70,9 @@ class GoogleService:
     
         return resource
 
-    def _decode_id_token(self, token: str) -> GoogleUserResource:
+    def _decode_id_token(self, token: str) -> AuthUser:
         # Verify and decode token
         id_info = id_token.verify_oauth2_token(
             token, requests.Request(), settings.OAUTH_CLIENT_ID
         )
-        return GoogleUserResource.model_validate(id_info)
+        return AuthUser.model_validate(id_info)
