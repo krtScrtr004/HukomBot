@@ -27,6 +27,7 @@ from backend.app.service.chatbot_service import ChatbotService
 from backend.app.service.case_analysis_service import CaseAnalysisService
 from backend.app.service.document_service import DocumentService
 from backend.app.service.embedding_service import EmbeddingService
+from backend.app.service.jwt_service import JWTService
 from backend.app.service.google_service import GoogleService
 from backend.app.service.llm_service import LLMService
 from backend.app.service.reranker_service import RerankerService
@@ -58,6 +59,9 @@ def get_db(request: Request) -> Database:
 def get_embedding_service(request: Request) -> EmbeddingService:
     return request.app.state.embedding_service.get_instance()
 
+
+def get_jwt_service() -> JWTService:
+    return JWTService()
 
 def get_llm_service() -> LLMService:
     return LLMService()
@@ -114,8 +118,9 @@ def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
 def get_auth_service(
     db: Database = Depends(get_db),
     user_repo: UserRepository = Depends(get_user_repository),
+    jwt_service: JWTService = Depends(get_jwt_service)
 ) -> AuthService:
-    return AuthService(db=db, user_repo=user_repo)
+    return AuthService(db=db, user_repo=user_repo, jwt_service=jwt_service)
 
 
 def get_chatbot_service(
