@@ -6,15 +6,13 @@ from backend.app.enum.oauth_provider import OAuthProvider
 
 from backend.app.model.user_model import User
 
-from backend.app.schema.user_schema import UserCreate, UserResponse
+from backend.app.schema.user_schema import UserCreate
 from backend.app.schema.auth_schema import AuthUser
-from backend.app.schema.response_schema import SuccessResponse
 
 from backend.app.repository.user_repository import UserRepository
 
 from backend.app.service.jwt_service import JWTService
 
-from backend.app.exception.oauth_exception import OAuthException
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +54,3 @@ class AuthService:
             except Exception as ex:
                 logger.exception(str(ex))
                 await conn.rollback()
-
-    def build_jwt_from_user(self, user: User):
-        return self._jwt_service.encode(
-            {
-                "id": str(user.id),
-                "provider_id": user.provider_id,
-                "role": user.role.value,
-            }
-        )
