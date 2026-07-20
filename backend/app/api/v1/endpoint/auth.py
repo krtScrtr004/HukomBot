@@ -30,7 +30,7 @@ async def google_login_callback(
 
     google_user = await google_service.retrieve_user(tokens.id_token)
 
-    user = await auth_service.authenticate_google_user(google_user)
+    user = await auth_service.authenticate_user(google_user)
     jwt = auth_service.build_jwt_from_user(user)
 
     return SuccessResponse(

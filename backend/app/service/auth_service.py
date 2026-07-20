@@ -7,7 +7,7 @@ from backend.app.enum.oauth_provider import OAuthProvider
 from backend.app.model.user_model import User
 
 from backend.app.schema.user_schema import UserCreate, UserResponse
-from backend.app.schema.auth_schema import GoogleUserResource
+from backend.app.schema.auth_schema import AuthUser
 from backend.app.schema.response_schema import SuccessResponse
 
 from backend.app.repository.user_repository import UserRepository
@@ -27,46 +27,41 @@ class AuthService:
         self._user_repo = user_repo
         self._jwt_service = jwt_service
 
-    async def authenticate_google_user(self, google_user: GoogleUserResource):
+    async def authenticate_user(self, user: AuthUser) -> User:
         async with self._db.connection() as conn:
             try:
-                user = await self._user_repo.get_by_provider_id(google_user.sub, conn)
+                user = await self._user_repo.get_by_provider_id(user.provider_id, conn)
                 if not user:
                     # Create user record if account is not yet connected
                     await self._user_repo.create(
                         UserCreate(
-                            provider_id=google_user.sub,
-                            first_name=google_user.first_name,
-                            last_name=google_user.last_name,
-                            email=google_user.email,
+                            provider_id=user.provider_id,
+                            first_name=user.first_name,
+                            last_name=user.last_name,
+                            email=user.email,
                             role=UserRole.STANDARD,
-                            profile_picture=google_user.profile_picture,
+                            profile_picture=user.profile_picture,
                             provider=OAuthProvider.GOOGLE,
                         )
                     )
 
                     logger.info(
-                        "New google account with sub: %s has successgully connected to the app",
-                        google_user.sub,
+                        "New account with provider id: %s has successgully connected to the app",
+                        user.provider_id,
                     )
 
                 await conn.commit()
 
-                return SuccessResponse(
-                    message="Google user connected successfully",
-                    data=UserResponse(
-                        id=user.id,
-                        first_name=user.first_name,
-                        last_name=user.last_name,
-                        email=user.email,
-                        role=user.role,
-                    ),
-                )
+                return user
             except Exception as ex:
                 logger.exception(str(ex))
                 await conn.rollback()
 
     def build_jwt_from_user(self, user: User):
         return self._jwt_service.encode(
-            {"id": user.id, "provider_id": user.provider_id, "role": user.role}
+            {
+                "id": str(user.id),
+                "provider_id": user.provider_id,
+                "role": user.role.value,
+            }
         )
