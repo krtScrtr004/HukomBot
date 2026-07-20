@@ -1,6 +1,7 @@
 import jwt
 
 from typing import Annotated
+from urllib.parse import urlencode
 from fastapi import APIRouter, Request, Query, Depends
 
 from fastapi.responses import RedirectResponse
@@ -32,6 +33,7 @@ def google_login(
 
 @auth_api_router.get("/google/login/callback")
 async def google_login_callback(
+    request: Request,
     code: Annotated[str, Query()],
     jwt_service: Annotated[JWTService, Depends(get_jwt_service)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
@@ -52,6 +54,19 @@ async def google_login_callback(
         redirect.set_cookie(key="token", value=token, httponly=True)
 
         return redirect
-    except jwt.InvalidTokenError:
+    except jwt.ExpiredSignatureError:
         # TODO: Redirect user on fail
-        pass
+        params = urlencode({"error_code": "TOKEN_EXPIRED"})
+        return RedirectResponse(
+            url=request.url_for(f"login_page?{params}"), status_code=303
+        )
+    except (
+        jwt.InvalidTokenError,
+        jwt.InvalidAlgorithmError, 
+        jwt.InvalidAudienceError,
+        jwt.InvalidIssuerError
+    ):
+        params = urlencode({"error_code": "INVALID_TOKEN"})
+        return RedirectResponse(
+            url=request.url_for(f"login_page?{params}"), status_code=303
+        )

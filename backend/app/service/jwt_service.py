@@ -1,7 +1,10 @@
 import jwt
+import logging
 
 from backend.app.core.settings import settings
 from backend.app.schema.auth_schema import JWTPayload
+
+logger = logging.getLogger(__name__)
 
 
 class JWTService:
@@ -18,17 +21,22 @@ class JWTService:
         self._aud = aud
 
     def encode(self, payload: JWTPayload):
-        return jwt.encode(payload=payload, key=self._secret, algorithm=self._algo)
+        return jwt.encode(
+            payload=payload.model_dump(), key=self._secret, algorithm=self._algo
+        )
 
     def verify(
         self,
         token: str,
     ):
-        decoded = jwt.decode(jwt=token, key=self._secret, algorithms=[self._algo])
-        payload = JWTPayload.model_validate(decoded["payload"])
-
-        if payload.iss != self._iss:
-            raise jwt.InvalidTokenError("Invalid token issuer")
-
-        if payload.aud != self._aud:
-            raise jwt.InvalidTokenError("Invalid token audience")
+        try:
+            jwt.decode(
+                jwt=token,
+                key=self._secret,
+                algorithms=[self._algo],
+                issuer=self._iss,
+                audience=self._aud,
+            )
+        except Exception as ex:
+            logger.warning("Someone has tried to use invalid JWT token: %s", str(ex))
+            raise
