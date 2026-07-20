@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # -- JWT --
     JWT_SECRET: str
     JWT_ALGO: str
+    JWT_ISS: str = "hukom_bot_api"
+    JWT_AUD: str = "hukom_bot_frontend"
+    JWT_EXP_IN_MIN: int = 30
 
     # -- Auth --
     OAUTH_CLIENT_ID: str
