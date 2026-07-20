@@ -4,11 +4,15 @@ from backend.app.database.database import Database
 from backend.app.enum.user_role import UserRole
 from backend.app.enum.oauth_provider import OAuthProvider
 
+from backend.app.model.user_model import User
+
 from backend.app.schema.user_schema import UserCreate, UserResponse
 from backend.app.schema.auth_schema import GoogleUserResource
 from backend.app.schema.response_schema import SuccessResponse
 
 from backend.app.repository.user_repository import UserRepository
+
+from backend.app.service.jwt_service import JWTService
 
 from backend.app.exception.oauth_exception import OAuthException
 
@@ -16,9 +20,12 @@ logger = logging.getLogger(__name__)
 
 
 class AuthService:
-    def __init__(self, db: Database, user_repo: UserRepository):
+    def __init__(
+        self, db: Database, user_repo: UserRepository, jwt_service: JWTService
+    ):
         self._db = db
         self._user_repo = user_repo
+        self._jwt_service = jwt_service
 
     async def authenticate_google_user(self, google_user: GoogleUserResource):
         async with self._db.connection() as conn:
@@ -46,7 +53,6 @@ class AuthService:
                 await conn.commit()
 
                 return SuccessResponse(
-                    success=True,
                     message="Google user connected successfully",
                     data=UserResponse(
                         id=user.id,
@@ -59,3 +65,8 @@ class AuthService:
             except Exception as ex:
                 logger.exception(str(ex))
                 await conn.rollback()
+
+    def build_jwt_from_user(self, user: User):
+        return self._jwt_service.encode(
+            {"id": user.id, "provider_id": user.provider_id, "role": user.role}
+        )
