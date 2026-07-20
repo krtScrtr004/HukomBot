@@ -1,3 +1,4 @@
+import jwt
 import logging
 import openai
 
@@ -136,6 +137,42 @@ async def value_error_exception_handler(request: Request, exc: ValueError):
     )
     return JSONResponse(
         status_code=422,
+        content=response_payload.model_dump(),
+    )
+    
+
+# JWT Exception Handlers
+
+@app.exception_handler(jwt.ExpiredSignatureError)
+async def jwt_expired_exception_handler(request: Request, exc: jwt.ExpiredSignatureError):
+    logger.warning("User attempted authentication with an expired JWT token.")
+    
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="TOKEN_EXPIRED",
+            message="Your session has expired. Please log in again.",
+            details=[]
+        )
+    )
+    return JSONResponse(
+        status_code=401,
+        content=response_payload.model_dump(),
+    )
+
+
+@app.exception_handler(jwt.InvalidTokenError)
+async def jwt_invalid_exception_handler(request: Request, exc: jwt.InvalidTokenError):
+    logger.warning(f"Invalid JWT authentication attempt: {str(exc)}")
+    
+    response_payload = ErrorResponse(
+        error=ErrorPayload(
+            code="INVALID_TOKEN",
+            message="The authentication token provided is malformed or invalid.",
+            details=[]
+        )
+    )
+    return JSONResponse(
+        status_code=401,
         content=response_payload.model_dump(),
     )
 
