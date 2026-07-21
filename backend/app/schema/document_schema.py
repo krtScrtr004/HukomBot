@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -53,6 +54,16 @@ class DocumentSearch(PaginatableMixin, BaseModel):
             raise ValueError("At least one of 'title' or 'file_type' must be provided")
         return self
 
+
+class DocumentMetadata(BaseModel):
+    file_path: Path
+    original_file_name: str
+    upload_file_name: UUID
+    document_type: LegalDocumentType
+    suffix: str
+    digest: bytes
+    
+    model_config = {"arbitrary_types_allowed": True}
 
 # API Schemas ========================================
 
