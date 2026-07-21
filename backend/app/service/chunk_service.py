@@ -1,0 +1,35 @@
+import asyncio
+from pathlib import Path
+from psycopg import AsyncConnection
+from fastapi.concurrency import run_in_threadpool
+
+from backend.app.schema.chunk_schema import ChunkCreate
+from backend.app.repository.chunk_repository import ChunkRepository
+from backend.app.exception.chunk_exception import ChunkFileException
+
+from backend.app.util.extract_text_from_pdf import extract_text_from_pdf
+
+
+ocr_semaphor = asyncio.Semaphore(
+    1
+)  # Allow only 1 OCR process to use GPU at the same time
+
+
+class ChunkService:
+    def __init__(self, chunk_repo: ChunkRepository):
+        self._chunk_repo = chunk_repo
+
+    # Repository =======
+
+    async def create_many(
+        self, chunks: list[ChunkCreate], connection: AsyncConnection = None
+    ):
+        return await self._chunk_repo.create_many(chunks, connection)
+
+    async def extract_text_to_chunks(self, file: Path):
+        async with ocr_semaphor:
+            chunks = await run_in_threadpool(extract_text_from_pdf, file)
+            if not chunks:
+                raise ChunkFileException("No chunks extracted from file")
+
+            return chunks
