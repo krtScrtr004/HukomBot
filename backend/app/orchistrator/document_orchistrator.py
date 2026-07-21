@@ -15,6 +15,7 @@ from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.file_storage_service import FileStorageService
 from backend.app.exception.document_exception import InvalidDocumentTypeException
 from backend.app.exception.not_found_exception import NotFoundException
+from backend.app.util.document_caster import DocumentCaster
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class DocumentOrchistrator:
         contents = await file.read()
 
         # Check if valid file type
-        if not DocumentService.is_valid_file_type(contents):
+        if not self._document_service.is_valid_file_type(contents):
             raise InvalidDocumentTypeException(
                 message="File type not allowed",
                 details=[
@@ -46,7 +47,7 @@ class DocumentOrchistrator:
                 ],
             )
 
-        metadata = DocumentService.build_metadata(
+        metadata = self._document_service.build_metadata(
             file_path=Path(file.filename),
             contents=contents,
             document_type=document_type,
@@ -61,7 +62,7 @@ class DocumentOrchistrator:
                 logger.info("Document with id: %s already exists", existing_document.id)
                 return OrchistratorResult(
                     message="File already exists",
-                    data=DocumentService.base_to_upload_response(existing_document),
+                    data=DocumentCaster.base_to_upload_response(existing_document),
                 )
 
             # Save pending document to data/pending/ folder
@@ -85,7 +86,7 @@ class DocumentOrchistrator:
             )
             return OrchistratorResult(
                 message=f"File upload is pending for approval",
-                data=DocumentService.base_to_upload_response(created_document),
+                data=DocumentCaster.base_to_upload_response(created_document),
             )
         except Exception as ex:
             logger.exception(str(ex))
@@ -112,7 +113,7 @@ class DocumentOrchistrator:
                 message="File upload completed",
                 data={
                     "document": document,
-                    "response": DocumentService.base_to_upload_response(document),
+                    "response": DocumentCaster.base_to_upload_response(document),
                 },
             )
 

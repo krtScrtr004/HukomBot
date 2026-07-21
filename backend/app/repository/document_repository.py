@@ -6,11 +6,8 @@ from psycopg import AsyncConnection
 from backend.app.enum.upload_status import UploadStatus
 from backend.app.database.database import Database
 from backend.app.model.document_model import Document
-from backend.app.schema.document_schema import (
-    DocumentCreate,
-    DocumentUpdate,
-    DocumentSearch,
-)
+from backend.app.schema.document_schema import DocumentCreate, DocumentUpdate
+from backend.app.util.document_caster import DocumentCaster
 
 
 class DocumentRepository:
@@ -75,17 +72,7 @@ class DocumentRepository:
                 (document.model_dump()),
             )
 
-        return Document(
-            id=document.id,
-            original_file_name=document.original_file_name,
-            upload_file_name=document.upload_file_name,
-            document_type=document.document_type,
-            file_type=document.file_type,
-            upload_status=document.upload_status,
-            upload_error=document.upload_error,
-            digest=document.digest,
-            created_at=document.created_at,
-        )
+        return DocumentCaster.create_to_base(document)
 
     async def update(
         self,

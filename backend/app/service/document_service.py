@@ -67,32 +67,12 @@ class DocumentService:
 
         return upload_status
 
-    # Static ========
-
-    @staticmethod
-    def base_to_upload_response(document: Document) -> DocumentUploadResponse:
-        return DocumentUploadResponse(
-            document_id=document.id,
-            status=document.upload_status,
-        )
-
-    @staticmethod
-    def metadata_to_create(document: DocumentMetadata) -> DocumentCreate:
-        return DocumentCreate(
-            original_file_name=document.original_file_name,
-            upload_file_name=document.upload_file_name,
-            document_type=document.document_type,
-            file_type=document.suffix,
-            digest=document.digest,
-        )
-
-    @staticmethod
-    def is_valid_file_type(contents: bytes) -> bool:
+    def is_valid_file_type(self, contents: bytes) -> bool:
         mime = magic.from_buffer(contents, mime=True)
         return mime in DocumentService.ALLOWED_FILE_TYPES
 
-    @staticmethod
     def build_metadata(
+        self,
         file_path: Path,
         contents: bytes,
         document_type: LegalDocumentType,
