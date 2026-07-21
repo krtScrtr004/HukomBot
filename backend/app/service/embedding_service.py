@@ -47,7 +47,7 @@ class EmbeddingService:
         max_len = self._model.max_seq_length
         truncated = [doc[:max_len] for doc in documents]
         embeddings = self._model.encode(
-            truncated, normalize_embeddings=True, show_progress_bar=False
+            truncated, normalize_embeddings=True
         )
         if isinstance(embeddings, np.ndarray):
             embeddings = embeddings.tolist()
@@ -58,6 +58,6 @@ class EmbeddingService:
             "Represent this sentence for searching relevant passages: " + query
         )[: self._model.max_seq_length]
         embedding = self._model.encode(
-            formatted_query, normalize_embeddings=True, show_progress_bar=False
+            formatted_query, normalize_embeddings=True
         )
         return embedding[0].tolist() if len(embedding.shape) > 1 else embedding.tolist()
