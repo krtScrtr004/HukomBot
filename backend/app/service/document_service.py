@@ -1,257 +1,62 @@
 import magic
-import asyncio
-import logging
 import hashlib
+import logging
 
 from pathlib import Path
 from uuid import UUID, uuid4
-from fastapi import UploadFile, BackgroundTasks
-from fastapi.concurrency import run_in_threadpool
+from psycopg import AsyncConnection
 
-from backend.app.database.database import Database
-
-from backend.app.enum.upload_status import UploadStatus
 from backend.app.enum.legal_document_type import LegalDocumentType
 
 from backend.app.model.document_model import Document
+from backend.app.schema.document_schema import *
 
-from backend.app.schema.chunk_schema import ChunkCreate
-from backend.app.schema.document_schema import (
-    DocumentCreate,
-    DocumentUpdate,
-    DocumentUploadResponse,
-    DocumentUploadStatusResponse,
-    ApproveDocumentUploadPayload,
-)
-from backend.app.schema.response_schema import SuccessResponse
-
-from backend.app.repository.chunk_repository import ChunkRepository
 from backend.app.repository.document_repository import DocumentRepository
 
 from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.file_storage_service import FileStorageService
 
-from backend.app.exception.chunk_exception import ChunkFileException
-from backend.app.exception.document_exception import InvalidDocumentTypeException
 from backend.app.exception.not_found_exception import NotFoundException
 
-from backend.app.util.extract_text_from_pdf import extract_text_from_pdf
 
 logger = logging.getLogger(__name__)
-
-ocr_semaphor = asyncio.Semaphore(
-    1
-)  # Allow only 1 OCR process to use GPU at the same time
 
 
 class DocumentService:
     ALLOWED_FILE_TYPES = {"application/pdf"}
 
     def __init__(
-        self, 
-        db: Database,
+        self,
         document_repo: DocumentRepository,
-        chunk_repo: ChunkRepository,
         embedding_service: EmbeddingService,
-        file_storage_service: FileStorageService
+        file_storage_service: FileStorageService,
     ):
         self._document_repo = document_repo
-        self._chunk_repo = chunk_repo
-
         self._embedding_service = embedding_service
         self._file_storage_service = file_storage_service
 
-    async def create_pending_document(
-        self, file: UploadFile, document_type: LegalDocumentType
+    # Repo ========
+
+    async def create(
+        self, document: DocumentCreate, connection: AsyncConnection = None
     ):
-        contents = await file.read()
+        return await self._document_repo.create(document, connection)
 
-        # Check if valid file type
-        mime = magic.from_buffer(contents, mime=True)
-        if mime not in DocumentService.ALLOWED_FILE_TYPES:
-            raise InvalidDocumentTypeException(
-                message="File type not allowed",
-                details=[
-                    f"Only {', '.join(type.removeprefix("application/") for type in DocumentService.ALLOWED_FILE_TYPES)} are allowed"
-                ],
-            )
-
-        file_path = Path(file.filename)
-        original_file_name = file_path.stem
-        upload_file_name = uuid4()
-        suffix = file_path.suffix.lower()
-        digest = hashlib.sha256(contents).digest()
-
-        try:
-            # Check for existing document by file digest
-            existing_document = await self._document_repo.get_by_digest(digest)
-            if existing_document:
-                logger.info("Document with id: %s already exists", existing_document.id)
-                return SuccessResponse(
-                    success=True,
-                    message="File already exists",
-                    data=DocumentUploadResponse(
-                        document_id=existing_document.id,
-                        status=existing_document.upload_status,
-                    ),
-                )
-
-            # Save pending document to data/pending/ folder
-            await self._file_storage_service.save_to_pending(
-                upload_file_name, contents, suffix
-            )
-
-            created_document = await self._document_repo.create(
-                DocumentCreate(
-                    original_file_name=original_file_name,
-                    upload_file_name=upload_file_name,
-                    document_type=document_type,
-                    file_type=suffix,
-                    digest=digest,
-                )
-            )  # Create document instance
-
-            logger.info(
-                "Document with id: %s inserted in the db and is pending for embedding process",
-                created_document.id,
-            )
-            return SuccessResponse(
-                success=True,
-                message=f"File upload is pending for approval",
-                data=DocumentUploadResponse(
-                    document_id=created_document.id,
-                    status=UploadStatus.PENDING,
-                ),
-            )
-        except Exception:
-            # Rollback file creation
-            self._file_storage_service.delete_from_pending(
-                f"{upload_file_name}.{suffix.lstrip(".")}"
-            )
-            raise
-
-    async def approve_document_upload(
-        self,
-        document_id: UUID,
-        payload: ApproveDocumentUploadPayload,
-        background_tasks: BackgroundTasks,
+    async def update(
+        self, document: DocumentUpdate, connection: AsyncConnection = None
     ):
-        document = await self._document_repo.get_by_id(document_id)
-        if not document:
-            raise NotFoundException(
-                code="DOCUMENT_NOT_FOUND", message="Document not found"
-            )
+        return await self._document_repo.update(document, connection)
 
-        if document.upload_status == UploadStatus.COMPLETED:
-            return SuccessResponse(
-                success=True,
-                message="File upload completed",
-                data=DocumentUploadResponse(
-                    document_id=document_id,
-                    status=UploadStatus.COMPLETED,
-                )
-            )
+    async def get_by_id(self, id: UUID, connection: AsyncConnection = None):
+        return await self._document_repo.get_by_id(id, connection)
 
-        file = self._file_storage_service.get_pending_file(
-            document.upload_file_name, document.file_type
-        )
+    async def get_by_digest(self, digest: bytes, connection: AsyncConnection = None):
+        return await self._document_repo.get_by_digest(digest, connection)
 
-        # Update document_type if not None in request body
-        document.document_type = (
-            payload.document_type
-            if payload.document_type is not None
-            else document.document_type
-        )
-        background_tasks.add_task(self._process_document_pdf_upload, document, file)
+    # Others =======
 
-        return SuccessResponse(
-            success=True,
-            message="File upload is ongoing",
-            data=DocumentUploadResponse(
-                document_id=document_id,
-                status=UploadStatus.ONGOING,
-            ),
-        )
-
-    async def _process_document_pdf_upload(self, document: Document, file: Path):
-        try:
-            # Set document upload status to ONGOING
-            await self._document_repo.update(
-                DocumentUpdate(
-                    id=document.id,
-                    document_type=document.document_type,
-                    upload_status=UploadStatus.ONGOING,
-                    upload_error=None,
-                )
-            )
-            logger.info(
-                "Document with id: %s set upload status to ONGOING", document.id
-            )
-
-            chunks = None
-            async with ocr_semaphor:
-                chunks = await run_in_threadpool(extract_text_from_pdf, file)
-            if not chunks:
-                raise ChunkFileException("No chunks extracted from file")
-
-            # Create the chunk models
-            document_chunks = {}
-            for i, chunk in enumerate(chunks):
-                document_chunks[i] = ChunkCreate(
-                    document_id=document.id,
-                    chunk_number=i+1,
-                    chunk_text=chunk["document"],
-                    section=chunk["section"],
-                )
-
-            texts = [chunk["document"] for chunk in chunks]
-            embeddings = self._embedding_service.embed_documents(texts)
-
-            # Map embeddings back to the chunk models
-            for i, embedding in enumerate(embeddings):
-                chunk_model = document_chunks.get(i)
-                if chunk_model:
-                    chunk_model.embedding = embedding
-
-            await self._chunk_repo.create_many(list(document_chunks.values()))
-
-            # Set document upload status to COMPLETED
-            await self._document_repo.update(
-                DocumentUpdate(
-                    id=document.id,
-                    upload_status=UploadStatus.COMPLETED,
-                )
-            )
-
-            logger.info(
-                "%i chunks created for document with id: %s",
-                len(document_chunks),
-                document.id,
-            )
-
-            logger.info(
-                "Document with id: %s set upload status to COMPLETED", document.id
-            )
-
-            # Delete file in the server
-            await self._file_storage_service.delete_from_pending(file.name)
-
-            logger.info("Document %s successfully deleted", file.name)
-        except Exception as ex:
-            # Set document upload status to FAILED
-            await self._document_repo.update(
-                DocumentUpdate(
-                    id=document.id,
-                    upload_status=UploadStatus.FAILED,
-                    upload_error=str(ex),
-                )
-            )
-
-            logger.error(
-                "Document with id: %s set upload status to FAILED", document.id
-            )
-
-            logger.exception(str(ex))
+    def get_file_from_storage(self, upload_file_name, file_type):
+        return self._file_storage_service.get_pending_file(upload_file_name, file_type)
 
     async def get_upload_status(self, document_id: UUID):
         upload_status = await self._document_repo.get_upload_status_by_id(document_id)
@@ -260,10 +65,44 @@ class DocumentService:
                 code="DOCUMENT_NOT_FOUND", message="Document not found"
             )
 
-        return SuccessResponse(
-            success=True,
-            message=f"Document upload status is: {upload_status.display_name()}",
-            data=DocumentUploadStatusResponse(
-                status_value=upload_status,
-            ),
+        return upload_status
+
+    # Static ========
+
+    @staticmethod
+    def base_to_upload_response(document: Document) -> DocumentUploadResponse:
+        return DocumentUploadResponse(
+            document_id=document.id,
+            status=document.upload_status,
+        )
+
+    @staticmethod
+    def metadata_to_create(document: DocumentMetadata) -> DocumentCreate:
+        return DocumentCreate(
+            original_file_name=document.original_file_name,
+            upload_file_name=document.upload_file_name,
+            document_type=document.document_type,
+            file_type=document.suffix,
+            digest=document.digest,
+        )
+
+    @staticmethod
+    def is_valid_file_type(contents: bytes) -> bool:
+        mime = magic.from_buffer(contents, mime=True)
+        return mime in DocumentService.ALLOWED_FILE_TYPES
+
+    @staticmethod
+    def build_metadata(
+        file_path: Path,
+        contents: bytes,
+        document_type: LegalDocumentType,
+        digest: bytes = None,
+    ) -> DocumentMetadata:
+        return DocumentMetadata(
+            file_path=file_path,
+            original_file_name=file_path.stem,
+            upload_file_name=uuid4(),
+            document_type=document_type,
+            suffix=file_path.suffix.lower(),
+            digest=digest or hashlib.sha256(contents).digest(),
         )

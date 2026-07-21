@@ -23,9 +23,11 @@ from backend.app.repository.document_repository import DocumentRepository
 from backend.app.repository.user_repository import UserRepository
 
 from backend.app.service.auth_service import AuthService
-from backend.app.service.chatbot_service import ChatbotService
 from backend.app.service.case_analysis_service import CaseAnalysisService
+from backend.app.service.chatbot_service import ChatbotService
+from backend.app.service.chunk_service import ChunkService
 from backend.app.service.document_service import DocumentService
+from backend.app.orchistrator.document_orchistrator import DocumentOrchistrator
 from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.jwt_service import JWTService
 from backend.app.service.google_service import GoogleService
@@ -41,11 +43,11 @@ async def lifespan(app: FastAPI):
     app.state.db = Database()
     logging.info("Database initialized successfully")
 
-    # app.state.embedding_service = EmbeddingService.initialize()
-    # logging.info("Embedding model loaded successfully")
+    app.state.embedding_service = EmbeddingService.initialize()
+    logging.info("Embedding model loaded successfully")
 
-    # app.state.reranker_service = RerankerService.initialize()
-    # logging.info("Reranker model loaded successfully")
+    app.state.reranker_service = RerankerService.initialize()
+    logging.info("Reranker model loaded successfully")
 
     await app.state.db.open()
     yield
@@ -62,6 +64,7 @@ def get_embedding_service(request: Request) -> EmbeddingService:
 
 def get_jwt_service() -> JWTService:
     return JWTService()
+
 
 def get_llm_service() -> LLMService:
     return LLMService()
@@ -118,7 +121,7 @@ def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
 def get_auth_service(
     db: Database = Depends(get_db),
     user_repo: UserRepository = Depends(get_user_repository),
-    jwt_service: JWTService = Depends(get_jwt_service)
+    jwt_service: JWTService = Depends(get_jwt_service),
 ) -> AuthService:
     return AuthService(db=db, user_repo=user_repo, jwt_service=jwt_service)
 
@@ -166,17 +169,33 @@ def get_case_analysis_service(
     )
 
 
-def get_document_service(
-    db: Database = Depends(get_db),
-    document_repo: DocumentRepository = Depends(get_document_repository),
+def get_chunk_service(
     chunk_repo: ChunkRepository = Depends(get_chunk_repository),
+) -> ChunkService:
+    return ChunkService(chunk_repo=chunk_repo)
+
+
+def get_document_service(
+    document_repo: DocumentRepository = Depends(get_document_repository),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     file_storage_service: FileStorageService = Depends(get_file_storage_service),
 ) -> DocumentService:
     return DocumentService(
-        db=db,
         document_repo=document_repo,
-        chunk_repo=chunk_repo,
+        embedding_service=embedding_service,
+        file_storage_service=file_storage_service,
+    )
+
+
+def get_document_orchestrator(
+    chunk_service: ChunkService = Depends(get_chunk_service),
+    document_service: DocumentService = Depends(get_document_service),
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
+    file_storage_service: FileStorageService = Depends(get_file_storage_service),
+) -> DocumentOrchistrator:
+    return DocumentOrchistrator(
+        chunk_service=chunk_service,
+        document_service=document_service,
         embedding_service=embedding_service,
         file_storage_service=file_storage_service,
     )
