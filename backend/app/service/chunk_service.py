@@ -3,12 +3,11 @@ from pathlib import Path
 from psycopg import AsyncConnection
 from fastapi.concurrency import run_in_threadpool
 
-from backend.app.schema.chunk_schema import ChunkCreate
+from backend.app.schema.chunk_schema import *
 from backend.app.repository.chunk_repository import ChunkRepository
 from backend.app.exception.chunk_exception import ChunkFileException
 
 from backend.app.util.extract_text_from_pdf import extract_text_from_pdf
-
 
 ocr_semaphor = asyncio.Semaphore(
     1
@@ -19,12 +18,24 @@ class ChunkService:
     def __init__(self, chunk_repo: ChunkRepository):
         self._chunk_repo = chunk_repo
 
-    # Repository =======
+    # Repository =================
 
     async def create_many(
         self, chunks: list[ChunkCreate], connection: AsyncConnection = None
     ):
         return await self._chunk_repo.create_many(chunks, connection)
+
+    async def search_vector(
+        self, chunk: ChunkSearchVector, connection: AsyncConnection = None
+    ):
+        return await self._chunk_repo.search_vector(chunk, connection)
+    
+    async def search_keyword(
+        self, chunk: ChunkSearchKeyword, connection: AsyncConnection = None
+    ):
+        return await self._chunk_repo.search(chunk, connection)
+
+    # Others ======================
 
     async def extract_text_to_chunks(self, file: Path):
         async with ocr_semaphor:
