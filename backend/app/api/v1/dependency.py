@@ -27,7 +27,6 @@ from backend.app.service.case_analysis_service import CaseAnalysisService
 from backend.app.service.chatbot_service import ChatbotService
 from backend.app.service.chunk_service import ChunkService
 from backend.app.service.document_service import DocumentService
-from backend.app.orchistrator.document_orchistrator import DocumentOrchistrator
 from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.jwt_service import JWTService
 from backend.app.service.google_service import GoogleService
@@ -35,7 +34,15 @@ from backend.app.service.llm_service import LLMService
 from backend.app.service.reranker_service import RerankerService
 from backend.app.service.file_storage_service import FileStorageService
 
+from backend.app.orchistrator.case_analysis_orchistrator import CaseAnalysisOrchistrator
+from backend.app.orchistrator.document_orchistrator import DocumentOrchistrator
+
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Lifespan & App State
+# ============================================================================
 
 
 @asynccontextmanager
@@ -58,24 +65,43 @@ def get_db(request: Request) -> Database:
     return request.app.state.db
 
 
+# ============================================================================
+# Infrastructure Services (app-state singletons)
+# ============================================================================
+
+
 def get_embedding_service(request: Request) -> EmbeddingService:
     return request.app.state.embedding_service.get_instance()
-
-
-def get_jwt_service() -> JWTService:
-    return JWTService()
-
-
-def get_llm_service() -> LLMService:
-    return LLMService()
 
 
 def get_reranker_service(request: Request) -> RerankerService:
     return request.app.state.reranker_service.get_instance()
 
 
+# ============================================================================
+# Stateless Services
+# ============================================================================
+
+
+def get_llm_service() -> LLMService:
+    return LLMService()
+
+
+def get_jwt_service() -> JWTService:
+    return JWTService()
+
+
 def get_file_storage_service() -> FileStorageService:
     return FileStorageService()
+
+
+def get_google_service() -> GoogleService:
+    return GoogleService()
+
+
+# ============================================================================
+# Repositories (Data Access)
+# ============================================================================
 
 
 def get_chunk_repository(db: Database = Depends(get_db)) -> ChunkRepository:
@@ -118,6 +144,15 @@ def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
     return UserRepository(db=db)
 
 
+# ============================================================================
+# Services (Business Logic)
+# ============================================================================
+
+
+def get_chunk_service(chunk_repo: ChunkRepository = Depends(get_chunk_repository)) -> ChunkService:
+    return ChunkService(chunk_repo=chunk_repo)
+
+
 def get_auth_service(
     db: Database = Depends(get_db),
     user_repo: UserRepository = Depends(get_user_repository),
@@ -137,7 +172,6 @@ def get_chatbot_service(
 
 def get_case_analysis_service(
     db: Database = Depends(get_db),
-    chunk_repo: ChunkRepository = Depends(get_chunk_repository),
     case_fact_repo: CaseFactRepository = Depends(get_case_fact_repository),
     case_fact_version_repo: CaseFactVersionRepository = Depends(
         get_case_fact_version_repository
@@ -152,27 +186,22 @@ def get_case_analysis_service(
         get_case_analysis_version_fact_repository
     ),
     chatbot_service: ChatbotService = Depends(get_chatbot_service),
+    chunk_service: ChunkService = Depends(get_chunk_service),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     reranker_service: RerankerService = Depends(get_reranker_service),
 ) -> CaseAnalysisService:
     return CaseAnalysisService(
         db=db,
-        chunk_repo=chunk_repo,
         case_fact_repo=case_fact_repo,
         case_fact_version_repo=case_fact_version_repo,
         case_analysis_session_repo=case_analysis_session_repo,
         case_analysis_version_repo=case_analysis_version_repo,
         case_analysis_version_fact_repo=case_analysis_version_fact_repo,
         chatbot_service=chatbot_service,
+        chunk_service=chunk_service,
         embedding_service=embedding_service,
         reranker_service=reranker_service,
     )
-
-
-def get_chunk_service(
-    chunk_repo: ChunkRepository = Depends(get_chunk_repository),
-) -> ChunkService:
-    return ChunkService(chunk_repo=chunk_repo)
 
 
 def get_document_service(
@@ -185,6 +214,11 @@ def get_document_service(
         embedding_service=embedding_service,
         file_storage_service=file_storage_service,
     )
+
+
+# ============================================================================
+# Orchestrators (Application Layer)
+# ============================================================================
 
 
 def get_document_orchestrator(
@@ -201,5 +235,11 @@ def get_document_orchestrator(
     )
 
 
-def get_google_service() -> GoogleService:
-    return GoogleService()
+def get_case_analysis_orchestrator(
+    db: Database = Depends(get_db),
+    case_analysis_service: CaseAnalysisService = Depends(get_case_analysis_service),
+) -> CaseAnalysisOrchistrator:
+    return CaseAnalysisOrchistrator(
+        db=db,
+        case_analysis_service=case_analysis_service,
+    )
