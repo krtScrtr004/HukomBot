@@ -333,10 +333,12 @@ custom_exceptions = [
     AppException,
     ChatException,
     ChunkFileException,
+    ForbiddenException,
     GoogleEmailNotVerifiedException,
     InvalidDocumentTypeException,
     NotFoundException,
     OAuthException,
+    UnauthorizedException
 ]
 for custom_exec in custom_exceptions:
     app.add_exception_handler(custom_exec, handle_custom_exception)
