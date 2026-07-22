@@ -16,6 +16,8 @@ from backend.app.api.v1.endpoint.document import document_api_router
 
 from frontend.router.login import login_page_router
 
+from backend.app.middleware.timer import TimerMiddleware
+
 from backend.app.schema.response_schema import ErrorResponse, ErrorPayload, ErrorDetail
 
 from backend.app.exception.chat_exception import ChatException
@@ -64,6 +66,8 @@ app.include_router(router=login_page_router, prefix="/login")
 
 
 app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET)
+
+app.add_middleware(TimerMiddleware)
 
 
 # Helper DB/Custom Mappers ============================================
