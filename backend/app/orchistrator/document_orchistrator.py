@@ -13,8 +13,8 @@ from backend.app.service.chunk_service import ChunkService
 from backend.app.service.document_service import DocumentService
 from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.file_storage_service import FileStorageService
+from backend.app.exception.app_exception import NotFoundException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
-from backend.app.exception.not_found_exception import NotFoundException
 from backend.app.util.document_caster import DocumentCaster
 
 logger = logging.getLogger(__name__)

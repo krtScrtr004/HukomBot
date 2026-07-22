@@ -16,8 +16,7 @@ from backend.app.repository.document_repository import DocumentRepository
 from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.file_storage_service import FileStorageService
 
-from backend.app.exception.not_found_exception import NotFoundException
-
+from backend.app.exception.app_exception import NotFoundException
 
 logger = logging.getLogger(__name__)
 

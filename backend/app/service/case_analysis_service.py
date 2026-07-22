@@ -23,8 +23,8 @@ from backend.app.repository.case_analysis_version_fact_repository import (
     CaseAnalysisVersionFactRepository,
 )
 from backend.app.util.case_analysis_version_caster import CaseAnalysisVersionCaster
+from backend.app.exception.app_exception import NotFoundException
 from backend.app.exception.chat_exception import ChatException
-from backend.app.exception.not_found_exception import NotFoundException
 
 logger = logging.getLogger(__name__)
 

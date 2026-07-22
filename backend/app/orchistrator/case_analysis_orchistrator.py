@@ -9,7 +9,7 @@ from backend.app.schema.chatbot_schema import (
 )
 from backend.app.schema.orchistrator_schema import OrchistratorResult
 from backend.app.util.case_analysis_version_caster import CaseAnalysisVersionCaster
-from backend.app.exception.not_found_exception import NotFoundException
+from backend.app.exception.app_exception import NotFoundException
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +36,9 @@ class CaseAnalysisOrchistrator:
         async with self._db.connection() as conn:
             async with conn.transaction():
                 try:
-                    # final_answer = await self._service.generate_analysis_answer(
-                    #     session.id, case_facts
-                    # )
-                    final_answer = "aaaaa"
+                    final_answer = await self._service.generate_analysis_answer(
+                        session.id, case_facts
+                    )
 
                     # Create session
                     await self._service.create_session(session, conn)
@@ -240,12 +239,10 @@ class CaseAnalysisOrchistrator:
                         if cf.id in deleted_facts:
                             latest_case_fact_objs.remove(cf)
 
-                # final_answer = await self._service.generate_analysis_answer(
-                #     session_id,
-                #     [fact.fact for fact in latest_case_fact_objs],
-                # )
-
-                final_answer = "bbbbbbbbb"
+                final_answer = await self._service.generate_analysis_answer(
+                    session_id,
+                    [fact.fact for fact in latest_case_fact_objs],
+                )
 
                 # Create case analysis version
                 case_analysis_version_obj = await self._service.create_analysis_version(
