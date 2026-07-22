@@ -20,10 +20,10 @@ from backend.app.middleware.timer import TimerMiddleware
 
 from backend.app.schema.response_schema import ErrorResponse, ErrorPayload, ErrorDetail
 
+from backend.app.exception.app_exception import *
 from backend.app.exception.chat_exception import ChatException
 from backend.app.exception.chunk_exception import ChunkFileException
 from backend.app.exception.document_exception import InvalidDocumentTypeException
-from backend.app.exception.not_found_exception import NotFoundException
 from backend.app.exception.oauth_exception import (
     OAuthException,
     GoogleEmailNotVerifiedException,
@@ -330,6 +330,7 @@ for db_exec in db_exceptions:
 # Custom Exceptions Hooks ==============================================
 
 custom_exceptions = [
+    AppException,
     ChatException,
     ChunkFileException,
     GoogleEmailNotVerifiedException,

@@ -5,3 +5,12 @@ class AppException(Exception):
         self.code = code
         self.details = details
         super().__init__(self.message)
+        
+class NotFoundException(AppException):
+    def __init__(
+        self,
+        message: str = "Not Found",
+        code: str = "ENTITY_NOT_FOUND",
+        details: list[str] = [],
+    ):
+        super().__init__(message, 404, code, details)
