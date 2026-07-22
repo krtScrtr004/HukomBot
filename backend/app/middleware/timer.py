@@ -4,9 +4,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from backend.app.util.timer import Timer
 
 class TimerMiddleware(BaseHTTPMiddleware):
-
     async def dispatch(self, request: Request, call_next):
         response = None
+        
         with Timer() as elapsed_time:
             response = await call_next(request)
 
