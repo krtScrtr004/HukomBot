@@ -85,18 +85,22 @@ async def google_login_callback(
         return RedirectResponse(
             url=request.url_for(f"login_page?{params}"), status_code=303
         )
-    except (
-        jwt.InvalidTokenError,
-        jwt.InvalidAlgorithmError,
-        jwt.InvalidAudienceError,
-        jwt.InvalidIssuerError,
-    ):
-        params = urlencode({"error_code": "INVALID_TOKEN"})
-        return RedirectResponse(
-            url=request.url_for(f"login_page?{params}"), status_code=303
+    except Exception as ex:
+        jwt_errors = (
+            jwt.InvalidTokenError,
+            jwt.InvalidAlgorithmError,
+            jwt.InvalidAudienceError,
+            jwt.InvalidIssuerError,
         )
-    except OAuthException as ex:
-        params = urlencode({"error_code": ex.code})
+
+        params = None
+        if isinstance(ex, jwt_errors):
+            params = urlencode({"error_code": "INVALID_TOKEN"})
+        elif isinstance(ex, OAuthException):
+            params = urlencode({"error_code": ex.code})
+        else:
+            params = urlencode({"error_code": "INTERNAL_SERVER_ERROR"})
+
         return RedirectResponse(
             url=request.url_for(f"login_page?{params}"), status_code=303
         )
