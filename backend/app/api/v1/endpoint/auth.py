@@ -75,7 +75,7 @@ async def google_login_callback(
         token = jwt_service.encode(payload=JWTPayload(provider_id=user.provider_id))
 
         # TODO: Update the redirect url here
-        redirect = RedirectResponse("http://127.0.0.1:8000/redoc")
+        redirect = RedirectResponse("http://127.0.0.1:8000/docs")
         # Set jwt on cookie
         redirect.set_cookie(key="token", value=token, httponly=True)
 

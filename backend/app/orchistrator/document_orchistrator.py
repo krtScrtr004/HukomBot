@@ -34,7 +34,7 @@ class DocumentOrchistrator:
         self._file_storage_service = file_storage_service
 
     async def create_pending(
-        self, file: UploadFile, document_type: LegalDocumentType
+        self, user_id: UUID, file: UploadFile, document_type: LegalDocumentType
     ) -> OrchistratorResult:
         contents = await file.read()
 
@@ -77,6 +77,7 @@ class DocumentOrchistrator:
                     document_type=document_type,
                     file_type=metadata.suffix,
                     digest=metadata.digest,
+                    uploader_id=user_id
                 )
             )  # Create document instance
 

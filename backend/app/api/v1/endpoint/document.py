@@ -30,7 +30,9 @@ async def upload_document(
     user: Annotated[User, Depends(verify_user)],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
 ):
-    result = await orchistrator.create_pending(file, document_type)
+    result = await orchistrator.create_pending(
+        user_id=user.id, file=file, document_type=document_type
+    )
     return SuccessResponse(message=result.message, data=result.data)
 
 
@@ -60,6 +62,5 @@ async def get_document_upload_status(
 ):
     status = await service.get_upload_status(document_id)
     return SuccessResponse(
-        message=f"Document upload status is {status.value}",
-        data=status
+        message=f"Document upload status is {status.value}", data=status
     )
