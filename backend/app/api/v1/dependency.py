@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import FastAPI, Request, Depends
+from fastapi.security import OAuth2PasswordBearer
 from contextlib import asynccontextmanager
 
 from backend.app.database.database import Database
@@ -33,11 +34,16 @@ from backend.app.service.google_service import GoogleService
 from backend.app.service.llm_service import LLMService
 from backend.app.service.reranker_service import RerankerService
 from backend.app.service.file_storage_service import FileStorageService
+from backend.app.service.user_service import UserService
 
 from backend.app.orchistrator.case_analysis_orchistrator import CaseAnalysisOrchistrator
 from backend.app.orchistrator.document_orchistrator import DocumentOrchistrator
 
+from backend.app.exception.app_exception import UnauthorizedException
+
 logger = logging.getLogger(__name__)
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 
 # ============================================================================
@@ -149,16 +155,10 @@ def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
 # ============================================================================
 
 
-def get_chunk_service(chunk_repo: ChunkRepository = Depends(get_chunk_repository)) -> ChunkService:
+def get_chunk_service(
+    chunk_repo: ChunkRepository = Depends(get_chunk_repository),
+) -> ChunkService:
     return ChunkService(chunk_repo=chunk_repo)
-
-
-def get_auth_service(
-    db: Database = Depends(get_db),
-    user_repo: UserRepository = Depends(get_user_repository),
-    jwt_service: JWTService = Depends(get_jwt_service),
-) -> AuthService:
-    return AuthService(db=db, user_repo=user_repo, jwt_service=jwt_service)
 
 
 def get_chatbot_service(
@@ -168,6 +168,21 @@ def get_chatbot_service(
         db=db,
         llm_service=llm_service,
     )
+
+
+def get_user_service(
+    db: Database = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> UserService:
+    return UserService(db=db, user_repo=user_repo)
+
+
+def get_auth_service(
+    db: Database = Depends(get_db),
+    user_service: UserRepository = Depends(get_user_service),
+    jwt_service: JWTService = Depends(get_jwt_service),
+) -> AuthService:
+    return AuthService(db=db, user_service=user_service, jwt_service=jwt_service)
 
 
 def get_case_analysis_service(
@@ -243,3 +258,21 @@ def get_case_analysis_orchestrator(
         db=db,
         case_analysis_service=case_analysis_service,
     )
+
+
+# ============================================================================
+# Authorization
+# ============================================================================
+
+
+async def verify_user(
+    request: Request,
+    token: str = Depends(oauth2_scheme),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    request_id = request.state.request_id
+
+    # Check if valid token
+    user = auth_service.authenticate(request_id, token)
+
+    return user
