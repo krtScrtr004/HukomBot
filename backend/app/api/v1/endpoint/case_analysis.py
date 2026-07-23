@@ -11,6 +11,7 @@ from backend.app.schema.chatbot_schema import (
 from backend.app.schema.response_schema import SuccessResponse
 
 from backend.app.api.v1.dependency import (
+    verify_user,
     get_case_analysis_service,
     get_case_analysis_orchestrator,
 )
@@ -29,10 +30,11 @@ async def run_case_analysis_pipeline(
     return SuccessResponse(message=result.message, data=result.data)
 
 
-@case_analysis_api_router.post("/{case_analysis_session_id}/version/{version_number}")
+@case_analysis_api_router.get("/{case_analysis_session_id}/version/{version_number}")
 async def get_case_analysis_version(
     case_analysis_session_id: UUID,
     version_number: Annotated[int, Path(ge=1)],
+    user: Annotated[dict, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
 ):
     result = await service.get_by_version(case_analysis_session_id, version_number)
