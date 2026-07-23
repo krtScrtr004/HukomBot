@@ -30,7 +30,7 @@ class JWTService:
         token: str,
     ):
         try:
-            jwt.decode(
+            return jwt.decode(
                 jwt=token,
                 key=self._secret,
                 algorithms=[self._algo],
