@@ -273,6 +273,6 @@ async def verify_user(
     request_id = request.state.request_id
 
     # Check if valid token
-    user = auth_service.authenticate(request_id, token)
+    user = await auth_service.authenticate(request_id, token)
 
     return user
