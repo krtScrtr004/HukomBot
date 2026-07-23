@@ -13,6 +13,7 @@ from backend.app.schema.auth_schema import AuthUser
 from backend.app.repository.user_repository import UserRepository
 
 from backend.app.service.jwt_service import JWTService
+from backend.app.service.user_service import UserService
 from backend.app.exception.app_exception import UnauthorizedException
 
 logger = logging.getLogger(__name__)
@@ -20,43 +21,34 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(
-        self, db: Database, user_repo: UserRepository, jwt_service: JWTService
+        self, db: Database, user_service: UserService, jwt_service: JWTService
     ):
         self._db = db
-        self._user_repo = user_repo
+        self._user_service = user_service
         self._jwt_service = jwt_service
 
-    def authenticate_request(self, request_id: UUID, scheme: str, token: str):
-        def raiseUnauthorized(details: list[str]):
-            raise UnauthorizedException(
-                message="You are not authorized to perform this action",
-                code="INVALID_TOKEN",
-                details=details,
-            )
-
-        if scheme != "Bearer":
-            raiseUnauthorized(
-                details=[
-                    f"Incorrect authorization scheme/type in request with id: {request_id}"
-                ]
-            )
-
+    async def authenticate(self, request_id: UUID, token: str):
         decoded = self._jwt_service.verify(token)
         provider_id = decoded.get("provider_id")
         if not decoded or not provider_id:
-            raiseUnauthorized(
-                details=[f"Invalid token provided in request with id: {request_id}"]
+            raise UnauthorizedException(
+                message="You are not authorized to perform this action",
+                code="INVALID_TOKEN",
+                details=[f"Invalid token provided in request with id: {request_id}"],
             )
 
-        return provider_id
+        user = await self._user_service.get_by_provider_id(provider_id)
+        return user
 
     async def authenticate_user(self, user: AuthUser) -> User:
         async with self._db.connection() as conn:
             try:
-                user = await self._user_repo.get_by_provider_id(user.provider_id, conn)
+                user = await self._user_service.get_by_provider_id(
+                    user.provider_id, conn
+                )
                 if not user:
                     # Create user record if account is not yet connected
-                    await self._user_repo.create(
+                    await self._user_service.create(
                         UserCreate(
                             provider_id=user.provider_id,
                             first_name=user.first_name,
