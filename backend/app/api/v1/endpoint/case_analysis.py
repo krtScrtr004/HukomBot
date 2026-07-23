@@ -26,7 +26,7 @@ async def run_case_analysis_pipeline(
         CaseAnalysisOrchistrator, Depends(get_case_analysis_orchestrator)
     ],
 ):
-    result = await orchistrator.run_pipeline(payload)
+    result = await orchistrator.run_pipeline(user_id=user.id, payload=payload)
     return SuccessResponse(message=result.message, data=result.data)
 
 

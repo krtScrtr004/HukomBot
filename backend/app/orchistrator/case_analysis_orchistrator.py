@@ -19,19 +19,23 @@ class CaseAnalysisOrchistrator:
         self._db = db
         self._service = case_analysis_service
 
-    async def run_pipeline(self, payload: CaseAnalysisPipelineCaseFactsPayload):
+    async def run_pipeline(
+        self, user_id: UUID, payload: CaseAnalysisPipelineCaseFactsPayload
+    ):
         if not payload.case_analysis_session_id:
-            return await self._run_fresh_pipeline(payload.new_case_facts)
+            return await self._run_fresh_pipeline(
+                user_id=user_id, case_facts=payload.new_case_facts
+            )
         else:
             return await self._run_existing_pipeline(
-                payload.case_analysis_session_id,
-                payload.new_case_facts,
-                payload.updated_case_facts,
-                payload.deleted_case_facts,
+                session_id=payload.case_analysis_session_id,
+                new_facts=payload.new_case_facts,
+                updated_facts=payload.updated_case_facts,
+                deleted_facts=payload.deleted_case_facts,
             )
 
-    async def _run_fresh_pipeline(self, case_facts: list[str]):
-        session = CaseAnalysisSessionCreate()
+    async def _run_fresh_pipeline(self, user_id: UUID, case_facts: list[str]):
+        session = CaseAnalysisSessionCreate(user_id=user_id)
 
         async with self._db.connection() as conn:
             async with conn.transaction():
@@ -39,7 +43,7 @@ class CaseAnalysisOrchistrator:
                     final_answer = await self._service.generate_analysis_answer(
                         session.id, case_facts
                     )
-
+                    
                     # Create session
                     await self._service.create_session(session, conn)
                     logger.info(

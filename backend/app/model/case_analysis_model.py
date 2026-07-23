@@ -19,7 +19,7 @@ class CaseAnalysisSession(BaseModel):
     updated_at: datetime = Field(default=datetime.now())
     
     # Navigation Prop
-    user = User|None = Field(default=None)
+    user: User|None = Field(default=None)
     
     @model_serializer(mode="wrap")
     def custom_serializer(self, handler: SerializerFunctionWrapHandler):
