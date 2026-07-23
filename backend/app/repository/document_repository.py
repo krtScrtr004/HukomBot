@@ -48,6 +48,7 @@ class DocumentRepository:
                     upload_status, 
                     upload_error, 
                     digest,
+                    uploader_id,
                     created_at
                 ) VALUES (
                     %(id)s,
@@ -58,6 +59,7 @@ class DocumentRepository:
                     %(upload_status)s, 
                     %(upload_error)s, 
                     %(digest)s,
+                    %(uploader_id)s,
                     %(created_at)s
                 )
                 ON CONFLICT (digest)

@@ -20,6 +20,7 @@ class DocumentCaster:
             upload_status=document.upload_status,
             upload_error=document.upload_error,
             digest=document.digest,
+            uploader_id=document.uploader_id,
             created_at=document.created_at
         )
 
