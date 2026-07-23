@@ -1,4 +1,3 @@
-from typing import List
 from psycopg import errors
 from uuid import UUID
 from psycopg import AsyncConnection
@@ -39,14 +38,15 @@ class CaseAnalysisSessionRepository:
         async with conn.cursor() as cur:
             await cur.execute(
                 """
-                INSERT INTO case_analysis_sessions (id, created_at, updated_at) 
-                VALUES (%(id)s, %(created_at)s, %(updated_at)s) 
+                INSERT INTO case_analysis_sessions (id, user_id, created_at, updated_at) 
+                VALUES (%(id)s, %(user_id)s, %(created_at)s, %(updated_at)s) 
                 """,
                 (case_analysis_session.model_dump()),
             )
 
             return CaseAnalysisSession(
                 id=case_analysis_session.id,
+                user_id=case_analysis_session.user_id,
                 created_at=case_analysis_session.created_at,
                 updated_at=case_analysis_session.updated_at,
             )
