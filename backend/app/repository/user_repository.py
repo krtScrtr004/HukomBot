@@ -88,7 +88,7 @@ class UserRepository:
         
         async with self._database.connection() as conn:
             try:
-                result = await self._get_by_provider_id_implement(conn, user)
+                result = await self._get_by_provider_id_implement(conn, provider_id)
                 await conn.commit()
                 return result
             except errors.OperationalError as ex:
