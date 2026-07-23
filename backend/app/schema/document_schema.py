@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 from datetime import datetime
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, model_validator
@@ -16,10 +15,11 @@ class DocumentCreate(BaseModel):
     original_file_name: str = Field(min_length=1, max_length=300)
     upload_file_name: UUID = Field(default_factory=uuid4)
     document_type: LegalDocumentType
-    file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    file_type: str | None = Field(default=None, min_length=1, max_length=20)
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
-    upload_error: Optional[str] = Field(default=None, max_length=500)
+    upload_error: str | None = Field(default=None, max_length=500)
     digest: bytes
+    uploader_id: UUID
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
@@ -27,24 +27,20 @@ class DocumentCreate(BaseModel):
 
 class DocumentUpdate(BaseModel):
     id: UUID
-    original_file_name: Optional[str] = Field(
-        default=None, min_length=1, max_length=300
-    )
-    upload_file_name: Optional[UUID] = Field(default=None)
-    document_type: Optional[LegalDocumentType] = Field(default=None)
-    file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
-    upload_status: Optional[UploadStatus] = Field(default=None)
-    upload_error: Optional[str] = Field(default=None, max_length=500)
+    original_file_name: str | None = Field(default=None, min_length=1, max_length=300)
+    upload_file_name: UUID | None = Field(default=None)
+    document_type: LegalDocumentType | None = Field(default=None)
+    file_type: str | None = Field(default=None, min_length=1, max_length=20)
+    upload_status: UploadStatus | None = Field(default=None)
+    upload_error: str | None = Field(default=None, max_length=500)
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
 class DocumentSearch(PaginatableMixin, BaseModel):
-    original_file_name: Optional[str] = Field(
-        default=None, min_length=1, max_length=300
-    )
+    original_file_name: str | None = Field(default=None, min_length=1, max_length=300)
     document_type: LegalDocumentType
-    file_type: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    file_type: str | None = Field(default=None, min_length=1, max_length=20)
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
@@ -62,14 +58,15 @@ class DocumentMetadata(BaseModel):
     document_type: LegalDocumentType
     suffix: str
     digest: bytes
-    
+
     model_config = {"arbitrary_types_allowed": True}
+
 
 # API Schemas ========================================
 
 
 class ApproveDocumentUploadPayload(BaseModel):
-    document_type: Optional[LegalDocumentType] = Field(default=None)
+    document_type: LegalDocumentType | None = Field(default=None)
 
 
 # API Response ======================================================
