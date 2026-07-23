@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 from backend.app.database.database import Database
 from backend.app.enum.user_role import UserRole
@@ -12,7 +13,7 @@ from backend.app.schema.auth_schema import AuthUser
 from backend.app.repository.user_repository import UserRepository
 
 from backend.app.service.jwt_service import JWTService
-
+from backend.app.exception.app_exception import UnauthorizedException
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,30 @@ class AuthService:
         self._db = db
         self._user_repo = user_repo
         self._jwt_service = jwt_service
+
+    def authenticate_request(self, request_id: UUID, scheme: str, token: str):
+        def raiseUnauthorized(details: list[str]):
+            raise UnauthorizedException(
+                message="You are not authorized to perform this action",
+                code="INVALID_TOKEN",
+                details=details,
+            )
+
+        if scheme != "Bearer":
+            raiseUnauthorized(
+                details=[
+                    f"Incorrect authorization scheme/type in request with id: {request_id}"
+                ]
+            )
+
+        decoded = self._jwt_service.verify(token)
+        provider_id = decoded.get("provider_id")
+        if not decoded or not provider_id:
+            raiseUnauthorized(
+                details=[f"Invalid token provided in request with id: {request_id}"]
+            )
+
+        return provider_id
 
     async def authenticate_user(self, user: AuthUser) -> User:
         async with self._db.connection() as conn:
