@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from uuid import UUID
-from typing import Optional
 from datetime import datetime
 from pydantic import (
     BaseModel,
@@ -11,11 +10,23 @@ from pydantic import (
     SerializerFunctionWrapHandler,
 )
 
+from backend.app.model.user_model import User
 
 class CaseAnalysisSession(BaseModel):
     id: UUID
+    user_id: UUID
     created_at: datetime = Field(default=datetime.now())
     updated_at: datetime = Field(default=datetime.now())
+    
+    # Navigation Prop
+    user = User|None = Field(default=None)
+    
+    @model_serializer(mode="wrap")
+    def custom_serializer(self, handler: SerializerFunctionWrapHandler):
+        result = handler(self)
+        result.pop("user")
+        return result
+
 
 
 class CaseFact(BaseModel):
@@ -24,7 +35,7 @@ class CaseFact(BaseModel):
     created_at: datetime = Field(default=datetime.now())
 
     # Navigation prop
-    case_analysis_session: Optional[CaseAnalysisSession] = Field(default=None)
+    case_analysis_session: CaseAnalysisSession = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
 
@@ -54,7 +65,7 @@ class CaseFactVersion(BaseModel):
     created_at: datetime = Field(default=datetime.now())
 
     # Navigation prop
-    case_fact: Optional[CaseFact] = Field(default=None)
+    case_fact: CaseFact = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
 
@@ -79,7 +90,7 @@ class CaseAnalysisVersion(BaseModel):
     created_at: datetime = Field(default=datetime.now())
 
     # Navigation prop
-    case_analysis_session: Optional[CaseAnalysisSession] = Field(default=None)
+    case_analysis_session: CaseAnalysisSession = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
 
@@ -102,8 +113,8 @@ class CaseAnalysisVersionFact(BaseModel):
     case_fact_version_id: UUID
 
     # Navigation prop
-    case_analysis_version: Optional[CaseAnalysisVersion] = Field(default=None)
-    case_fact_version: Optional[CaseFactVersion] = Field(default=None)
+    case_analysis_version: CaseAnalysisVersion = Field(default=None)
+    case_fact_version: CaseFactVersion = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True, "from_attributes": True}
 
