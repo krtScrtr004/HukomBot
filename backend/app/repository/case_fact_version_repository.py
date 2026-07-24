@@ -11,6 +11,7 @@ from backend.app.schema.case_analysis_schema import (
     CaseFactVersionGetBySessionId,
     CaseAnalysisGetByVersionNumber,
 )
+from backend.app.util.case_fact_version_caster import CaseFactVersionCaster
 
 
 class CaseFactVersionRepository:
@@ -68,14 +69,7 @@ class CaseFactVersionRepository:
             updated = []
             for i, _ in enumerate(case_fact_versions):
                 updated.append(
-                    CaseFactVersion(
-                        id=case_fact_versions[i].id,
-                        case_fact_id=case_fact_versions[i].case_fact_id,
-                        version_number=case_fact_versions[i].version_number,
-                        fact=case_fact_versions[i].fact,
-                        is_deleted=case_fact_versions[i].is_deleted,
-                        created_at=case_fact_versions[i].created_at,
-                    )
+                    CaseFactVersionCaster.create_to_base(case_fact_versions[i])
                 )
 
         return updated

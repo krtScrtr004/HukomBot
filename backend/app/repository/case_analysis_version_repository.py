@@ -9,6 +9,7 @@ from backend.app.schema.case_analysis_schema import (
     CaseAnalysisVersionCreate,
     CaseAnalysisGetByVersionNumber,
 )
+from backend.app.util.case_analysis_version_caster import CaseAnalysisVersionCaster
 
 
 class CaseAnalysisVersionRepository:
@@ -55,13 +56,7 @@ class CaseAnalysisVersionRepository:
                 (case_analysis_version.model_dump()),
             )
 
-        return CaseAnalysisVersion(
-            id=case_analysis_version.id,
-            case_analysis_session_id=case_analysis_version.case_analysis_session_id,
-            version_number=case_analysis_version.version_number,
-            answer=case_analysis_version.answer,
-            created_at=case_analysis_version.created_at,
-        )
+        return CaseAnalysisVersionCaster.create_to_base(case_analysis_version)
 
     async def get_latest_by_session_id(
         self,

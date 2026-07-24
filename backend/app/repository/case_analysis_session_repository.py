@@ -5,6 +5,7 @@ from psycopg import AsyncConnection
 from backend.app.database.database import Database
 from backend.app.model.case_analysis_model import CaseAnalysisSession
 from backend.app.schema.case_analysis_schema import CaseAnalysisSessionCreate
+from backend.app.util.case_analysis_session_caster import CaseAnalysisSessionCaster
 
 
 class CaseAnalysisSessionRepository:
@@ -44,12 +45,7 @@ class CaseAnalysisSessionRepository:
                 (case_analysis_session.model_dump()),
             )
 
-            return CaseAnalysisSession(
-                id=case_analysis_session.id,
-                user_id=case_analysis_session.user_id,
-                created_at=case_analysis_session.created_at,
-                updated_at=case_analysis_session.updated_at,
-            )
+            return CaseAnalysisSessionCaster.create_to_base(case_analysis_session)
 
     async def is_existing_by_id(
         self, id: UUID, connection: AsyncConnection = None
