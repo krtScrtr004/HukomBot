@@ -43,12 +43,12 @@ class AuthService:
     async def authenticate_user(self, user: AuthUser) -> User:
         async with self._db.connection() as conn:
             try:
-                user = await self._user_service.get_by_provider_id(
+                app_user = await self._user_service.get_by_provider_id(
                     user.provider_id, conn
                 )
-                if not user:
+                if not app_user:
                     # Create user record if account is not yet connected
-                    await self._user_service.create(
+                    app_user = await self._user_service.create(
                         UserCreate(
                             provider_id=user.provider_id,
                             first_name=user.first_name,
@@ -57,17 +57,18 @@ class AuthService:
                             role=UserRole.STANDARD,
                             profile_picture=user.profile_picture,
                             provider=OAuthProvider.GOOGLE,
-                        )
+                        ),
+                        connection=conn
                     )
+                    
+                    await conn.commit()
 
                     logger.info(
                         "New account with provider id: %s has successgully connected to the app",
                         user.provider_id,
                     )
 
-                await conn.commit()
-
-                return user
+                return app_user
             except Exception as ex:
                 logger.exception(str(ex))
                 await conn.rollback()
