@@ -1,5 +1,7 @@
 import logging
 from uuid import UUID
+from fastapi import Request
+from fastapi.responses import RedirectResponse
 
 from backend.app.database.database import Database
 from backend.app.enum.user_role import UserRole
@@ -9,8 +11,6 @@ from backend.app.model.user_model import User
 
 from backend.app.schema.user_schema import UserCreate
 from backend.app.schema.auth_schema import AuthUser
-
-from backend.app.repository.user_repository import UserRepository
 
 from backend.app.service.jwt_service import JWTService
 from backend.app.service.user_service import UserService
@@ -58,9 +58,9 @@ class AuthService:
                             profile_picture=user.profile_picture,
                             provider=OAuthProvider.GOOGLE,
                         ),
-                        connection=conn
+                        connection=conn,
                     )
-                    
+
                     await conn.commit()
 
                     logger.info(
@@ -72,3 +72,27 @@ class AuthService:
             except Exception as ex:
                 logger.exception(str(ex))
                 await conn.rollback()
+
+    async def redirect_authorized(self, request: Request) -> RedirectResponse | None:
+        try:
+            token = request.cookies.get("token")
+            request_id = request.state.request_id
+
+            if not token or not request_id:
+                return None
+
+            user = await self.authenticate(request_id, token)
+            if not user:
+                return None
+
+            redirect = RedirectResponse("http://127.0.0.1:8000/docs", status_code=303)
+            redirect.set_cookie(key="token", value=token, httponly=True)
+            return redirect
+
+        except Exception:
+            request.session.clear()
+            redirect = RedirectResponse(
+                url=str(request.url_for("login_page")), status_code=303
+            )
+            redirect.delete_cookie(key="token", path="/", httponly=True)
+            return redirect
