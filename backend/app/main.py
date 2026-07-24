@@ -15,7 +15,7 @@ from backend.app.api.v1.endpoint.auth import auth_api_router
 from backend.app.api.v1.endpoint.case_analysis import case_analysis_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
-from frontend.router.login import login_page_router
+from frontend.routers.login import login_page_router
 
 from backend.app.middleware.timer import TimerMiddleware
 from backend.app.middleware.request_identifier import RequestIdentifierMiddleware
