@@ -28,8 +28,14 @@
         <div class="auth-card">
             <div class="auth-card__brand">
                 <div class="logo-stack" aria-label="HukomBot logo">
-                    <img class="logo-markup logo-light" src="${get_logo_path('logo_full_light.svg')}" />  
-                    <img class="logo-markup logo-dark" src="${get_logo_path('logo_full_dark.svg')}" /> 
+                    <img class="logo-markup logo-light" 
+                        src="${get_logo_path('logo_full_light.svg')}" 
+                        title="HukomBot" 
+                        alt="HukomBot" />  
+                    <img class="logo-markup logo-dark" 
+                        src="${get_logo_path('logo_full_dark.svg')}" 
+                        title="HukomBot" 
+                        alt="HukomBot" /> 
                 </div>
             </div>
 
@@ -45,7 +51,17 @@
                 AI-powered legal research and case analysis for Philippine jurisprudence.
             </p>
 
+            ## Login Buttons
             <div class="auth-card__actions">
+
+                ## Error box
+                % if error_code:
+                    <div class="error-box">
+                        <p>An error occured</p>
+                    </div>
+                % endif
+
+                ## Google 
                 <button
                     type="button"
                     class="provider-button"
@@ -54,14 +70,16 @@
                     aria-label="Continue with Google"
                 >
                     <span class="provider-button__label" id="googleLoginLabel">
-                        <img class="provider-button__icon" src="${get_icon_path('google.png')}" height="16" width="16"/>
+                        <img class="provider-button__icon" 
+                            src="${get_icon_path('google.png')}" 
+                            title="Login with Google" 
+                            alt="Login with Google" 
+                            height="16" 
+                            width="16"/>
                         <span>Continue with Google</span>
                     </span>
                     <span class="assistive-text" id="googleLoginAssistive">Google authentication is ready.</span>
                 </button>
-
-                ## <div class="divider" aria-hidden="true">OR</div>
-                ## <p class="provider-support">Only Google Sign-In is currently supported.</p>
             </div>
 
             <footer class="auth-card__footer">

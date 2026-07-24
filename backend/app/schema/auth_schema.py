@@ -27,7 +27,7 @@ class JWTPayload(BaseModel):
 
 
 class LoginQueryParams(BaseModel):
-    error_code: str | None = Field(default=None, min_length=1, max_length=100)
+    error_code: str | None = Field(default=None, max_length=100)
 
 
 class LoginResponse(BaseModel):
