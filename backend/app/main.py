@@ -80,9 +80,21 @@ app.add_middleware(RequestIdentifierMiddleware)
 
 
 app.mount(
-    path="/static/asset",
-    app=StaticFiles(directory=f"{get_project_root()}/frontend/asset/"),
-    name="static",
+    path="/static/assets",
+    app=StaticFiles(directory=f"{get_project_root()}/frontend/assets/"),
+    name="assets",
+)
+
+app.mount(
+    path="/static/styles",
+    app=StaticFiles(directory=f"{get_project_root()}/frontend/styles"),
+    name="styles",
+)
+
+app.mount(
+    path="/static/scripts",
+    app=StaticFiles(directory=f"{get_project_root()}/frontend/scripts"),
+    name="scripts",
 )
 
 
