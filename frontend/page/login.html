@@ -1,8 +1,76 @@
 <%inherit file="/layout/layout.html"/>
-<%! title = "Login" %>
+<%!
+    from frontend.util.utility import (
+        get_icon_path, 
+        get_logo_path,
+        get_script_path, 
+        get_style_path, 
+    )
+
+    title = "Login"
+    body_class = "auth-page"
+%>
+
+<%block name="head">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f7f8fa" id="theme-color-meta">
+    <link rel="stylesheet" href="${get_style_path('root.css')}">
+    <link rel="stylesheet" href="${get_style_path('login.css')}">
+</%block>
 
 <%block name="main">
-    <a href="${redirect_url}">
-        <button type="button">Login with Google</button>
-    </a>
+    <button class="theme-toggle" type="button" id="themeToggle" aria-label="Toggle light and dark mode" aria-pressed="false">
+        <span class="theme-toggle-icon" aria-hidden="true" id="themeToggleIcon">☾</span>
+        <span id="themeToggleLabel">Dark mode</span>
+    </button>
+
+    <section class="page-shell" aria-labelledby="login-title">
+        <div class="auth-card">
+            <div class="auth-card__brand">
+                <div class="logo-stack" aria-label="HukomBot logo">
+                    <img class="logo-markup logo-light" src="${get_logo_path('logo_full_light.svg')}" />  
+                    <img class="logo-markup logo-dark" src="${get_logo_path('logo_full_dark.svg')}" /> 
+                </div>
+            </div>
+
+            <p class="auth-card__eyebrow">
+                AI Legal Research
+            </p>
+
+            <h1 class="auth-card__title" id="login-title">
+                Welcome to HukomBot
+            </h1>
+
+            <p class="auth-card__subtitle">
+                AI-powered legal research and case analysis for Philippine jurisprudence.
+            </p>
+
+            <div class="auth-card__actions">
+                <button
+                    type="button"
+                    class="provider-button"
+                    id="googleLoginButton"
+                    data-redirect-url="${google_redirect_url}"
+                    aria-label="Continue with Google"
+                >
+                    <span class="provider-button__label" id="googleLoginLabel">
+                        <img class="provider-button__icon" src="${get_icon_path('google.png')}" height="16" width="16"/>
+                        <span>Continue with Google</span>
+                    </span>
+                    <span class="assistive-text" id="googleLoginAssistive">Google authentication is ready.</span>
+                </button>
+
+                ## <div class="divider" aria-hidden="true">OR</div>
+                ## <p class="provider-support">Only Google Sign-In is currently supported.</p>
+            </div>
+
+            <footer class="auth-card__footer">
+                By continuing, you agree to our <a class="inline-link" href="#" aria-label="Terms of Service placeholder">Terms of Service</a> and <a class="inline-link" href="#" aria-label="Privacy Policy placeholder">Privacy Policy</a>.
+            </footer>
+        </div>
+    </section>
+</%block>
+
+<%block name="script">
+    <script type="module" src="${get_script_path('login.js')}" defer></script>
 </%block>
