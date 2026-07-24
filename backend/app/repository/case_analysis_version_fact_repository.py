@@ -1,4 +1,3 @@
-from typing import List
 from psycopg import errors
 from psycopg import AsyncConnection
 
@@ -13,9 +12,9 @@ class CaseAnalysisVersionFactRepository:
 
     async def create_many(
         self,
-        case_analysis_version_facts: List[CaseAnalysisVersionFactCreate],
+        case_analysis_version_facts: list[CaseAnalysisVersionFactCreate],
         connection: AsyncConnection = None,
-    ) -> List[CaseAnalysisVersionFact]:
+    ) -> list[CaseAnalysisVersionFact]:
         if not case_analysis_version_facts:
             return []
 
@@ -38,7 +37,7 @@ class CaseAnalysisVersionFactRepository:
     async def _create_many_implement(
         self,
         conn: AsyncConnection,
-        case_analysis_version_facts: List[CaseAnalysisVersionFactCreate],
+        case_analysis_version_facts: list[CaseAnalysisVersionFactCreate],
     ):
         async with conn.cursor() as cur:
             await cur.executemany(

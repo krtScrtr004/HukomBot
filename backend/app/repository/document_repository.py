@@ -1,4 +1,3 @@
-from typing import List
 from psycopg import errors
 from uuid import UUID
 from psycopg import AsyncConnection
@@ -241,7 +240,7 @@ class DocumentRepository:
             else None
         )
 
-    async def delete_many(self, ids: List[UUID], connection: AsyncConnection = None):
+    async def delete_many(self, ids: list[UUID], connection: AsyncConnection = None):
         if not ids:
             return
 
@@ -257,7 +256,7 @@ class DocumentRepository:
                 await conn.rollback()
                 raise
 
-    async def _delete_many_implement(self, conn: AsyncConnection, ids: List[UUID]):
+    async def _delete_many_implement(self, conn: AsyncConnection, ids: list[UUID]):
         async with conn.cursor() as cur:
             placeholders = ", ".join(["%s"] * len(ids))
             await cur.execute(

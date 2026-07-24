@@ -4,6 +4,7 @@ from psycopg import AsyncConnection
 from backend.app.database.database import Database
 from backend.app.model.user_model import User
 from backend.app.schema.user_schema import UserCreate, UserSearch
+from backend.app.util.user_caster import UserCaster
 
 
 class UserRepository:
@@ -63,18 +64,11 @@ class UserRepository:
             user_created_at = row["created_at"]
             user_updated_at = row["updated_at"]
 
-        return User(
-            id=user.id,
-            provider_id=user.provider_id,
-            first_name=user.first_name,
-            last_name=user.last_name,
-            email=user.email,
-            profile_picture=user.profile_picture,
-            role=user.role,
-            provider=user.provider,
+        return UserCaster.create_to_base(
+            user=user,
             is_active=user_is_active,
             created_at=user_created_at,
-            updated_at=user_updated_at
+            updated_at=user_updated_at,
         )
 
     async def get_by_provider_id(
@@ -82,10 +76,10 @@ class UserRepository:
     ):
         if not provider_id:
             return None
-        
+
         if connection is not None:
             return await self._get_by_provider_id_implement(connection, provider_id)
-        
+
         async with self._database.connection() as conn:
             try:
                 result = await self._get_by_provider_id_implement(conn, provider_id)

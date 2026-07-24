@@ -1,4 +1,3 @@
-from typing import List
 from psycopg import errors
 from uuid import UUID
 from psycopg import AsyncConnection

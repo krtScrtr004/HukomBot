@@ -1,5 +1,4 @@
 from uuid import UUID
-from typing import List
 from psycopg import errors
 from psycopg import AsyncConnection
 
@@ -14,9 +13,9 @@ class CaseFactRepository:
 
     async def create_many(
         self,
-        case_facts: List[CaseFactCreate],
+        case_facts: list[CaseFactCreate],
         connection: AsyncConnection = None,
-    ) -> List[CaseFact]:
+    ) -> list[CaseFact]:
         if not case_facts:
             return []
 
@@ -35,8 +34,8 @@ class CaseFactRepository:
     async def _create_many_implement(
         self,
         conn: AsyncConnection,
-        case_facts: List[CaseFactCreate],
-    ) -> List[CaseFact]:
+        case_facts: list[CaseFactCreate],
+    ) -> list[CaseFact]:
         async with conn.cursor() as cur:
             await cur.executemany(
                 """
@@ -61,7 +60,7 @@ class CaseFactRepository:
 
         return updated
     
-    async def delete_many(self, ids: List[UUID], connection: AsyncConnection = None):
+    async def delete_many(self, ids: list[UUID], connection: AsyncConnection = None):
         if not ids:
             return
 
@@ -76,7 +75,7 @@ class CaseFactRepository:
                     await conn.rollback()
                     raise
 
-    async def _delete_many_implement(self, conn: AsyncConnection, ids: List[UUID]):
+    async def _delete_many_implement(self, conn: AsyncConnection, ids: list[UUID]):
         async with conn.cursor() as cur:
             placeholders = ", ".join(["%s"] * len(ids))
             await cur.execute(

@@ -1,17 +1,11 @@
 import ast
-
-from typing import List
 from psycopg import errors
 from psycopg import AsyncConnection
-
 from backend.app.database.database import Database
 from backend.app.model.document_model import Document
 from backend.app.model.chunk_model import Chunk
-from backend.app.schema.chunk_schema import (
-    ChunkCreate,
-    ChunkSearchKeyword,
-    ChunkSearchVector,
-)
+from backend.app.schema.chunk_schema import *
+from backend.app.util.chunk_caster import ChunkCaster
 
 
 class ChunkRepository:
@@ -20,9 +14,9 @@ class ChunkRepository:
 
     async def create_many(
         self,
-        chunks: List[ChunkCreate],
+        chunks: list[ChunkCreate],
         connection: AsyncConnection = None,
-    ) -> List[Chunk]:
+    ) -> list[Chunk]:
         if not chunks:
             return []
 
@@ -45,8 +39,8 @@ class ChunkRepository:
     async def _create_many_implement(
         self,
         conn: AsyncConnection,
-        chunks: List[ChunkCreate],
-    ) -> List[Chunk]:
+        chunks: list[ChunkCreate],
+    ) -> list[Chunk]:
         async with conn.cursor() as cur:
             await cur.executemany(
                 """
@@ -71,22 +65,13 @@ class ChunkRepository:
 
             updated = []
             for i, _ in enumerate(chunks):
-                updated.append(
-                    Chunk(
-                        id=chunks[i].id,
-                        document_id=chunks[i].document_id,
-                        chunk_number=chunks[i].chunk_number,
-                        chunk_text=chunks[i].chunk_text,
-                        section=chunks[i].section,
-                        embedding=chunks[i].embedding,
-                    )
-                )
+                updated.append(ChunkCaster.create_to_base(chunks[i]))
 
         return updated
 
     async def search(
         self, chunk: ChunkSearchKeyword, connection: AsyncConnection = None
-    ) -> List:
+    ) -> list:
         if connection is not None:
             return await self._search_implement(connection, chunk)
 
@@ -167,7 +152,7 @@ class ChunkRepository:
 
     async def search_vector(
         self, chunk: ChunkSearchVector, connection: AsyncConnection = None
-    ) -> List[Chunk]:
+    ) -> list[Chunk]:
         if connection is not None:
             return await self._search_vector_implement(connection, chunk)
 

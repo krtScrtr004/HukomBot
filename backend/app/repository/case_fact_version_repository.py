@@ -1,5 +1,4 @@
 from uuid import UUID
-from typing import List
 from psycopg import errors
 from psycopg import AsyncConnection
 
@@ -20,9 +19,9 @@ class CaseFactVersionRepository:
 
     async def create_many(
         self,
-        case_fact_versions: List[CaseFactVersionCreate],
+        case_fact_versions: list[CaseFactVersionCreate],
         connection: AsyncConnection = None,
-    ) -> List[CaseFactVersion]:
+    ) -> list[CaseFactVersion]:
         if not case_fact_versions:
             return []
 
@@ -41,8 +40,8 @@ class CaseFactVersionRepository:
     async def _create_many_implement(
         self,
         conn: AsyncConnection,
-        case_fact_versions: List[CaseFactVersionCreate],
-    ) -> List[CaseFactVersion]:
+        case_fact_versions: list[CaseFactVersionCreate],
+    ) -> list[CaseFactVersion]:
         async with conn.cursor() as cur:
             await cur.executemany(
                 """
@@ -76,9 +75,9 @@ class CaseFactVersionRepository:
 
     async def create_updated_many(
         self,
-        case_fact_versions: List[CaseFactVersionCreate],
+        case_fact_versions: list[CaseFactVersionCreate],
         connection: AsyncConnection = None,
-    ) -> List[CaseFactVersion]:
+    ) -> list[CaseFactVersion]:
         if not case_fact_versions:
             return []
 
@@ -101,8 +100,8 @@ class CaseFactVersionRepository:
     async def _create_updated_many_implement(
         self,
         conn: AsyncConnection,
-        case_fact_versions: List[CaseFactVersionCreate],
-    ) -> List[CaseFactVersion]:
+        case_fact_versions: list[CaseFactVersionCreate],
+    ) -> list[CaseFactVersion]:
         rows = []
 
         async with conn.cursor() as cur, conn.transaction():
@@ -162,7 +161,7 @@ class CaseFactVersionRepository:
 
     async def update_many(
         self,
-        case_facts: List[CaseFactVersionUpdate],
+        case_facts: list[CaseFactVersionUpdate],
         connection: AsyncConnection = None,
     ):
         if not case_facts:
@@ -180,14 +179,14 @@ class CaseFactVersionRepository:
                     raise
 
     async def _update_many_implement(
-        self, conn: AsyncConnection, case_facts: List[CaseFactVersionUpdate]
+        self, conn: AsyncConnection, case_facts: list[CaseFactVersionUpdate]
     ):
         query, params = self._build_update_many_query(case_facts)
 
         async with conn.cursor() as cur:
             await cur.execute(query, params)
 
-    def _build_update_many_query(self, case_facts: List[CaseFactVersionUpdate]):
+    def _build_update_many_query(self, case_facts: list[CaseFactVersionUpdate]):
         values_placeholder = []
         values = {}
         for i, case_fact in enumerate(case_facts):
@@ -312,7 +311,7 @@ class CaseFactVersionRepository:
             row = await cur.fetchall()
         return [CaseFactVersion.model_validate(case_fact) for case_fact in row]
 
-    async def delete_many(self, ids: List[UUID], connection: AsyncConnection = None):
+    async def delete_many(self, ids: list[UUID], connection: AsyncConnection = None):
         if not ids:
             return
 
@@ -327,7 +326,7 @@ class CaseFactVersionRepository:
                     await conn.rollback()
                     raise
 
-    async def _delete_many_implement(self, conn: AsyncConnection, ids: List[UUID]):
+    async def _delete_many_implement(self, conn: AsyncConnection, ids: list[UUID]):
         async with conn.cursor() as cur:
             placeholders = ", ".join(["%s"] * len(ids))
             await cur.execute(
