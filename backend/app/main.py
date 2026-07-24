@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from backend.app.core.settings import settings
@@ -32,11 +33,13 @@ from backend.app.exception.oauth_exception import (
 
 from backend.app.api.v1.dependency import lifespan
 from backend.app.core.logger import setup_logging
+from backend.app.util.utility import get_project_root
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 app = FastAPI(lifespan=lifespan)
+
 
 # Routers ============================================================
 
@@ -71,6 +74,16 @@ app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET)
 app.add_middleware(TimerMiddleware)
 
 app.add_middleware(RequestIdentifierMiddleware)
+
+
+# Others ==============================================================
+
+
+app.mount(
+    path="/static/asset",
+    app=StaticFiles(directory=f"{get_project_root()}/frontend/asset/"),
+    name="static",
+)
 
 
 # Helper DB/Custom Mappers ============================================
@@ -341,7 +354,7 @@ custom_exceptions = [
     InvalidDocumentTypeException,
     NotFoundException,
     OAuthException,
-    UnauthorizedException
+    UnauthorizedException,
 ]
 for custom_exec in custom_exceptions:
     app.add_exception_handler(custom_exec, handle_custom_exception)
