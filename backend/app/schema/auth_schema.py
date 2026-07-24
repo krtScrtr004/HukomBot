@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, EmailStr, AliasChoices
 
 from backend.app.core.settings import settings
 
+
 class AuthUser(BaseModel):
     provider_id: str = Field(validation_alias=AliasChoices("sub"))
     first_name: str = Field(alias="given_name")
@@ -25,10 +26,14 @@ class JWTPayload(BaseModel):
     )
 
 
+class LoginQueryParams(BaseModel):
+    error_code: str | None = Field(default=None, min_length=1, max_length=100)
+
+
 class LoginResponse(BaseModel):
     token: str
     token_type: str
-    
+
 
 class GoogleOAuthTokenResponse(BaseModel):
     access_token: str
