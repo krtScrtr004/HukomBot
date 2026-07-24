@@ -80,11 +80,6 @@ async def google_login_callback(
         redirect.set_cookie(key="token", value=token, httponly=True)
 
         return redirect
-    except jwt.ExpiredSignatureError:
-        params = urlencode({"error_code": "TOKEN_EXPIRED"})
-        return RedirectResponse(
-            url=request.url_for(f"login_page?{params}"), status_code=303
-        )
     except Exception as ex:
         jwt_errors = (
             jwt.InvalidTokenError,
@@ -93,16 +88,19 @@ async def google_login_callback(
             jwt.InvalidIssuerError,
         )
 
-        params = None
+        error_code = "INTERNAL_SERVER_ERROR"
         if isinstance(ex, jwt_errors):
-            params = urlencode({"error_code": "INVALID_TOKEN"})
+            error_code = "INVALID_TOKEN"
+        elif isinstance(ex, jwt.ExpiredSignatureError):
+            error_code = "TOKEN_EXPIRED"
         elif isinstance(ex, OAuthException):
-            params = urlencode({"error_code": ex.code})
-        else:
-            params = urlencode({"error_code": "INTERNAL_SERVER_ERROR"})
+            error_code = ex.code
 
         return RedirectResponse(
-            url=request.url_for(f"login_page?{params}"), status_code=303
+            url=request.url_for("login_page").include_query_params(
+                error_code=error_code
+            ),
+            status_code=303,
         )
     finally:
         request.session.pop("oauth_state")
