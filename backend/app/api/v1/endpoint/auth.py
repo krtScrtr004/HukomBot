@@ -2,6 +2,7 @@ import jwt
 import base64
 import hashlib
 import secrets
+import logging
 from typing import Annotated
 from urllib.parse import urlencode
 from fastapi import APIRouter, Request, Query, Depends
@@ -18,6 +19,8 @@ from backend.app.api.v1.dependency import (
 )
 
 auth_api_router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 @auth_api_router.get("/google/login")
@@ -68,7 +71,7 @@ async def google_login_callback(
             authorization_code=code, code_verifier=code_verifier
         )
 
-        google_user = await google_service.retrieve_user(tokens.id_token, nonce)
+        google_user = google_service.retrieve_user(tokens.id_token, nonce)
 
         user = await auth_service.authenticate_user(google_user)
 
@@ -81,6 +84,8 @@ async def google_login_callback(
 
         return redirect
     except Exception as ex:
+        logger.exception(str(ex))
+        
         jwt_errors = (
             jwt.InvalidTokenError,
             jwt.InvalidAlgorithmError,
@@ -103,6 +108,6 @@ async def google_login_callback(
             status_code=303,
         )
     finally:
-        request.session.pop("oauth_state")
-        request.session.pop("oauth_code_verfier")
-        request.session.pop("oauth_nonce")
+        request.session.pop("oauth_state", "")
+        request.session.pop("oauth_code_verfier", "")
+        request.session.pop("oauth_nonce", "")

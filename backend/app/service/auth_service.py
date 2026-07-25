@@ -72,6 +72,7 @@ class AuthService:
             except Exception as ex:
                 logger.exception(str(ex))
                 await conn.rollback()
+                raise
 
     async def redirect_authorized(self, request: Request) -> RedirectResponse | None:
         try:

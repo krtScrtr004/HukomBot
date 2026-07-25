@@ -96,7 +96,7 @@ class GoogleService:
             logger.exception("An error occured while requesting for OAuth tokens: %s", str(ex))
             raise
 
-    async def retrieve_user(self, id_token: str, session_nonce: str):
+    def retrieve_user(self, id_token: str, session_nonce: str):
         resource = self._verify_id_token(id_token, session_nonce)
         if not resource.email_verified:
             raise GoogleEmailNotVerifiedException(
