@@ -55,43 +55,9 @@ Copy `.env.example` to `.env` and fill in the following values:
 
 ## Added
 
-### Authentication
+- Add `GET api/v1/auth/me` & `GET api/v1/user/me` - retrieves authenticated user information
+- Add `DELETE api/v1/case-analyses/<id>` - removes a case analysis session record
 
-- Added authentication endpoint and schemas for login and provider-based identity flows.
-- Added `AuthService`, `JWTService`, `GoogleService`, and `UserService` to support request authentication and user lifecycle operations.
-- Added dependency helpers to resolve and verify authenticated users on protected endpoints.
-- Added request middleware to attach request identifiers and timing data to incoming HTTP requests.
-- Added user role enum and OAuth-related exception handling.
-- Added orchestrator layer for case analysis and document flows.
-- Added caster utility classes for case analysis, case facts, user, chunk, and document type conversions.
+## Changes
 
-### Login UI
-
-- Added the responsive login page UI with semantic structure, visible focus states, keyboard support, and ARIA-friendly button behavior.
-- Added a reusable `frontend/public/root.css` stylesheet for shared theme tokens and base UI variables.
-- Added separated login page assets in `frontend/public/login.css` and `frontend/public/login.js`.
-- Added a theme-aware login UI with light/dark mode persistence and automatic logo switching.
-- Added inline rendering of the SVG logo variants from `frontend/asset/logo/` for the login page.
-
-## Improved
-
-### Authentication
-
-- Improved secure endpoint enforcement by verifying users before executing protected operations.
-- Improved JWT verification behavior by returning decoded payload data for downstream authorization logic.
-- Improved case analysis and document creation flows by propagating authenticated user context (`user_id`, `uploader_id`).
-- Improved repository SQL insert scripts and model/schema mappings to persist uploader and user ownership data.
-- Improved endpoint behavior by changing case analysis version retrieval from `POST` to `GET`.
-
-## Changed
-
-- Reorganized application modules from `src/backend/app` into top-level `backend/app` for clearer backend/frontend separation.
-- Moved settings constants into environment-driven configuration.
-- Split Python requirements into backend and frontend specific dependency files.
-- Moved `main_cli.py` to the repository root.
-- Expanded required `.env` variables to cover database, JWT, OAuth, Google OAuth, model endpoints, and embedding/reranker runtime settings.
-
-## Notes
-
-- Includes broad file moves and renames as part of the backend package restructuring.
-- Includes minor fixes to repository lookup behavior and typo-level consistency updates.
+- Rename `api/v1/case-analysis` endpoint to `api/v1/case-analyses`
