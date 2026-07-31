@@ -56,10 +56,10 @@ async def lifespan(app: FastAPI):
     app.state.db = Database()
     logging.info("Database initialized successfully")
 
-    # app.state.embedding_service = EmbeddingService.initialize()
+    app.state.embedding_service = EmbeddingService.initialize()
     logging.info("Embedding model loaded successfully")
 
-    # app.state.reranker_service = RerankerService.initialize()
+    app.state.reranker_service = RerankerService.initialize()
     logging.info("Reranker model loaded successfully")
 
     await app.state.db.open()

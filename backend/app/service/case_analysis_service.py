@@ -13,6 +13,9 @@ from backend.app.service.chunk_service import ChunkService
 from backend.app.service.embedding_service import EmbeddingService
 from backend.app.service.reranker_service import RerankerService
 from backend.app.repository.case_fact_repository import CaseFactRepository
+from backend.app.repository.case_analysis_session_repository import (
+    CaseAnalysisSessionRepository
+)
 from backend.app.repository.case_fact_version_repository import (
     CaseFactVersionRepository,
 )
@@ -35,7 +38,7 @@ class CaseAnalysisService:
         db: Database,
         case_fact_repo: CaseFactRepository,
         case_fact_version_repo: CaseFactVersionRepository,
-        case_analysis_session_repo: CaseAnalysisVersionRepository,
+        case_analysis_session_repo: CaseAnalysisSessionRepository,
         case_analysis_version_repo: CaseAnalysisVersionRepository,
         case_analysis_version_fact_repo: CaseAnalysisVersionFactRepository,
         chatbot_service: ChatbotService,
@@ -170,8 +173,10 @@ class CaseAnalysisService:
             connection,
         )
 
-    # async def get_case_analysis(self, param:  connection: AsyncConnection = None):
-    #     return await self._case_analysis_version_repo.get_by_version_number(param)
+    async def delete_session(self, id: UUID, connection: AsyncConnection = None):
+        await self._case_analysis_session_repo.delete(
+            id=id, connection=connection
+        )
 
     # Others ====================
 

@@ -44,3 +44,16 @@ async def get_case_analysis_version(
             case_analysis_session_id=case_analysis_session_id, case_analysis=result
         ),
     )
+
+
+@case_analysis_api_router.delete("/{case_analysis_session_id}")
+async def delete_case_analysis(
+    case_analysis_session_id: UUID,
+    user: Annotated[User, Depends(verify_user)],
+    service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
+):
+    await service.delete_session(id=case_analysis_session_id)
+    return SuccessResponse(
+        message="Case analysis session successfully deleted",
+        data={"case_analysis_session_id": case_analysis_session_id},
+    )
