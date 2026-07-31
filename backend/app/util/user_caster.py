@@ -1,6 +1,6 @@
 from datetime import datetime
 from backend.app.model.user_model import User
-from backend.app.schema.user_schema import UserCreate
+from backend.app.schema.user_schema import UserCreate, UserResponse
 
 
 class UserCaster:
@@ -21,4 +21,15 @@ class UserCaster:
             is_active=is_active,
             created_at=created_at,
             updated_at=updated_at,
+        )
+
+
+    @staticmethod
+    def base_to_response(user: User) -> UserResponse:
+        return UserResponse(
+            id=user.id,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            email=user.email,
+            role=user.role
         )
