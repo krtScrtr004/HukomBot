@@ -4,15 +4,18 @@ import hashlib
 import secrets
 import logging
 from typing import Annotated
-from urllib.parse import urlencode
 from fastapi import APIRouter, Request, Query, Depends
 from fastapi.responses import RedirectResponse
+from backend.app.model.user_model import User
+from backend.app.schema.response_schema import SuccessResponse
 from backend.app.schema.auth_schema import JWTPayload
 from backend.app.service.auth_service import AuthService
 from backend.app.service.jwt_service import JWTService
 from backend.app.service.google_service import GoogleService
+from backend.app.util.user_caster import UserCaster
 from backend.app.exception.oauth_exception import OAuthException
 from backend.app.api.v1.dependency import (
+    verify_user,
     get_auth_service,
     get_jwt_service,
     get_google_service,
@@ -21,6 +24,17 @@ from backend.app.api.v1.dependency import (
 auth_api_router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+@auth_api_router.get("/me")
+async def get_authenticated_user(
+    user: Annotated[User, Depends(verify_user)]
+):
+    return SuccessResponse(
+        success=True,
+        message="User successfully fetched",
+        data=UserCaster.base_to_response(user)
+    )
+
 
 
 @auth_api_router.get("/google/login")
