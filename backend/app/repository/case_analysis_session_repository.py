@@ -76,3 +76,29 @@ class CaseAnalysisSessionRepository:
 
             row = await cur.fetchone()
         return row is not None
+
+    async def delete(
+        self, id: UUID, connection: AsyncConnection = None
+    ):
+        if connection is not None:
+            await self._delete_implement(connection, id)
+        else:
+            async with self._database.connection() as conn:
+                try:
+                    await self._delete_implement(conn, id)
+                    await conn.commit()
+                except errors.OperationalError as ex:
+                    await conn.rollback()
+                    raise
+
+    async def _delete_implement(
+        self, conn: AsyncConnection, id: UUID
+    ): 
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                DELETE FROM case_analysis_sessions
+                WHERE id = %s 
+                """,
+                (id,)
+            )
