@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from backend.app.core.settings import settings
 
 from backend.app.api.v1.endpoint.auth import auth_api_router
+from backend.app.api.v1.endpoint.user import user_api_router
 from backend.app.api.v1.endpoint.case_analysis import case_analysis_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
 
@@ -52,9 +53,15 @@ app.include_router(
 )
 
 app.include_router(
+    router=user_api_router,
+    prefix="/api/v1/users",
+    tags=["Users API"],
+)
+
+app.include_router(
     router=case_analysis_api_router,
-    prefix="/api/v1/case-analysis",
-    tags=["Case Analysis API"],
+    prefix="/api/v1/case-analyses",
+    tags=["Case Analyses API"],
 )
 
 app.include_router(

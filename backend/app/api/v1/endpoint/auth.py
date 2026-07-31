@@ -25,16 +25,14 @@ auth_api_router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+
 @auth_api_router.get("/me")
-async def get_authenticated_user(
-    user: Annotated[User, Depends(verify_user)]
-):
+async def get_authenticated_user(user: Annotated[User, Depends(verify_user)]):
     return SuccessResponse(
         success=True,
-        message="User successfully fetched",
-        data=UserCaster.base_to_response(user)
+        message="User fetched successfully",
+        data=UserCaster.base_to_response(user),
     )
-
 
 
 @auth_api_router.get("/google/login")
@@ -99,7 +97,7 @@ async def google_login_callback(
         return redirect
     except Exception as ex:
         logger.exception(str(ex))
-        
+
         jwt_errors = (
             jwt.InvalidTokenError,
             jwt.InvalidAlgorithmError,
