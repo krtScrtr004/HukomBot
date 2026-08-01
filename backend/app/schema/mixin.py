@@ -1,7 +1,6 @@
-from typing import Any, List, Optional
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 
-class PaginatableMixin:
+class PaginatableMixin(BaseModel):
     limit: int = Field(default=10, gt=0, lt=100)
     offset: int = Field(default=0, ge=0)
