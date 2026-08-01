@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     GOOGLE_TOKEN_URL: str
 
     # -- LLM --
+    GEMINI_API_KEY: str
+    GEMINI_MODEL: str
+    GEMINI_BASE_URL: str
+    
     OPEN_ROUTER_API_KEY: str
     OPEN_ROUTER_MODEL: str
     OPEN_ROUTER_BASE_URL: str
