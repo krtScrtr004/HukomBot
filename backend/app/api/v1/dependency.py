@@ -1,7 +1,6 @@
 import logging
 
 from fastapi import FastAPI, Request, Depends
-from fastapi.security import OAuth2PasswordBearer
 from contextlib import asynccontextmanager
 
 from backend.app.database.database import Database
@@ -42,8 +41,6 @@ from backend.app.orchistrator.document_orchistrator import DocumentOrchistrator
 from backend.app.exception.app_exception import UnauthorizedException
 
 logger = logging.getLogger(__name__)
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 
 # ============================================================================
@@ -267,10 +264,13 @@ def get_case_analysis_orchestrator(
 
 async def verify_user(
     request: Request,
-    token: str = Depends(oauth2_scheme),
     auth_service: AuthService = Depends(get_auth_service),
 ):
     request_id = request.state.request_id
+
+    token = request.cookies.get("token")
+    if token is None:
+        raise UnauthorizedException()
 
     # Check if valid token
     user = await auth_service.authenticate(request_id, token)
