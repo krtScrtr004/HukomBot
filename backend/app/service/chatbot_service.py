@@ -2,6 +2,8 @@ from typing import List
 
 from backend.app.database.database import Database
 from backend.app.service.llm_service import LLMService
+from backend.app.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
+from backend.app.schema.case_analysis_schema import CaseAnalysisGeneratedAnswer
 
 from backend.app.util.utility import format_conversation_history
 
@@ -153,7 +155,12 @@ class ChatbotService:
 
         return queries if queries else legal_issues
 
-    async def generate_answer(self, case_facts: List[str], context: str):
+    async def generate_answer(
+        self,
+        case_facts: List[str],
+        context: str,
+        answer_format: CaseAnalysisAnswerFormat = CaseAnalysisAnswerFormat.PLAINTEXT,
+    ) -> CaseAnalysisGeneratedAnswer:
         retrieved_cases = "\n---\n".join(case_facts)
 
         prompt = f"""
@@ -163,87 +170,127 @@ class ChatbotService:
 
         IMPORTANT RULES:
 
-        1. Use ONLY the information contained in the retrieved cases.
-        2. Do NOT invent or assume legal cases, citations, facts, doctrines, rulings, or legal principles that do not appear in the provided materials.
+        1. Use ONLY the information contained in the retrieved legal cases.
+        2. Do NOT invent or assume legal cases, citations, facts, doctrines, rulings, legal principles, or statutory provisions that do not appear in the retrieved materials.
         3. If the retrieved information is insufficient to support a conclusion, explicitly state that the information is insufficient.
-        4. Base relevance on factual similarities and legal issues, not merely because the cases involve the same statute, offense, or legal provision.
-        5. Clearly distinguish:
-        * Facts provided by the user;
-        * Facts found in the retrieved cases; and
-        * Assumptions, uncertainties, or missing information.
-        6. Do NOT provide definitive legal advice, predict case outcomes, or determine liability.
+        4. Base relevance primarily on factual similarities and legal issues, not merely because the cases involve the same statute, offense, or legal provision.
+        5. Clearly distinguish between:
+        - Facts provided by the user;
+        - Facts found in the retrieved legal cases; and
+        - Assumptions, uncertainties, or missing information.
+        6. Do NOT provide definitive legal advice, predict case outcomes, determine liability, or recommend legal actions.
         7. Present findings objectively and professionally.
-        8. Do NOT merely restate the elements of a crime or legal provision unless those elements are explicitly discussed in the retrieved case.
-        9. Every doctrine, ruling, or factual assertion must be supported by the retrieved context.
-        10. If none of the retrieved cases have meaningful factual or legal similarities to the user's facts, do not include them under "Relevant Cases."
+        8. Do NOT merely restate the elements of a crime or legal provision unless those elements are explicitly discussed in the retrieved cases.
+        9. Every factual statement, doctrine, ruling, or legal principle must be supported by the retrieved materials.
+        10. If none of the retrieved cases have meaningful factual or legal similarities to the user's facts, do not include them under "Relevant Cases." Instead, explain that no sufficiently relevant cases were identified.
         11. If a case appears only marginally related, explain why the connection is weak and assign an appropriate confidence level.
+        12. Generate the answer in {answer_format.value} format.
+        13. If the requested format is HTML, DO NOT include the <html>, <head>, <body>, or <footer> tags.
+        14. Return ONLY a valid JSON object. Do NOT wrap the JSON in markdown code fences or include any additional commentary.
 
-        ## USER FACTS:
+        ==========================================================================
+        USER FACTS
+        ==========================================================================
 
-        ## {retrieved_cases}
+        {retrieved_cases}
 
-        ## RETRIEVED LEGAL CASES:
+        ==========================================================================
+        RETRIEVED LEGAL CASES
+        ==========================================================================
 
-        ## {context}
+        {context}
 
-        Generate your response using the following format:
+        ==========================================================================
+        OUTPUT FORMAT
+        ==========================================================================
 
-        ## Relevant Cases
+        Return a valid JSON object with EXACTLY the following structure:
+
+        {{
+            "title": "Generated title",
+            "answer": "Generated answer"
+        }}
+
+        Rules for the "title":
+
+        1. Summarize the primary legal issue or factual dispute discussed.
+        2. Keep the title between 5 and 12 words.
+        3. Be concise, descriptive, and neutral.
+        4. Do NOT use markdown.
+        5. Do NOT include quotation marks inside the title.
+        6. Do NOT begin with words such as:
+        - Analysis
+        - Legal Research
+        - Case Analysis
+        - Relevant Cases
+        7. If the legal issue cannot be confidently determined from the user's facts, generate a neutral descriptive title such as:
+        - "Potential Labor Law Issues"
+        - "Possible Criminal Law Issues"
+        - "Potential Contract Law Dispute"
+
+        Rules for the "answer":
+
+        The value of the "answer" field must contain the complete analysis using the following structure.
+
+        ==========================================================================
+        Relevant Cases
+        ==========================================================================
 
         For each relevant case:
 
         ### [Case Name]
 
-        **Facts from the Retrieved Case:**
+        **Facts from the Retrieved Case**
 
-        * Summarize only the facts that appear in the retrieved materials.
-        * Do not add facts that are not explicitly provided.
+        - Summarize only the facts contained in the retrieved materials.
+        - Do not add or infer facts.
 
-        **Why it may be relevant:**
+        **Why it may be relevant**
 
-        * Identify specific factual similarities between the user's situation and the retrieved case.
-        * Explain the legal issue addressed by the court.
-        * Explain important factual or legal distinctions.
-        * If factual similarities cannot be established from the retrieved materials, explicitly state that.
+        - Identify specific factual similarities between the user's facts and the retrieved case.
+        - Explain the legal issue addressed by the court.
+        - Explain any important factual or legal distinctions.
+        - If factual similarities cannot be established from the retrieved materials, explicitly state so.
 
-        **Key doctrine or ruling:**
+        **Key Doctrine or Ruling**
 
-        * Summarize the doctrine or ruling strictly based on the retrieved context.
-        * If the retrieved information does not contain a doctrine or ruling, state:
+        - Summarize the doctrine or ruling strictly from the retrieved materials.
+        - If the retrieved materials do not provide sufficient information regarding the doctrine or ruling, explicitly state:
+
         "The retrieved materials do not provide sufficient information regarding the court's doctrine or ruling."
 
-        **Confidence:**
+        **Confidence**
 
-        * High: Strong factual and legal similarities supported by the retrieved materials.
-        * Medium: Some similarities exist, but important distinctions or uncertainties remain.
-        * Low: The connection is primarily based on a general legal topic or statute rather than closely related facts.
-        
-        ---
+        Assign one of the following:
 
-        ## Overall Analysis
+        - High — Strong factual and legal similarities supported by the retrieved materials.
+        - Medium — Some similarities exist, but important distinctions or uncertainties remain.
+        - Low — The connection is primarily based on a general legal topic or statute rather than closely related facts.
 
-        Provide a concise analysis that includes:
+        --------------------------------------------------------------------------
+
+        Overall Analysis
 
         ### Possible Legal Issues
 
-        * Identify the possible legal issues suggested by the user's facts.
-        * Clearly indicate when an issue is inferred rather than explicitly established.
+        - Identify the possible legal issues suggested by the user's facts.
+        - Clearly indicate when an issue is inferred rather than explicitly established.
 
         ### Common Themes Among Retrieved Cases
 
-        * Describe recurring factual patterns, legal questions, or doctrines found in the retrieved cases.
-        * Do not generalize beyond the provided materials.
+        - Describe recurring factual patterns, legal questions, or doctrines found in the retrieved cases.
+        - Do not generalize beyond the retrieved materials.
 
         ### Limitations
 
-        * Identify missing information in either the user's facts or the retrieved cases.
-        * Explain any limitations that affect the reliability or completeness of the analysis.
+        - Identify missing information in either the user's facts or the retrieved legal cases.
+        - Explain any limitations that affect the reliability or completeness of the analysis.
 
-        ---
+        --------------------------------------------------------------------------
 
-        ## Disclaimer
+        Disclaimer
 
-        This analysis is intended solely for legal research and informational purposes. It is based only on the retrieved materials provided and does not constitute legal advice or a substitute for consultation with a qualified legal professional.
+        This analysis is intended solely for legal research and informational purposes. It is based only on the retrieved legal materials provided and does not constitute legal advice or a substitute for consultation with a qualified legal professional.
         """
 
         response = await self._llm_service.chat(
@@ -254,7 +301,7 @@ class ChatbotService:
         if not response:
             raise RuntimeError("LLM service failed to generate the final answer")
 
-        return response
+        return CaseAnalysisGeneratedAnswer.model_validate_json(response)
 
     async def contextualize_query(
         self, query: str, conversation_history: List[dict[str, str]]
