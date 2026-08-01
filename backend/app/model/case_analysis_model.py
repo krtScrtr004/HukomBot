@@ -11,6 +11,7 @@ from pydantic import (
 )
 
 from backend.app.model.user_model import User
+from backend.app.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
 
 class CaseAnalysisSession(BaseModel):
     id: UUID
@@ -85,8 +86,10 @@ class CaseFactVersion(BaseModel):
 class CaseAnalysisVersion(BaseModel):
     id: UUID
     case_analysis_session_id: UUID
+    title: str
     version_number: int = Field(default=1)
     answer: str
+    answer_format: CaseAnalysisAnswerFormat
     created_at: datetime = Field(default=datetime.now())
 
     # Navigation prop

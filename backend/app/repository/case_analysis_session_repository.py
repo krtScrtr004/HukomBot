@@ -4,7 +4,10 @@ from psycopg import AsyncConnection
 
 from backend.app.database.database import Database
 from backend.app.model.case_analysis_model import CaseAnalysisSession
-from backend.app.schema.case_analysis_schema import CaseAnalysisSessionCreate
+from backend.app.schema.case_analysis_schema import (
+    CaseAnalysisSessionCreate,
+    CaseAnalysisGetByUserId
+)
 from backend.app.util.case_analysis_session_caster import CaseAnalysisSessionCaster
 
 
@@ -34,7 +37,7 @@ class CaseAnalysisSessionRepository:
                 raise
 
     async def _create_implement(
-        self, conn: AsyncConnection, case_analysis_session: CaseAnalysisSessionCreate
+        self, conn: AsyncConnection, case_analysis_session: CaseAnalysisGetByUserId
     ):
         async with conn.cursor() as cur:
             await cur.execute(
@@ -46,6 +49,44 @@ class CaseAnalysisSessionRepository:
             )
 
             return CaseAnalysisSessionCaster.create_to_base(case_analysis_session)
+
+    async def get_by_user_id(
+        self, param: CaseAnalysisGetByUserId, connection: AsyncConnection = None
+    ) -> list[CaseAnalysisSession]:
+        if connection is not None:
+            return await self._get_by_user_id_implement(conn=connection, param=param)
+
+        async with self._database.connection() as conn:
+            try:
+                result = await self._get_by_user_id_implement(conn=conn, param=param)
+                await conn.commit()
+                return result
+            except errors.OperationalError as ex:
+                await conn.rollback()
+                raise
+
+    async def _get_by_user_id_implement(
+        self, conn: AsyncConnection, param: CaseAnalysisGetByUserId
+    ):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT *
+                FROM case_analysis_sessions
+                WHERE user_id = %(user_id)s
+                LIMIT %(limit)s
+                OFFSET %(offset)s
+                """,
+                param.model_dump(),
+            )
+
+            rows = await cur.fetchall()
+
+        sessions = []
+        for row in rows:
+            sessions.append(CaseAnalysisSession.model_validate(row))
+
+        return sessions
 
     async def is_existing_by_id(
         self, id: UUID, connection: AsyncConnection = None

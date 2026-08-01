@@ -4,12 +4,7 @@ from psycopg import AsyncConnection
 
 from backend.app.database.database import Database
 from backend.app.model.case_analysis_model import CaseFactVersion
-from backend.app.schema.case_analysis_schema import (
-    CaseFactVersionCreate,
-    CaseFactVersionUpdate,
-    CaseFactVersionGetBySessionId,
-    CaseAnalysisGetByVersionNumber,
-)
+from backend.app.schema.case_analysis_schema import *
 from backend.app.util.case_fact_version_caster import CaseFactVersionCaster
 
 
@@ -238,6 +233,14 @@ class CaseFactVersionRepository:
         self, conn: AsyncConnection, param: CaseAnalysisGetByVersionNumber
     ):
         async with conn.cursor() as cur:
+            user_query = ""
+            if param.user_id:
+                user_query = """
+                JOIN case_analysis_sessions cas
+                    ON cas.id = cav.case_analysis_session_id
+                    AND cas.user_id = %(user_id)s
+                """
+
             session_id_query = ""
             if param.case_analysis_session_id:
                 session_id_query = (
@@ -250,6 +253,7 @@ class CaseFactVersionRepository:
                 FROM case_analysis_version_facts cavf
                 JOIN case_analysis_versions cav 
                     ON cav.id = cavf.case_analysis_version_id
+                {user_query}
                 JOIN case_fact_versions cfv
                     ON cfv.id = cavf.case_fact_version_id
                 WHERE {session_id_query}
@@ -267,7 +271,7 @@ class CaseFactVersionRepository:
 
     async def get_latest_by_session_id(
         self,
-        param: CaseFactVersionGetBySessionId,
+        param: CaseAnalysisGetBySessionId,
         connection: AsyncConnection = None,
     ):
         if connection is not None:
@@ -283,16 +287,25 @@ class CaseFactVersionRepository:
                 raise
 
     async def _get_latest_by_session_id_implement(
-        self, conn: AsyncConnection, param: CaseFactVersionGetBySessionId
+        self, conn: AsyncConnection, param: CaseAnalysisGetBySessionId
     ):
         async with conn.cursor() as cur:
-            await cur.execute(
+            user_query = ""
+            if param.user_id:
+                user_query = """
+                JOIN case_analysis_sessions cas
+                    ON cas.id = cf.case_analysis_versions
+                    AND cas.user_id = %(user_id)s
                 """
+
+            await cur.execute(
+                f"""
                 SELECT *
                 FROM (
                     SELECT DISTINCT ON (cf.id)
                         cfv.*
                     FROM case_facts cf
+                    {user_query}
                     JOIN case_fact_versions cfv
                         ON cfv.case_fact_id = cf.id
                     WHERE cf.case_analysis_session_id = %(case_analysis_session_id)s

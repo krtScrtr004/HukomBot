@@ -103,6 +103,7 @@ class ChunkRepository:
 
                     -- Document Info
                     d.id AS d_id,
+                    d.uploader_id AS d_uploader_id,
                     d.original_file_name AS d_original_file_name,
                     d.upload_file_name AS d_upload_file_name,
                     d.document_type AS d_document_type,
@@ -136,6 +137,7 @@ class ChunkRepository:
                 # Document Prop
                 document=Document(
                     id=row["d_id"],
+                    uploader_id=row["d_uploader_id"],
                     original_file_name=row["d_original_file_name"],
                     upload_file_name=row["d_upload_file_name"],
                     document_type=row["d_document_type"],
@@ -182,6 +184,7 @@ class ChunkRepository:
 
                     -- Document Info
                     d.id AS d_id,
+                    d.uploader_id AS d_uploader_id,
                     d.original_file_name AS d_original_file_name,
                     d.upload_file_name AS d_upload_file_name,
                     d.document_type AS d_document_type,
@@ -214,6 +217,7 @@ class ChunkRepository:
                 # Document Prop
                 document=Document(
                     id=row["d_id"],
+                    uploader_id=row["d_uploader_id"],
                     original_file_name=row["d_original_file_name"],
                     upload_file_name=row["d_upload_file_name"],
                     document_type=row["d_document_type"],

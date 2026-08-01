@@ -1,16 +1,31 @@
-from typing import Optional, List
 from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field
 
 from backend.app.schema.mixin import PaginatableMixin
+from backend.app.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
 
 
-class CaseAnalysisGetByVersionNumber(PaginatableMixin, BaseModel):
+class CaseAnalysisGetBySessionId(PaginatableMixin):
+    case_analysis_session_id: UUID
+    user_id: UUID | None = Field(default=None)
+
+
+class CaseAnalysisGetByVersionNumber(PaginatableMixin):
     version_number: int
-    case_analysis_session_id: Optional[UUID] = Field(default=None)
+    case_analysis_session_id: UUID | None = Field(default=None)
+    user_id: UUID | None = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True}
+
+
+class CaseAnalysisGetByUserId(PaginatableMixin):
+    user_id: UUID
+
+
+class CaseAnalysisGeneratedAnswer(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+    answer: str
 
 
 # Case Analysis Session ======================================
@@ -25,12 +40,21 @@ class CaseAnalysisSessionCreate(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
+class CaseAnalysisSessionPreviewResponse(BaseModel):
+    case_analysis_session_id: UUID
+    latest_version_id: UUID
+    latest_version_title: str
+    latest_version_number: int
+    created_at: datetime
+    updated_at: datetime
+
+
 # Case Fact ==================================================
 
 
 class CaseFactCreate(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    case_analysis_session_id: UUID
+    session_id: UUID
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
@@ -52,17 +76,16 @@ class CaseFactVersionCreate(BaseModel):
 
 class CaseFactVersionUpdate(BaseModel):
     id: UUID
-    version_number: Optional[int] = Field(default=None)
-    fact: Optional[str] = Field(default=None)
-    is_deleted: Optional[bool] = Field(default=None)
+    version_number: int | None = Field(default=None)
+    fact: str | None = Field(default=None)
+    is_deleted: bool | None = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True}
 
 
-class CaseFactVersionGetBySessionId(PaginatableMixin, BaseModel):
-    case_analysis_session_id: UUID
-
-    model_config = {"arbitrary_types_allowed": True}
+class CaseFactVersionGetManyBySessionIds(PaginatableMixin):
+    case_analysis_session_ids: list[UUID]
+    user_id: UUID | None = Field(default=None)
 
 
 class CaseFactVersionResponse(BaseModel):
@@ -78,19 +101,32 @@ class CaseFactVersionResponse(BaseModel):
 class CaseAnalysisVersionCreate(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     case_analysis_session_id: UUID
+    title: str
     version_number: int = Field(default=1)
     answer: str = Field(min_length=1)
+    answer_format: CaseAnalysisAnswerFormat
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
 
 
-class CaseAnalysisVersionResponse(BaseModel):
+class CaseAnalysisVersionPreviewResponse(BaseModel):
     id: UUID
+    title: str
     version_number: int = Field(gt=0)
-    answer: str = Field(min_length=0)
     created_at: datetime
-    case_facts: List[CaseFactVersionResponse] = Field(default_factory=[])
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class CaseAnalysisVersionResponse(CaseAnalysisVersionPreviewResponse):
+    answer: str = Field(min_length=0)
+    answer_format: CaseAnalysisAnswerFormat
+
+    case_facts: list[CaseFactVersionResponse] = Field(default_factory=[])
+
+
+# Case Analysis Version Fact =========================================
 
 
 class CaseAnalysisVersionFactCreate(BaseModel):

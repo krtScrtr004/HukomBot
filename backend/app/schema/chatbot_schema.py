@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from uuid import UUID
-from typing import List, Optional, Dict
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator, Field
 
+from backend.app.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
 from backend.app.schema.case_analysis_schema import CaseAnalysisVersionResponse
 
 # API Schemas ========================================
@@ -12,15 +12,28 @@ CASE_FACT_MIN_LEN = 8
 CASE_FACT_MAX_LEN = 500
 
 
+class CaseAnalysiPipelineCaseFactsHeader(BaseModel):
+    answer_format: CaseAnalysisAnswerFormat = Field(
+        default_factory=CaseAnalysisAnswerFormat.PLAINTEXT, alias="X-Answer-Format"
+    )
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    @field_validator("answer_format", mode="before")
+    @classmethod
+    def lower_value(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.lower()
+        return value
+
+
 class CaseAnalysisPipelineCaseFactsPayload(BaseModel):
-    case_analysis_session_id: Optional[UUID] = Field(default=None)
-    new_case_facts: Optional[List[str]] = Field(
+    case_analysis_session_id: UUID = Field(default=None)
+    new_case_facts: list[str] | None = Field(default=None, min_length=1, max_length=10)
+    updated_case_facts: dict[UUID, str] | None = Field(
         default=None, min_length=1, max_length=10
     )
-    updated_case_facts: Optional[Dict[UUID, str]] = Field(
-        default=None, min_length=1, max_length=10
-    )
-    deleted_case_facts: Optional[List[UUID]] = Field(
+    deleted_case_facts: list[UUID] | None = Field(
         default=None, min_length=1, max_length=10
     )
 

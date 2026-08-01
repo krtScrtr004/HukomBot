@@ -37,7 +37,7 @@ class DocumentUpdate(BaseModel):
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
-class DocumentSearch(PaginatableMixin, BaseModel):
+class DocumentSearch(PaginatableMixin):
     original_file_name: str | None = Field(default=None, min_length=1, max_length=300)
     document_type: LegalDocumentType
     file_type: str | None = Field(default=None, min_length=1, max_length=20)

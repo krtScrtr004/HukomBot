@@ -2,6 +2,7 @@ import logging
 from psycopg import AsyncConnection
 from backend.app.database.database import Database
 from backend.app.schema.case_analysis_schema import *
+from backend.app.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
 from backend.app.service.case_analysis_service import CaseAnalysisService
 from backend.app.schema.chatbot_schema import (
     CaseAnalysisPipelineCaseFactsPayload,
@@ -20,11 +21,16 @@ class CaseAnalysisOrchistrator:
         self._service = case_analysis_service
 
     async def run_pipeline(
-        self, user_id: UUID, payload: CaseAnalysisPipelineCaseFactsPayload
+        self,
+        user_id: UUID,
+        payload: CaseAnalysisPipelineCaseFactsPayload,
+        answer_format: CaseAnalysisAnswerFormat = CaseAnalysisAnswerFormat.PLAINTEXT,
     ):
         if not payload.case_analysis_session_id:
             return await self._run_fresh_pipeline(
-                user_id=user_id, case_facts=payload.new_case_facts
+                user_id=user_id,
+                case_facts=payload.new_case_facts,
+                answer_format=answer_format,
             )
         else:
             return await self._run_existing_pipeline(
@@ -32,18 +38,26 @@ class CaseAnalysisOrchistrator:
                 new_facts=payload.new_case_facts,
                 updated_facts=payload.updated_case_facts,
                 deleted_facts=payload.deleted_case_facts,
+                answer_format=answer_format,
             )
 
-    async def _run_fresh_pipeline(self, user_id: UUID, case_facts: list[str]):
+    async def _run_fresh_pipeline(
+        self,
+        user_id: UUID,
+        case_facts: list[str],
+        answer_format: CaseAnalysisAnswerFormat = CaseAnalysisAnswerFormat.PLAINTEXT,
+    ):
         session = CaseAnalysisSessionCreate(user_id=user_id)
 
         async with self._db.connection() as conn:
             async with conn.transaction():
                 try:
                     final_answer = await self._service.generate_analysis_answer(
-                        session.id, case_facts
+                        case_analysis_session_id=session.id,
+                        case_facts=case_facts,
+                        answer_format=answer_format,
                     )
-                    
+
                     # Create session
                     await self._service.create_session(session, conn)
                     logger.info(
@@ -67,8 +81,10 @@ class CaseAnalysisOrchistrator:
                     case_analysis_version_obj = (
                         await self._service.create_analysis_version(
                             session_id=session.id,
+                            title=final_answer.title,
                             version_number=1,
-                            answer=final_answer,
+                            answer=final_answer.answer,
+                            answer_format=answer_format,
                             connection=conn,
                         )
                     )
@@ -105,12 +121,15 @@ class CaseAnalysisOrchistrator:
         new_facts: list[str] | None = None,
         updated_facts: dict[UUID, str] | None = None,
         deleted_facts: list[UUID] | None = None,
+        answer_format: CaseAnalysisAnswerFormat = CaseAnalysisAnswerFormat.PLAINTEXT,
     ):
         await self._service.ensure_valid_session_id(session_id)
 
         # Retrieve the last anlysis version
         latest_analysis_version = (
-            await self._service.get_latest_analysis_version_by_session_id(session_id)
+            await self._service.get_latest_analysis_version_by_session_id(
+                CaseAnalysisGetBySessionId(case_analysis_session_id=session_id)
+            )
         )
         if not latest_analysis_version:
             raise NotFoundException(
@@ -135,6 +154,7 @@ class CaseAnalysisOrchistrator:
             updated_analysis_version,
             created_new_case_fact_ids,
             updated_case_fact_version_ids,
+            answer_format,
         )
 
         return OrchistratorResult(
@@ -218,14 +238,17 @@ class CaseAnalysisOrchistrator:
         session_id: UUID,
         deleted_facts: list[UUID],
         updated_analysis_version: int,
-        created_case_fact_ids: List[UUID] = [],
-        updated_case_fact_version_ids: List[UUID] = [],
+        created_case_fact_ids: list[UUID] = [],
+        updated_case_fact_version_ids: list[UUID] = [],
+        answer_format: CaseAnalysisAnswerFormat = CaseAnalysisAnswerFormat.PLAINTEXT,
     ):
         async with self._db.connection() as conn:
             try:
                 latest_case_fact_objs = (
                     await self._service.get_latest_fact_version_by_session_id(
-                        session_id=session_id
+                        CaseAnalysisGetBySessionId(
+                            case_analysis_session_id=session_id
+                        )
                     )
                 )
                 if not latest_case_fact_objs:
@@ -244,15 +267,18 @@ class CaseAnalysisOrchistrator:
                             latest_case_fact_objs.remove(cf)
 
                 final_answer = await self._service.generate_analysis_answer(
-                    session_id,
-                    [fact.fact for fact in latest_case_fact_objs],
+                    case_analysis_session_id=session_id,
+                    case_facts=[fact.fact for fact in latest_case_fact_objs],
+                    answer_format=answer_format,
                 )
 
                 # Create case analysis version
                 case_analysis_version_obj = await self._service.create_analysis_version(
                     session_id=session_id,
+                    title=final_answer.title,
                     version_number=updated_analysis_version,
-                    answer=final_answer,
+                    answer=final_answer.answer,
+                    answer_format=answer_format,
                     connection=conn,
                 )
 
@@ -302,9 +328,9 @@ class CaseAnalysisOrchistrator:
     async def _rollback_phase_one(
         self,
         conn: AsyncConnection,
-        created_case_fact_ids: List[UUID] = [],
-        updated_case_fact_version_ids: List[UUID] = [],
-        deleted_case_fact_version_ids: List[UUID] = [],
+        created_case_fact_ids: list[UUID] = [],
+        updated_case_fact_version_ids: list[UUID] = [],
+        deleted_case_fact_version_ids: list[UUID] = [],
     ):
         # Rollback new case facts
         if created_case_fact_ids:

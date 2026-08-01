@@ -4,6 +4,7 @@ from psycopg import AsyncConnection
 from fastapi.concurrency import run_in_threadpool
 
 from backend.app.database.database import Database
+from backend.app.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
 from backend.app.model.chunk_model import Chunk
 from backend.app.model.case_analysis_model import *
 from backend.app.schema.chunk_schema import ChunkSearchKeyword, ChunkSearchVector
@@ -18,6 +19,9 @@ from backend.app.repository.case_analysis_session_repository import (
 )
 from backend.app.repository.case_fact_version_repository import (
     CaseFactVersionRepository,
+)
+from backend.app.repository.case_analysis_session_repository import (
+    CaseAnalysisSessionRepository,
 )
 from backend.app.repository.case_analysis_version_repository import (
     CaseAnalysisVersionRepository,
@@ -102,15 +106,19 @@ class CaseAnalysisService:
     async def create_analysis_version(
         self,
         session_id: UUID,
+        title: str,
         version_number: int,
         answer: str,
+        answer_format: CaseAnalysisAnswerFormat,
         connection: AsyncConnection = None,
     ):
         return await self._case_analysis_version_repo.create(
             CaseAnalysisVersionCreate(
                 case_analysis_session_id=session_id,
+                title=title,
                 version_number=version_number,
                 answer=answer,
+                answer_format=answer_format,
             ),
             connection,
         )
@@ -160,19 +168,45 @@ class CaseAnalysisService:
     ):
         await self._case_fact_version_repo.delete_many(ids, connection)
 
-    async def get_latest_analysis_version_by_session_id(self, session_id: UUID):
+    async def get_latest_analysis_version_by_session_id(
+        self, param: CaseAnalysisGetBySessionId, connection: AsyncConnection = None
+    ):
         return await self._case_analysis_version_repo.get_latest_by_session_id(
-            session_id
+            param=param, connection=connection
         )
 
     async def get_latest_fact_version_by_session_id(
-        self, session_id: UUID, connection: AsyncConnection = None
+        self, param: CaseAnalysisGetBySessionId, connection: AsyncConnection = None
     ):
         return await self._case_fact_version_repo.get_latest_by_session_id(
-            CaseFactVersionGetBySessionId(case_analysis_session_id=session_id),
-            connection,
+            param=param, connection=connection
         )
 
+    async def get_latest_fact_version_by_session_ids(
+        self,
+        param: CaseFactVersionGetManyBySessionIds,
+        connection: AsyncConnection = None,
+    ):
+        return await self._case_fact_version_repo.get_latest_by_session_ids(
+            param=param, connection=connection
+        )
+
+    async def get_analysis_versions_by_session_id(
+        self,
+        param: CaseAnalysisGetBySessionId,
+        connection: AsyncConnection = None,
+    ):
+        return await self._case_analysis_version_repo.get_by_session_id(
+            param=param, connection=connection
+        )
+
+    async def get_latest_analysis_version_by_user_id(
+        self, param: CaseAnalysisGetByUserId, connection: AsyncConnection = None
+    ):
+        return await self._case_analysis_version_repo.get_latest_by_user_id(
+            param=param, connection=connection
+        )
+        
     async def delete_session(self, id: UUID, connection: AsyncConnection = None):
         await self._case_analysis_session_repo.delete(
             id=id, connection=connection
@@ -189,24 +223,47 @@ class CaseAnalysisService:
                 code="CASE_ANALYSIS_NOT_FOUND", message="Case analysis not found"
             )
 
-    async def get_by_version(self, case_analysis_session_id: UUID, version_number: int):
-        await self.ensure_valid_session_id(case_analysis_session_id)
+    async def get_latest_session_analyses_preview(self, param: CaseAnalysisGetByUserId):
+        async with self._db.connection() as conn:
+            sessions = await self._case_analysis_session_repo.get_by_user_id(
+                param=CaseAnalysisGetByUserId(user_id=param.user_id),
+                connection=conn,
+            )
+                        
+            latest_analysis_version_sessions = (
+                await self.get_latest_analysis_version_by_user_id(param=param, connection=conn)
+            )
 
-        param = CaseAnalysisGetByVersionNumber(
-            case_analysis_session_id=case_analysis_session_id,
-            version_number=version_number,
-        )
+            # TODO: Optimize this
+            merged = []
+            for av in latest_analysis_version_sessions:
+                session_id = av.case_analysis_session_id
+                for ss in sessions:
+                    id = ss.id
+                    if session_id == id:
+                        merged.append(
+                            CaseAnalysisVersionCaster.base_to_session_preview_response(
+                                case_analysis_version=av,
+                                session_created_at=ss.created_at,
+                                session_updated_at=ss.updated_at
+                            )
+                        )
+
+            return merged
+
+    async def get_by_version(self, param: CaseAnalysisGetByVersionNumber):
+        await self.ensure_valid_session_id(param.case_analysis_session_id)
 
         # Get case facts
         case_fact_versions = await self._case_fact_version_repo.get_by_version_number(
-            param
+            param=param
         )
         if not case_fact_versions:
             raise NotFoundException(
                 code="CASE_FACT_VERSION_NOT_FOUND",
-                messaege="Case analysis fetch failed",
+                message="Case analysis fetch failed",
                 details=[
-                    f"No case fact versions found for case analysis session {case_analysis_session_id} version {version_number}"
+                    f"No case fact versions found for case analysis session {param.case_analysis_session_id} version {param.version_number}"
                 ],
             )
 
@@ -218,7 +275,7 @@ class CaseAnalysisService:
                 code="CASE_ANALYSIS_NOT_FOUND",
                 messaege="Case analysis fetch failed",
                 details=[
-                    f"No case analysis versions found for session {case_analysis_session_id} version {version_number}"
+                    f"No case analysis versions found for session {param.case_analysis_session_id} version {param.version_number}"
                 ],
             )
 
@@ -237,8 +294,11 @@ class CaseAnalysisService:
         )
 
     async def generate_analysis_answer(
-        self, case_analysis_session_id: UUID, case_facts: List[str]
-    ) -> str:
+        self,
+        case_analysis_session_id: UUID,
+        case_facts: list[str],
+        answer_format: CaseAnalysisAnswerFormat = CaseAnalysisAnswerFormat.PLAINTEXT,
+    ) -> CaseAnalysisGeneratedAnswer:
         logger.info(
             "Attempting to extract legal issues for case analysis with session id: %s",
             case_analysis_session_id,
@@ -295,7 +355,9 @@ class CaseAnalysisService:
         )
 
         final_answer = await self._chatbot_service.generate_answer(
-            "\n".join(case_facts), self._format_context(reranked_result[:10])
+            case_facts=case_facts,
+            context=self._format_context(reranked_result[:10]),
+            answer_format=answer_format,
         )
 
         return final_answer
@@ -355,7 +417,7 @@ class CaseAnalysisService:
         return results
 
     def _deduplicate_results(
-        self, vector_results: List[Chunk], keyword_results: List[Chunk]
+        self, vector_results: list[Chunk], keyword_results: list[Chunk]
     ) -> list[Chunk]:
         unique_results = {}
 
@@ -366,7 +428,7 @@ class CaseAnalysisService:
 
         return list(unique_results.values())
 
-    def _format_context(self, results: List[Chunk]) -> str:
+    def _format_context(self, results: list[Chunk]) -> str:
         formatted_results = []
         for result in results:
             document = result.document

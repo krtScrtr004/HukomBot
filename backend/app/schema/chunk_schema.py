@@ -16,9 +16,9 @@ class ChunkCreate(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-class ChunkSearchKeyword(PaginatableMixin, BaseModel):
+class ChunkSearchKeyword(PaginatableMixin):
     text: str = Field(min_length=1, max_length=10000)
 
 
-class ChunkSearchVector(PaginatableMixin, BaseModel):
+class ChunkSearchVector(PaginatableMixin):
     embeddings: List
