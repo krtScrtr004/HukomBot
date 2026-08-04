@@ -8,12 +8,16 @@ __pycache__/
 *.pyd
 
 # ============================================================
-# Virtual Environment
+# Virtual Environment / Node Modules
 # ============================================================
 venv/
 .venv/
 env/
 .env/
+node_modules
+dist
+dist-ssr
+*.local
 
 # ============================================================
 # Environment Variables
@@ -53,9 +57,16 @@ temp_page_*.png
 # ============================================================
 # IDE / Editor
 # ============================================================
-.vscode/
-.idea/
+.vscode/*
 *.code-workspace
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # ============================================================
 # OS-generated files
@@ -87,6 +98,13 @@ build/
 .coverage
 htmlcov/
 *.log
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # ============================================================
 # Jupyter Notebooks (if used for experimentation)
