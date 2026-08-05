@@ -55,9 +55,19 @@ Copy `.env.example` to `.env` and fill in the following values:
 
 ## Added
 
-- Add `GET api/v1/auth/me` & `GET api/v1/user/me` - retrieves authenticated user information
-- Add `DELETE api/v1/case-analyses/<id>` - removes a case analysis session record
+- React + Vite frontend app under `frontend/hukom_bot` with TypeScript, ESLint, and path alias configuration
+- Login page route and reusable UI components (`LoginCard`, `Logo`, `ProviderButton`, `ThemeToggle`)
+- Sitewide theme context/provider and centered layout primitives for auth views
+- Bootstrap Icons integration for UI iconography
+- Backend enum `case_analysis_answer_format` and supporting caster/repository/schema files for case analysis version flow
+- Reintroduced case analyses endpoint module under `backend/hukom_bot/api/v1/endpoint/case_analysis.py`
 
 ## Changes
 
-- Rename `api/v1/case-analysis` endpoint to `api/v1/case-analyses`
+- Rename backend package namespace from `backend.app` to `backend.hukom_bot` across API, services, repositories, schemas, and utilities
+- Migrate frontend structure from legacy Python/HTML pages to a modern React component architecture
+- Update theme toggle icon styling and apply theme handling globally
+
+## Removed
+
+- Remove legacy frontend Python templates, routers, scripts, styles, and helper modules under `frontend/`
