@@ -1,1 +1,223 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+@theme {
+	/* ==========================================================================
+		COLOR SYSTEM
+       ========================================================================== */
+
+	/* Brand */
+	--color-primary: #1e3a5f;
+	--color-primary-foreground: #ffffff;
+
+	--color-secondary: #496a81;
+	--color-secondary-foreground: #ffffff;
+
+	--color-accent: #c8a24d;
+	--color-accent-foreground: #1f2937;
+
+	/* Surfaces */
+	--color-background: #f6f7f9;
+	--color-surface: #ffffff;
+	--color-surface-muted: #f2f4f7;
+	--color-surface-elevated: #ffffff;
+	--color-surface-overlay: rgba(255, 255, 255, 0.92);
+
+	/* Navigation */
+	--color-sidebar: #f2f4f7;
+	--color-sidebar-active: #e6ebf2;
+	--color-sidebar-hover: #eef2f7;
+
+	/* Borders */
+	--color-border: #d7dde4;
+	--color-border-muted: #e8edf2;
+	--color-border-strong: #1e3a5f;
+
+	/* Typography */
+	--color-text-primary: #1f2937;
+	--color-text-secondary: #6b7280;
+	--color-text-muted: #9ca3af;
+	--color-text-inverse: #ffffff;
+	--color-text-link: var(--color-primary);
+
+	/* Feedback */
+	--color-success: #2e7d32;
+	--color-success-foreground: #ffffff;
+
+	--color-warning: #d97706;
+	--color-warning-foreground: #ffffff;
+
+	--color-danger: #c62828;
+	--color-danger-foreground: #ffffff;
+
+	--color-info: #2563eb;
+	--color-info-foreground: #ffffff;
+
+	/* Interactive */
+	--color-hover: rgba(30, 58, 95, 0.05);
+	--color-active: rgba(30, 58, 95, 0.1);
+	--color-disabled: #d1d5db;
+	--color-disabled-foreground: #9ca3af;
+
+	/* ==========================================================================
+		TYPOGRAPHY
+       ========================================================================== */
+
+	--font-sans: Inter, system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+	/* Font Sizes */
+	--text-xs: 0.75rem;
+	--text-sm: 0.875rem;
+	--text-base: 1rem;
+	--text-lg: 1.125rem;
+	--text-xl: 1.25rem;
+	--text-2xl: 1.5rem;
+	--text-3xl: 1.875rem;
+	--text-4xl: 2.25rem;
+	--text-5xl: 3rem;
+
+	/* Font Weight */
+	--font-weight-light: 300;
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-weight-bold: 700;
+
+	/* Line Height */
+	--leading-tight: 1.2;
+	--leading-normal: 1.5;
+	--leading-relaxed: 1.7;
+
+	/* Letter Spacing */
+	--tracking-tight: -0.02em;
+	--tracking-normal: 0;
+	--tracking-wide: 0.02em;
+
+	/* ==========================================================================
+		LAYOUT
+       ========================================================================== */
+
+	--spacing: 0.25rem;
+
+	--container-sm: 640px;
+	--container-md: 768px;
+	--container-lg: 1024px;
+	--container-xl: 1280px;
+	--container-2xl: 1536px;
+
+	/* ==========================================================================
+		BORDER RADIUS
+       ========================================================================== */
+
+	--radius-xs: 0.25rem;
+	--radius-sm: 0.5rem;
+	--radius-md: 0.75rem;
+	--radius-lg: 1rem;
+	--radius-xl: 1.5rem;
+	--radius-2xl: 2rem;
+	--radius-full: 9999px;
+
+	/* ==========================================================================
+		SHADOWS
+       ========================================================================== */
+
+	--shadow-xs: 0 1px 1px rgba(31, 41, 55, 0.05);
+
+	--shadow-sm: 0 1px 2px rgba(31, 41, 55, 0.08);
+
+	--shadow-md: 0 4px 12px rgba(31, 41, 55, 0.12);
+
+	--shadow-lg: 0 12px 32px rgba(31, 41, 55, 0.16);
+
+	--shadow-xl: 0 24px 64px rgba(31, 41, 55, 0.18);
+
+	/* ==========================================================================
+       MOTION
+       ========================================================================== */
+
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+	--ease-emphasized: cubic-bezier(0.2, 0, 0, 1.1);
+
+	--duration-fast: 120ms;
+	--duration-normal: 200ms;
+	--duration-slow: 300ms;
+
+	/* ==========================================================================
+       Z-INDEX
+       ========================================================================== */
+
+	--z-base: 0;
+	--z-dropdown: 1000;
+	--z-sticky: 1020;
+	--z-fixed: 1030;
+	--z-modal-backdrop: 1040;
+	--z-dialog: 1050;
+	--z-popover: 1060;
+	--z-toast: 1070;
+	--z-tooltip: 1080;
+
+	/* ==========================================================================
+       COMPONENT SIZES
+       ========================================================================== */
+
+	--header-height: 4rem;
+	--sidebar-width: 18rem;
+	--sidebar-width-collapsed: 5rem;
+
+	--input-height: 2.75rem;
+	--button-height: 2.75rem;
+
+	/* ==========================================================================
+       EFFECTS
+       ========================================================================== */
+
+	--blur-sm: 4px;
+	--blur-md: 8px;
+	--blur-lg: 16px;
+}
+
+html[data-theme='dark'] {
+	color-scheme: dark;
+
+	--color-primary: #f3f4f6;
+	--color-primary-foreground: #111827;
+
+	--color-secondary: #d1d5db;
+	--color-secondary-foreground: #111827;
+
+	--color-accent: #c8a24d;
+	--color-accent-foreground: #111827;
+
+	--color-background: #111827;
+	--color-surface: #1f2937;
+	--color-surface-muted: #17212b;
+	--color-surface-elevated: #273447;
+	--color-surface-overlay: rgba(17, 24, 39, 0.94);
+
+	--color-sidebar: #17212b;
+	--color-sidebar-hover: #1f2937;
+	--color-sidebar-active: #243244;
+
+	--color-border: #374151;
+	--color-border-muted: #2c3948;
+	--color-border-strong: #d1d5db;
+
+	--color-text-primary: #f3f4f6;
+	--color-text-secondary: #d1d5db;
+	--color-text-muted: #9ca3af;
+	--color-text-inverse: #111827;
+
+	--color-success: #4caf50;
+	--color-warning: #f59e0b;
+	--color-danger: #ef4444;
+	--color-info: #60a5fa;
+
+	--color-hover: rgba(255, 255, 255, 0.06);
+	--color-active: rgba(255, 255, 255, 0.1);
+
+	--shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.18);
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
+	--shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.36);
+	--shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
