@@ -1,9 +1,13 @@
 import type LayoutProp from '@/layouts/types/LayoutProp';
 
-function CenteredLayout({ children }: LayoutProp) {
+function CenteredLayout({ children, className }: LayoutProp) {
 	return (
 		<>
-			<div className="flex items-center justify-center">{children}</div>;
+			<div
+				className={`h-dvh flex items-center justify-center transition-colors duration-fast ${className ?? ''}`}
+			>
+				{children}
+			</div>
 		</>
 	);
 }
