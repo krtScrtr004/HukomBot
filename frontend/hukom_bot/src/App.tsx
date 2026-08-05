@@ -3,7 +3,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import Login from '@/pages/Login';
 
 
-function App() {
+export default function App() {
 	return (
 		<ThemeProvider>
 			<Routes>
@@ -12,5 +12,3 @@ function App() {
 		</ThemeProvider>
 	);
 }
-
-export default App;

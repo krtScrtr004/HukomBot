@@ -1,6 +1,6 @@
 import type LayoutProp from '@/layouts/types/LayoutProp';
 
-function CenteredLayout({ children, className }: LayoutProp) {
+export default function CenteredLayout({ children, className }: LayoutProp) {
 	return (
 		<>
 			<div
@@ -11,5 +11,3 @@ function CenteredLayout({ children, className }: LayoutProp) {
 		</>
 	);
 }
-
-export default CenteredLayout;

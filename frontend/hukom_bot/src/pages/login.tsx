@@ -2,7 +2,7 @@ import CenteredLayout from '@/layouts/CenteredLayout'
 import LogoCard from '@/components/login/LoginCard'
 import ThemeTogggle from '@/components/ui/ThemeToggle';
 
-function Login() {
+export default function Login() {
     return (
         <CenteredLayout className="bg-background relative p-0.5">
             <ThemeTogggle />
@@ -11,5 +11,3 @@ function Login() {
         </CenteredLayout>
     )
 }
-
-export default Login;
