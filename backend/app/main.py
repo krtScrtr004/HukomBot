@@ -6,7 +6,6 @@ from pydantic import ValidationError
 from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from backend.app.core.settings import settings
@@ -15,8 +14,6 @@ from backend.app.api.v1.endpoint.auth import auth_api_router
 from backend.app.api.v1.endpoint.user import user_api_router
 from backend.app.api.v1.endpoint.case_analysis import case_analysis_api_router
 from backend.app.api.v1.endpoint.document import document_api_router
-
-from frontend.routers.login import login_page_router
 
 from backend.app.middleware.timer import TimerMiddleware
 from backend.app.middleware.request_identifier import RequestIdentifierMiddleware
@@ -68,10 +65,6 @@ app.include_router(
     router=document_api_router, prefix="/api/v1/documents", tags=["Documents API"]
 )
 
-# Pages
-
-app.include_router(router=login_page_router, prefix="/login")
-
 
 # Middlewares =========================================================
 
@@ -81,28 +74,6 @@ app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET)
 app.add_middleware(TimerMiddleware)
 
 app.add_middleware(RequestIdentifierMiddleware)
-
-
-# Others ==============================================================
-
-
-app.mount(
-    path="/static/assets",
-    app=StaticFiles(directory=f"{get_project_root()}/frontend/assets/"),
-    name="assets",
-)
-
-app.mount(
-    path="/static/styles",
-    app=StaticFiles(directory=f"{get_project_root()}/frontend/styles"),
-    name="styles",
-)
-
-app.mount(
-    path="/static/scripts",
-    app=StaticFiles(directory=f"{get_project_root()}/frontend/scripts"),
-    name="scripts",
-)
 
 
 # Helper DB/Custom Mappers ============================================
