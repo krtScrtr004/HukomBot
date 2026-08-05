@@ -1,10 +1,14 @@
+import CenteredLayout from '@/layouts/CenteredLayout'
+import LogoCard from '@/components/login/LoginCard'
+import ThemeTogggle from '@/components/ui/ThemeToggle';
+
 function Login() {
     return (
-        <>
-            <section className="h-dvh flex items-center justify-center p-0.5">
-                <h3 className="">This is the Login Page</h3>
-            </section>
-        </>
+        <CenteredLayout className="bg-background relative p-0.5">
+            <ThemeTogggle />
+
+            <LogoCard />
+        </CenteredLayout>
     )
 }
 
