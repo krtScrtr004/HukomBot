@@ -1,4 +1,5 @@
 import time
+from uuid import UUID, uuid4
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field, EmailStr, AliasChoices
 
@@ -15,6 +16,7 @@ class AuthUser(BaseModel):
 
 
 class JWTPayload(BaseModel):
+    jti: UUID = Field(default_factory=uuid4)
     provider_id: str
     iss: str = Field(default=settings.JWT_ISS)
     aud: str = Field(default=settings.JWT_AUD)
