@@ -177,6 +177,12 @@ def get_chatbot_service(
     )
 
 
+def get_revoked_token_service(
+    revoked_token_repo: RevokedTokenRepository = Depends(get_revoked_token_repository),
+) -> RevokedTokenService:
+    return RevokedTokenService(revoked_token_repo=revoked_token_repo)
+
+
 def get_user_service(
     db: Database = Depends(get_db),
     user_repo: UserRepository = Depends(get_user_repository),
@@ -187,9 +193,15 @@ def get_user_service(
 def get_auth_service(
     db: Database = Depends(get_db),
     user_service: UserRepository = Depends(get_user_service),
+    revoked_token_service: RevokedTokenService = Depends(get_revoked_token_service),
     jwt_service: JWTService = Depends(get_jwt_service),
 ) -> AuthService:
-    return AuthService(db=db, user_service=user_service, jwt_service=jwt_service)
+    return AuthService(
+        db=db,
+        user_service=user_service,
+        revoked_token_service=revoked_token_service,
+        jwt_service=jwt_service,
+    )
 
 
 def get_case_analysis_service(
@@ -236,12 +248,6 @@ def get_document_service(
         embedding_service=embedding_service,
         file_storage_service=file_storage_service,
     )
-
-
-def get_revoked_token_service(
-    revoked_token_repo: RevokedTokenRepository = Depends(get_revoked_token_repository),
-) -> RevokedTokenService:
-    return RevokedTokenService(revoked_token_repo=revoked_token_repo)
 
 
 # ============================================================================

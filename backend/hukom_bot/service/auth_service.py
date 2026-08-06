@@ -10,9 +10,10 @@ from backend.hukom_bot.enum.oauth_provider import OAuthProvider
 from backend.hukom_bot.model.user_model import User
 
 from backend.hukom_bot.schema.user_schema import UserCreate
-from backend.hukom_bot.schema.auth_schema import AuthUser
+from backend.hukom_bot.schema.auth_schema import AuthUser, JWTPayload
 
 from backend.hukom_bot.service.jwt_service import JWTService
+from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.exception.app_exception import UnauthorizedException
 
@@ -21,15 +22,32 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(
-        self, db: Database, user_service: UserService, jwt_service: JWTService
+        self, 
+        db: Database, 
+        user_service: UserService,
+        revoked_token_service: RevokedTokenService,
+        jwt_service: JWTService
     ):
         self._db = db
         self._user_service = user_service
+        self._revoked_token_service = revoked_token_service
         self._jwt_service = jwt_service
 
-    async def authenticate(self, request_id: UUID, token: str):
+    async def authenticate(self, request_id: UUID, token: str) -> User:
         decoded = self._jwt_service.verify(token)
-        provider_id = decoded.get("provider_id")
+        payload = JWTPayload.model_validate(decoded)
+        
+        # Check if the token has been revoked
+        jti = payload.jti
+        is_revoked = await self._revoked_token_service.is_revoked(jti)
+        if is_revoked:
+            raise UnauthorizedException(
+                message="You are not authorized to perform this action",
+                code="REVOKED_TOKEN",
+                details=[f"Token with jti: {jti} has been revoked"],
+            )
+        
+        provider_id = payload.provider_id
         if not decoded or not provider_id:
             raise UnauthorizedException(
                 message="You are not authorized to perform this action",
