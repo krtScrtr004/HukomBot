@@ -12,7 +12,7 @@ class RevokedTokenRepository:
 
     async def add(
         self, revoked_token: RevokedToken, connection: AsyncConnection = None
-    ):
+    ) -> RevokedToken:
         if connection is not None:
             return await self._add_implement(connection, revoked_token)
 
@@ -25,7 +25,9 @@ class RevokedTokenRepository:
                 await conn.rollback()
                 raise
 
-    async def _add_implement(self, conn: AsyncConnection, revoked_token: RevokedToken):
+    async def _add_implement(
+        self, conn: AsyncConnection, revoked_token: RevokedToken
+    ) -> RevokedToken:
         async with conn.cursor() as cur:
             await cur.execute(
                 """
@@ -39,6 +41,8 @@ class RevokedTokenRepository:
             """,
                 revoked_token.model_dump(),
             )
+
+            return revoked_token
 
     async def is_revoked(self, jti: UUID, connection: AsyncConnection = None) -> bool:
         if connection is not None:
@@ -68,7 +72,7 @@ class RevokedTokenRepository:
 
     async def delete_expired(
         self, limit: int = 100, connection: AsyncConnection = None
-    ):
+    ) -> None:
         if connection is not None:
             return await self._delete_expired_implement(connection, limit)
 
@@ -81,7 +85,9 @@ class RevokedTokenRepository:
                 await conn.rollback()
                 raise
 
-    async def _delete_expired_implement(self, conn: AsyncConnection, limit: int):
+    async def _delete_expired_implement(
+        self, conn: AsyncConnection, limit: int
+    ) -> None:
         async with conn.cursor() as cur:
             await cur.execute(
                 """
