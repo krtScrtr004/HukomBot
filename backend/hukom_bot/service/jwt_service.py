@@ -22,7 +22,7 @@ class JWTService:
 
     def encode(self, payload: JWTPayload):
         return jwt.encode(
-            payload=payload.model_dump(), key=self._secret, algorithm=self._algo
+            payload=payload.model_dump(mode="json"), key=self._secret, algorithm=self._algo
         )
 
     def verify(

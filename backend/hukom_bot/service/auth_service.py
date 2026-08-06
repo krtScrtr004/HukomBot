@@ -1,7 +1,10 @@
 import logging
 from uuid import UUID
+from datetime import datetime
 from fastapi import Request
 from fastapi.responses import RedirectResponse
+
+from backend.hukom_bot.service.redirect_service import redirect_service
 
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.enum.user_role import UserRole
@@ -10,7 +13,7 @@ from backend.hukom_bot.enum.oauth_provider import OAuthProvider
 from backend.hukom_bot.model.user_model import User
 
 from backend.hukom_bot.schema.user_schema import UserCreate
-from backend.hukom_bot.schema.auth_schema import AuthUser, JWTPayload
+from backend.hukom_bot.schema.auth_schema import AuthUser, JWTPayload, RevokedToken
 
 from backend.hukom_bot.service.jwt_service import JWTService
 from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
@@ -22,11 +25,11 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(
-        self, 
-        db: Database, 
+        self,
+        db: Database,
         user_service: UserService,
         revoked_token_service: RevokedTokenService,
-        jwt_service: JWTService
+        jwt_service: JWTService,
     ):
         self._db = db
         self._user_service = user_service
@@ -36,7 +39,7 @@ class AuthService:
     async def authenticate(self, request_id: UUID, token: str) -> User:
         decoded = self._jwt_service.verify(token)
         payload = JWTPayload.model_validate(decoded)
-        
+
         # Check if the token has been revoked
         jti = payload.jti
         is_revoked = await self._revoked_token_service.is_revoked(jti)
@@ -46,7 +49,7 @@ class AuthService:
                 code="REVOKED_TOKEN",
                 details=[f"Token with jti: {jti} has been revoked"],
             )
-        
+
         provider_id = payload.provider_id
         if not decoded or not provider_id:
             raise UnauthorizedException(
@@ -104,6 +107,7 @@ class AuthService:
             if not user:
                 return None
 
+            # TODO: Change the url here
             redirect = RedirectResponse("http://127.0.0.1:8000/docs", status_code=303)
             redirect.set_cookie(key="token", value=token, httponly=True)
             return redirect
@@ -115,3 +119,24 @@ class AuthService:
             )
             redirect.delete_cookie(key="token", path="/", httponly=True)
             return redirect
+
+    async def logout(self, request: Request) -> RedirectResponse:
+        # Rovoke the token
+        token = request.cookies.get("token")
+        if token:
+            decoded = self._jwt_service.verify(token)
+            payload = JWTPayload.model_validate(decoded)
+            jti = payload.jti
+            expiration_time = payload.exp
+            await self._revoked_token_service.add_revoked_token(
+                RevokedToken(
+                    jti=jti, expires_at=datetime.fromtimestamp(expiration_time)
+                )
+            )
+
+        request.session.clear()
+        redirect = RedirectResponse(
+            url=redirect_service.get_redirect_url("login"), status_code=303
+        )
+        redirect.delete_cookie(key="token", path="/", httponly=True)
+        return redirect
