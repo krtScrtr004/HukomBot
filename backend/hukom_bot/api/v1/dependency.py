@@ -20,6 +20,7 @@ from backend.hukom_bot.repository.case_fact_version_repository import (
 )
 from backend.hukom_bot.repository.chunk_repository import ChunkRepository
 from backend.hukom_bot.repository.document_repository import DocumentRepository
+from backend.hukom_bot.repository.revoked_token_repository import RevokedTokenRepository
 from backend.hukom_bot.repository.user_repository import UserRepository
 
 from backend.hukom_bot.service.auth_service import AuthService
@@ -33,9 +34,12 @@ from backend.hukom_bot.service.google_service import GoogleService
 from backend.hukom_bot.service.llm_service import LLMService
 from backend.hukom_bot.service.reranker_service import RerankerService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
+from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
 
-from backend.hukom_bot.orchistrator.case_analysis_orchistrator import CaseAnalysisOrchistrator
+from backend.hukom_bot.orchistrator.case_analysis_orchistrator import (
+    CaseAnalysisOrchistrator,
+)
 from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchistrator
 
 from backend.hukom_bot.exception.app_exception import UnauthorizedException
@@ -147,6 +151,12 @@ def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
     return UserRepository(db=db)
 
 
+def get_revoked_token_repository(
+    db: Database = Depends(get_db),
+) -> RevokedTokenRepository:
+    return RevokedTokenRepository(db=db)
+
+
 # ============================================================================
 # Services (Business Logic)
 # ============================================================================
@@ -226,6 +236,12 @@ def get_document_service(
         embedding_service=embedding_service,
         file_storage_service=file_storage_service,
     )
+
+
+def get_revoked_token_service(
+    revoked_token_repo: RevokedTokenRepository = Depends(get_revoked_token_repository),
+) -> RevokedTokenService:
+    return RevokedTokenService(revoked_token_repo=revoked_token_repo)
 
 
 # ============================================================================
