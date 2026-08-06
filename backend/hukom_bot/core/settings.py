@@ -9,6 +9,9 @@ class Settings(BaseSettings):
         "case_sensitive": True,
         "extra": "ignore",
     }
+    
+    BASE_PAGE_URL: str
+    BASE_API_URL: str
 
     # -- Database --
     DB_HOST: str
