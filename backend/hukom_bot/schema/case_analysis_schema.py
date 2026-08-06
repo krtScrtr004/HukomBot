@@ -2,7 +2,7 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from backend.hukom_bot.schema.mixin import PaginatableMixin
+from backend.hukom_bot.schema.mixin import PaginatableMixin, SearchableMixin
 from backend.hukom_bot.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
 
 
@@ -39,6 +39,11 @@ class CaseAnalysisSessionCreate(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
+
+class CaseAnalysisSessionPreviewSearch(SearchableMixin, PaginatableMixin):
+    user_id: UUID
+
+    # Add methods here
 
 class CaseAnalysisSessionPreviewResponse(BaseModel):
     case_analysis_session_id: UUID
