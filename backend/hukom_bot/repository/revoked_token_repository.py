@@ -61,14 +61,14 @@ class RevokedTokenRepository:
         async with conn.cursor() as cur:
             await cur.execute(
                 """
-                SELECT EXISTS (
-                    SELECT 1 FROM revoked_tokens WHERE jti = %(jti)s
-                )
-            """,
+                SELECT 1 
+                FROM revoked_tokens 
+                WHERE jti = %(jti)s
+                """,
                 {"jti": jti},
             )
-            result = await cur.fetchone()
-            return result[0] if result else False
+            row = await cur.fetchone()
+            return row is not None
 
     async def delete_expired(
         self, limit: int = 100, connection: AsyncConnection = None
