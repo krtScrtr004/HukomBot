@@ -15,6 +15,11 @@ class AuthUser(BaseModel):
     email_verified: bool
 
 
+class RevokedToken(BaseModel):
+    jti: UUID
+    expired_at: datetime
+
+
 class JWTPayload(BaseModel):
     jti: UUID = Field(default_factory=uuid4)
     provider_id: str
