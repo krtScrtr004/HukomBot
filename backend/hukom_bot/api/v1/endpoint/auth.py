@@ -12,6 +12,7 @@ from backend.hukom_bot.schema.auth_schema import JWTPayload
 from backend.hukom_bot.service.auth_service import AuthService
 from backend.hukom_bot.service.jwt_service import JWTService
 from backend.hukom_bot.service.google_service import GoogleService
+from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.util.user_caster import UserCaster
 from backend.hukom_bot.exception.oauth_exception import OAuthException
 from backend.hukom_bot.api.v1.dependency import (
@@ -19,7 +20,9 @@ from backend.hukom_bot.api.v1.dependency import (
     get_auth_service,
     get_jwt_service,
     get_google_service,
+    get_revoked_token_service
 )
+from backend.hukom_bot.service.redirect_service import redirect_service
 
 auth_api_router = APIRouter()
 
@@ -90,7 +93,8 @@ async def google_login_callback(
         token = jwt_service.encode(payload=JWTPayload(provider_id=user.provider_id))
 
         # TODO: Update the redirect url here
-        redirect = RedirectResponse("http://127.0.0.1:8000/docs")
+        url = redirect_service.get_api_url("docs")
+        redirect = RedirectResponse(url=url)
         # Set jwt on cookie
         redirect.set_cookie(key="token", value=token, httponly=True)
 
@@ -113,13 +117,19 @@ async def google_login_callback(
         elif isinstance(ex, OAuthException):
             error_code = ex.code
 
-        return RedirectResponse(
-            url=request.url_for("login_page").include_query_params(
-                error_code=error_code
-            ),
-            status_code=303,
+        url = redirect_service.get_redirect_url(
+            "login", payload={"error_code": error_code}
         )
+        return RedirectResponse(url=url, status_code=303)
     finally:
         request.session.pop("oauth_state", "")
         request.session.pop("oauth_code_verfier", "")
         request.session.pop("oauth_nonce", "")
+
+@auth_api_router.get("/logout")
+async def logout(
+    request: Request,
+    user: Annotated[User, Depends(verify_user)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+):    
+    return await auth_service.logout(request)
