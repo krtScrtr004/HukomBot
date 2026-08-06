@@ -33,10 +33,10 @@ class RevokedTokenRepository:
                 """
                 INSERT INTO revoked_tokens (
                     jti,
-                    expired_at
+                    expires_at
                 ) VALUES (
                     %(jti)s,
-                    %(expired_at)s
+                    %(expires_at)s
                 )
             """,
                 revoked_token.model_dump(),
@@ -92,7 +92,7 @@ class RevokedTokenRepository:
             await cur.execute(
                 """
                 DELETE FROM revoked_tokens
-                WHERE expired_at <= NOW()
+                WHERE expires_at <= NOW()
                 LIMIT %s
             """,
                 (limit,),

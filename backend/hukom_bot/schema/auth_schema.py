@@ -17,7 +17,7 @@ class AuthUser(BaseModel):
 
 class RevokedToken(BaseModel):
     jti: UUID
-    expired_at: datetime
+    expires_at: datetime
 
 
 class JWTPayload(BaseModel):
