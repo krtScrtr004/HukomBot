@@ -6,6 +6,7 @@ from backend.hukom_bot.model.case_analysis_model import CaseAnalysisVersion
 from backend.hukom_bot.schema.case_analysis_schema import (
     CaseAnalysisGetByUserId,
     CaseAnalysisGetBySessionId,
+    CaseAnalysisGetManyBySessionId,
     CaseAnalysisVersionCreate,
     CaseAnalysisGetByVersionNumber,
 )
@@ -109,6 +110,68 @@ class CaseAnalysisVersionRepository:
 
             row = await cur.fetchone()
         return CaseAnalysisVersion.model_validate(row) if row is not None else None
+
+    async def get_latest_by_many_session_id(
+            self,
+            param: CaseAnalysisGetManyBySessionId,
+            connection: AsyncConnection = None,
+        ):
+            if connection is not None:
+                return await self._get_latest_by_many_session_id_implement(
+                    conn=connection, param=param
+                )
+    
+            async with self._database.connection() as conn:
+                try:
+                    result = await self._get_latest_by_many_session_id_implement(
+                        conn=conn, param=param
+                    )
+                    await conn.commit()
+                    return result
+                except (errors.OperationalError, errors.IntegrityConstraintViolation) as ex:
+                    await conn.rollback()
+                    raise
+
+    async def _get_latest_by_many_session_id_implement(
+        self,
+        conn: AsyncConnection,
+        param: CaseAnalysisGetManyBySessionId
+    ) -> list[CaseAnalysisVersion]:
+        async with conn.cursor() as cur:
+            placeholders = ", ".join(f"%(id_{i})s" for i, _ in enumerate(param.case_analysis_session_ids))
+            params = {f"id_{i}": session_id for i, session_id in enumerate(param.case_analysis_session_ids)}
+            params["user_id"] = param.user_id
+            params["limit"] = param.limit
+            params["offset"] = param.offset
+
+            user_query = ""
+            if param.user_id:
+                user_query = "AND cas.user_id = %(user_id)s"
+
+            await cur.execute(
+                f"""
+                SELECT cav.*
+                FROM case_analysis_versions cav
+                INNER JOIN case_analysis_sessions cas
+                    ON cav.case_analysis_session_id = cas.id
+                WHERE cas.id IN ({placeholders})
+                {user_query}
+                ORDER BY cav.created_at DESC
+                LIMIT %(limit)s
+                OFFSET %(offset)s
+                """,
+                params,
+            )
+            
+            rows = await cur.fetchall()
+            
+            versions = []
+            for row in rows:
+                versions.append(
+                    CaseAnalysisVersion.model_validate(row)
+                )
+                
+            return versions
 
     async def get_by_session_id(
         self,

@@ -130,7 +130,7 @@ class CaseAnalysisSessionRepository:
                 CROSS JOIN query
                 WHERE {user_query} 
                 cav.search_vector @@ query.q
-                OR EXISTS (
+                AND EXISTS (
                     SELECT 1
                     FROM case_facts cf
                     JOIN case_fact_versions cfv ON cfv.case_fact_id = cf.id
