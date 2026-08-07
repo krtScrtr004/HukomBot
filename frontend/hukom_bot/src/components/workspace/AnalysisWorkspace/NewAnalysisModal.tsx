@@ -162,12 +162,22 @@ export default function NewAnalysisModal({
 								className="w-full min-h-10 max-h-15 text-sm rounded-sm border border-border bg-surface-elevated px-3 py-2 text-text-secondary resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
 								aria-invalid={!!errors[index]}
 							/>
-
-							{errors[index] && (
-								<p className="text-xs text-danger" role="alert">
-									{errors[index]}
-								</p>
-							)}
+							<div className="flex items-center justify-between">
+								{errors[index] && (
+									<p className="text-xs text-danger" role="alert">
+										{errors[index]}
+									</p>
+								)}
+								<span
+									className={`text-xs ml-auto ${
+										fact.length > CASE_FACT_MAX_LENGTH * 0.9
+											? 'text-danger'
+											: 'text-text-muted'
+									}`}
+								>
+									{fact.length}/{CASE_FACT_MAX_LENGTH}
+								</span>
+							</div>
 						</div>
 					))}
 

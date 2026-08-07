@@ -23,7 +23,7 @@ const STATUS_BADGE_MAP: Record<
 
 function getRowClassName(status: FactStatus): string {
 	if (status === 'modified') {
-		(" return 'border-warning bg-warning/5';");
+		return 'border-warning bg-warning/5';
 	}
 	if (status === 'new') {
 		return 'border-info bg-info/5';
@@ -120,18 +120,31 @@ export default function CaseFactRow({
 						}
 						disabled={isDeleted}
 						maxLength={CASE_FACT_MAX_LENGTH}
-						rows={5}
-						className={`bg-surface-elevated flex-1 w-full min-h-20 max-h-50 text-sm rounded-sm border border-border bg-surface px-3 py-2 text-text-secondary resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 ${isDeleted ? 'line-through' : ''}`}
+						rows={2}
+						className={`flex-1 w-full min-h-20 max-h-40 text-sm rounded-sm border border-border bg-surface px-3 py-2 text-text-primary resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 ${isDeleted ? 'line-through' : ''}`}
 						aria-label="Case fact"
 						aria-invalid={!!error}
 					/>
 				)}
 			</div>
 
-			{error && (
-				<p className="mt-1 text-xs text-danger" role="alert">
-					{error}
-				</p>
+			{!readOnly && (
+				<div className="flex items-center justify-between mt-1">
+					{error && (
+						<p className="text-xs text-danger" role="alert">
+							{error}
+						</p>
+					)}
+					<span
+						className={`text-xs ml-auto ${
+							fact.fact.length > CASE_FACT_MAX_LENGTH * 0.9
+								? 'text-danger'
+								: 'text-text-muted'
+						}`}
+					>
+						{fact.fact.length}/{CASE_FACT_MAX_LENGTH}
+					</span>
+				</div>
 			)}
 
 			<div className="flex items-center gap-2 mt-2">
