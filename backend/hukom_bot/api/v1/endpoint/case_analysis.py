@@ -5,13 +5,15 @@ from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.case_analysis_schema import CaseAnalysisGetByVersionNumber
 from backend.hukom_bot.service.case_analysis_service import CaseAnalysisService
 from backend.hukom_bot.orchistrator.case_analysis_orchistrator import CaseAnalysisOrchistrator
-from backend.hukom_bot.schema.case_analysis_schema import CaseAnalysisGetBySessionId, CaseAnalysisGetByUserId
+from backend.hukom_bot.schema.case_analysis_schema import CaseAnalysisGetBySessionId, CaseAnalysisGetByUserId, CaseAnalysisSessionPreviewSearch
 from backend.hukom_bot.schema.chatbot_schema import (
     CaseAnalysiPipelineCaseFactsHeader,
     CaseAnalysisPipelineCaseFactsPayload,
     GetCaseAnalysisResponse,
 )
 from backend.hukom_bot.schema.mixin import PaginatableMixin
+from backend.hukom_bot.schema.http_schema import QueryParams
+
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
@@ -23,6 +25,7 @@ from backend.hukom_bot.api.v1.dependency import (
 from backend.hukom_bot.util.case_analysis_version_caster import CaseAnalysisVersionCaster
 
 case_analysis_api_router = APIRouter()
+
 
 
 @case_analysis_api_router.post("/")
@@ -43,15 +46,28 @@ async def run_case_analysis_pipeline(
 
 @case_analysis_api_router.get("/")
 async def get_user_case_analyses(
-    params: Annotated[PaginatableMixin, Query()],
+    params: Annotated[QueryParams, Query()],
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
 ):
-    result = await service.get_latest_session_analyses_preview(
-        CaseAnalysisGetByUserId(
-            user_id=user.id, limit=params.limit, offset=params.offset
+    result = None
+    
+    if params.query:
+        # Force to use authenticated user's ID
+        result = await service.search_latest_session_analyses_preview(
+            CaseAnalysisSessionPreviewSearch(
+                user_id=user.id,
+                query=params.query,
+                limit=params.limit,
+                offset=params.offset
+            )
         )
-    )
+    else:
+        result = await service.get_latest_session_analyses_preview(
+            CaseAnalysisGetByUserId(
+                user_id=user.id, limit=params.limit, offset=params.offset
+            )
+        )
     return SuccessResponse(message="User analyses fetched successfully", data=result)
 
 
