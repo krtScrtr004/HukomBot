@@ -28,7 +28,6 @@ import type {
 	EditableCaseFact,
 	PendingChangesCounts,
 	UserResponse,
-	CaseAnalysisAnswerFormat as AnswerFormat,
 } from '@/types/workspace';
 import {
 	CASE_FACT_MAX_COUNT,
@@ -75,7 +74,7 @@ interface WorkspaceState {
 	versionsPagination: PaginationState;
 	selectedVersionNumber: number | null;
 	currentAnalysis: CaseAnalysisVersionResponse | null;
-	answerFormat: AnswerFormat;
+
 	mode: WorkspaceMode;
 	editState: EditableCaseFact[];
 	errors: {
@@ -84,10 +83,6 @@ interface WorkspaceState {
 		analysis: string | null;
 	};
 }
-
-// Load persisted answer format from localStorage (if any)
-const persistedAnswerFormat = (typeof window !== 'undefined' &&
-	localStorage.getItem('answerFormat')) as AnswerFormat | null;
 
 const initialState: WorkspaceState = {
 	user: null,
@@ -118,7 +113,7 @@ const initialState: WorkspaceState = {
 	},
 	selectedVersionNumber: null,
 	currentAnalysis: null,
-	answerFormat: persistedAnswerFormat ?? 'plaintext',
+
 	mode: 'view',
 	editState: [],
 	errors: { sessions: null, versions: null, analysis: null },
@@ -148,7 +143,6 @@ type WorkspaceAction =
 			type: 'SET_CURRENT_ANALYSIS';
 			analysis: CaseAnalysisVersionResponse | null;
 	  }
-	| { type: 'SET_ANSWER_FORMAT'; format: AnswerFormat }
 	| { type: 'SET_MODE'; mode: WorkspaceMode }
 	| { type: 'SET_EDIT_STATE'; editState: EditableCaseFact[] }
 	| {
@@ -199,7 +193,6 @@ function workspaceReducer(
 				currentAnalysis: null,
 				mode: 'view',
 				editState: [],
-				answerFormat: 'plaintext',
 			};
 		case 'SET_VERSIONS':
 			return {
@@ -222,13 +215,10 @@ function workspaceReducer(
 				currentAnalysis: action.analysis,
 				errors: { ...state.errors, analysis: null },
 			};
-		case 'SET_ANSWER_FORMAT':
-			return { ...state, answerFormat: action.format };
 		case 'SET_MODE':
 			return { ...state, mode: action.mode };
 		case 'SET_EDIT_STATE':
 			return { ...state, editState: action.editState };
-
 		case 'SET_ERROR':
 			return {
 				...state,
@@ -343,7 +333,7 @@ interface WorkspaceContextValue {
 	} | null;
 	newAnalysisModalOpen: boolean;
 	setNewAnalysisModalOpen: (open: boolean) => void;
-	setAnswerFormat: (format: AnswerFormat) => void;
+
 	requestNewAnalysis: () => void;
 	initialize: () => Promise<void>;
 	refreshSessions: () => Promise<void>;
@@ -521,10 +511,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 				dispatch({
 					type: 'SET_CURRENT_ANALYSIS',
 					analysis: detail.case_analysis,
-				});
-				dispatch({
-					type: 'SET_ANSWER_FORMAT',
-					format: detail.case_analysis.answer_format as AnswerFormat,
 				});
 			} catch (error) {
 				if (isAuthError(error)) {
@@ -741,14 +727,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 			editState: buildEditStateFromAnalysis(state.currentAnalysis),
 		});
 	}, [isLatestVersionSelected, state.currentAnalysis]);
-
-	// Set answer format (plaintext | markdown | html)
-	const setAnswerFormat = useCallback((format: AnswerFormat) => {
-		dispatch({ type: 'SET_ANSWER_FORMAT', format });
-		if (typeof window !== 'undefined') {
-			localStorage.setItem('answerFormat', format);
-		}
-	}, []);
 
 	const exitEditMode = useCallback(() => {
 		const proceed = () => {
@@ -1066,7 +1044,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 		confirmDialog,
 		newAnalysisModalOpen,
 		setNewAnalysisModalOpen,
-		setAnswerFormat,
 		requestNewAnalysis,
 		initialize,
 		refreshSessions,

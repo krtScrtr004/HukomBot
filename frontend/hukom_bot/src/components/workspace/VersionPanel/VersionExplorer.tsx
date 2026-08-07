@@ -83,18 +83,18 @@ export default function VersionExplorer() {
 						description="No analysis versions exist for this session."
 					/>
 				) : (
-					<>
-						{state.versions.map((version) => (
-							<VersionListItem
-								key={version.id}
-								version={version}
-								isSelected={
-									version.version_number ===
-									state.selectedVersionNumber
-								}
-								onSelect={(n) => void selectVersion(n)}
-							/>
-						))}
+					<>{
+          [...state.versions]
+            .sort((a, b) => b.version_number - a.version_number)
+            .map((version) => (
+              <VersionListItem
+                key={version.id}
+                version={version}
+                isSelected={version.version_number === state.selectedVersionNumber}
+                onSelect={(n) => void selectVersion(n)}
+              />
+            ))
+        }
 						{state.versionsPagination.hasMore && (
 							<div
 								ref={attachSentinel}

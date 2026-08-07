@@ -43,7 +43,9 @@ export default function AnalysisViewer() {
 		);
 	}
 
-	if (!analysis) return null;
+	if (!analysis) {
+		return null;
+	}
 
 	const formattedDate = new Date(analysis.created_at).toLocaleString(
 		undefined,
@@ -84,10 +86,7 @@ export default function AnalysisViewer() {
 			</div>
 
 			<div className="rounded-md border border-border bg-surface-muted p-4 overflow-auto">
-				<AnalysisContent
-					answer={analysis.answer}
-					answerFormat={analysis.answer_format}
-				/>
+				<AnalysisContent answer={analysis.answer} />
 			</div>
 		</div>
 	);

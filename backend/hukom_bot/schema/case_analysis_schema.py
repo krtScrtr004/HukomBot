@@ -63,7 +63,7 @@ class CaseAnalysisSessionPreviewResponse(BaseModel):
 
 class CaseFactCreate(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    session_id: UUID
+    case_analysis_session_id: UUID
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}

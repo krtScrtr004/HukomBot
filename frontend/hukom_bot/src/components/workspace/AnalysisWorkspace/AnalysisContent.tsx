@@ -1,36 +1,16 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import type { CaseAnalysisAnswerFormat } from '@/types/workspace';
 
 interface AnalysisContentProps {
 	answer: string;
-	answerFormat: CaseAnalysisAnswerFormat;
 }
 
-function renderAnalysisHtml(
-	answer: string,
-	answerFormat: CaseAnalysisAnswerFormat,
-): string {
-	switch (answerFormat) {
-		case 'html':
-			return DOMPurify.sanitize(answer);
-		case 'markdown':
-			return DOMPurify.sanitize(
-				marked.parse(answer, { async: false }) as string,
-			);
-		case 'plaintext':
-		default:
-			return DOMPurify.sanitize(
-				`<pre class="whitespace-pre-wrap font-sans text-sm leading-relaxed">${answer.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`,
-			);
-	}
+function renderAnalysisHtml(answer: string): string {
+	return DOMPurify.sanitize(marked.parse(answer, { async: false }) as string);
 }
 
-export default function AnalysisContent({
-	answer,
-	answerFormat,
-}: AnalysisContentProps) {
-	const html = renderAnalysisHtml(answer, answerFormat);
+export default function AnalysisContent({ answer }: AnalysisContentProps) {
+	const html = renderAnalysisHtml(answer);
 
 	return (
 		<div

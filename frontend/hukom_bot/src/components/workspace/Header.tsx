@@ -1,7 +1,7 @@
 import Logo from '@/components/ui/Logo';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import type { CaseAnalysisAnswerFormat as AnswerFormat } from '@/types/workspace';
+
 
 interface HeaderProps {
 	userName?: string;
@@ -16,10 +16,7 @@ export default function Header({
 	onToggleVersionPanel,
 	onSignOut,
 }: HeaderProps) {
-	const {
-		state: { answerFormat },
-		setAnswerFormat,
-	} = useWorkspace();
+
 
 	return (
 		<header
@@ -56,20 +53,7 @@ export default function Header({
 					/>
 				</button>
 
-				{/* Answer Format Selector */}
-				<select
-					value={answerFormat}
-					onChange={(e) =>
-						setAnswerFormat(e.target.value as AnswerFormat)
-					}
-					className="rounded-sm border border-border bg-surface text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-					aria-label="Select answer format"
-				>
-					<option value="plaintext">Plaintext</option>
-					<option value="markdown">Markdown</option>
-					<option value="html">HTML</option>
-				</select>
-
+		
 				<ThemeToggle />
 				<button
 					type="button"
