@@ -15,7 +15,7 @@ from backend.hukom_bot.service.embedding_service import EmbeddingService
 from backend.hukom_bot.service.reranker_service import RerankerService
 from backend.hukom_bot.repository.case_fact_repository import CaseFactRepository
 from backend.hukom_bot.repository.case_analysis_session_repository import (
-    CaseAnalysisSessionRepository
+    CaseAnalysisSessionRepository,
 )
 from backend.hukom_bot.repository.case_fact_version_repository import (
     CaseFactVersionRepository,
@@ -29,7 +29,9 @@ from backend.hukom_bot.repository.case_analysis_version_repository import (
 from backend.hukom_bot.repository.case_analysis_version_fact_repository import (
     CaseAnalysisVersionFactRepository,
 )
-from backend.hukom_bot.util.case_analysis_version_caster import CaseAnalysisVersionCaster
+from backend.hukom_bot.util.case_analysis_version_caster import (
+    CaseAnalysisVersionCaster,
+)
 from backend.hukom_bot.exception.app_exception import NotFoundException
 from backend.hukom_bot.exception.chat_exception import ChatException
 
@@ -158,6 +160,9 @@ class CaseAnalysisService:
     ):
         await self._case_fact_version_repo.update_many(fact_versions, connection)
 
+    async def delete_session(self, id: UUID, connection: AsyncConnection = None):
+        await self._case_analysis_session_repo.delete(id=id, connection=connection)
+
     async def delete_case_facts(
         self, ids: list[UUID], connection: AsyncConnection = None
     ):
@@ -175,19 +180,17 @@ class CaseAnalysisService:
             param=param, connection=connection
         )
 
+    async def get_latest_analysis_version_by_session_ids(
+        self, param: CaseAnalysisGetManyBySessionId, connection: AsyncConnection = None
+    ):
+        return await self._case_analysis_version_repo.get_latest_by_many_session_id(
+            param=param, connection=connection
+        )
+
     async def get_latest_fact_version_by_session_id(
         self, param: CaseAnalysisGetBySessionId, connection: AsyncConnection = None
     ):
         return await self._case_fact_version_repo.get_latest_by_session_id(
-            param=param, connection=connection
-        )
-
-    async def get_latest_fact_version_by_session_ids(
-        self,
-        param: CaseFactVersionGetManyBySessionIds,
-        connection: AsyncConnection = None,
-    ):
-        return await self._case_fact_version_repo.get_latest_by_session_ids(
             param=param, connection=connection
         )
 
@@ -206,10 +209,14 @@ class CaseAnalysisService:
         return await self._case_analysis_version_repo.get_latest_by_user_id(
             param=param, connection=connection
         )
-        
-    async def delete_session(self, id: UUID, connection: AsyncConnection = None):
-        await self._case_analysis_session_repo.delete(
-            id=id, connection=connection
+
+    async def search_session(
+        self,
+        param: CaseAnalysisSessionPreviewSearch,
+        connection: AsyncConnection = None,
+    ) -> list[CaseAnalysisSession]:
+        return await self._case_analysis_session_repo.search(
+            param=param, connection=connection
         )
 
     # Others ====================
@@ -225,29 +232,73 @@ class CaseAnalysisService:
 
     async def get_latest_session_analyses_preview(self, param: CaseAnalysisGetByUserId):
         async with self._db.connection() as conn:
+            # Retrieve all user sessions
             sessions = await self._case_analysis_session_repo.get_by_user_id(
                 param=CaseAnalysisGetByUserId(user_id=param.user_id),
                 connection=conn,
             )
-                        
+            if not sessions:
+                return []
+
+            # Retrieve te latest versions of each user sessions
             latest_analysis_version_sessions = (
-                await self.get_latest_analysis_version_by_user_id(param=param, connection=conn)
+                await self.get_latest_analysis_version_by_user_id(
+                    param=param, connection=conn
+                )
             )
 
-            # TODO: Optimize this
+            # Build a lookup map of sessions by id
+            sessions_map = {s.id: s for s in sessions}
+
             merged = []
             for av in latest_analysis_version_sessions:
-                session_id = av.case_analysis_session_id
-                for ss in sessions:
-                    id = ss.id
-                    if session_id == id:
-                        merged.append(
-                            CaseAnalysisVersionCaster.base_to_session_preview_response(
-                                case_analysis_version=av,
-                                session_created_at=ss.created_at,
-                                session_updated_at=ss.updated_at
-                            )
+                ss = sessions_map.get(av.case_analysis_session_id)
+                if ss is not None:
+                    merged.append(
+                        CaseAnalysisVersionCaster.base_to_session_preview_response(
+                            case_analysis_version=av,
+                            session_created_at=ss.created_at,
+                            session_updated_at=ss.updated_at,
                         )
+                    )
+
+            return merged
+
+    async def search_latest_session_analyses_preview(
+        self, param: CaseAnalysisSessionPreviewSearch
+    ):
+        async with self._db.connection() as conn:
+            # Retrieve sessions based on search query
+            sessions = await self.search_session(param=param, connection=conn)
+            if not sessions:
+                return []
+
+            # Retrieve latest analysis of each sessions
+            latest_analysis_versions = (
+                await self.get_latest_analysis_version_by_session_ids(
+                    CaseAnalysisGetManyBySessionId(
+                        user_id=param.user_id,
+                        case_analysis_session_ids=[session.id for session in sessions],
+                        limit=len(sessions),
+                    ),
+                    connection=conn,
+                )
+            )
+
+            # Build a lookup map of sessions by id
+            sessions_map = {s.id: s for s in sessions}
+
+            merged = []
+            for av in latest_analysis_versions:
+                ss = sessions_map.get(av.case_analysis_session_id)
+                if ss is not None:
+                    merged.append(
+                        CaseAnalysisVersionCaster.base_to_session_preview_response(
+                            case_analysis_version=av,
+                            session_created_at=ss.created_at,
+                            session_updated_at=ss.updated_at,
+                        )
+                    )
 
             return merged
 
