@@ -37,6 +37,7 @@ export default function SessionListItem({
 					: 'hover:bg-sidebar-hover border border-transparent'
 			}`}
 		>
+			{/* Info section */}
 			<button
 				type="button"
 				onClick={() => onSelect(session.case_analysis_session_id)}
@@ -44,17 +45,25 @@ export default function SessionListItem({
 				aria-selected={isSelected}
 				role="option"
 			>
+				{/* Title */}
 				<p className="text-sm font-medium text-text-primary truncate pr-6">
 					{session.latest_version_title}
 				</p>
-				<div className="flex items-center gap-2 mt-1 text-xs text-text-secondary">
+
+				<div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
+					{/* Version number */}
 					<span>v{session.latest_version_number}</span>
+
 					<span aria-hidden="true">·</span>
+
+					{/* Date */}
 					<time dateTime={session.updated_at}>
 						{formatRelativeDate(session.updated_at)}
 					</time>
 				</div>
 			</button>
+
+			{/* Delete button */}
 			<button
 				type="button"
 				onClick={(e) => {

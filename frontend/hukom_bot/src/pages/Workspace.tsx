@@ -35,7 +35,7 @@ function AnalysisWorkspaceContent() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6 p-4 md:p-6 overflow-y-auto h-full">
+		<div className="flex flex-col gap-6 p-4 md:p-6 overflow-y-auto h-full scrollbar-thin">
 			<AnalysisViewer />
 			{state.currentAnalysis && (
 				<CaseFactsViewer caseFacts={state.currentAnalysis.case_facts} />
@@ -45,8 +45,12 @@ function AnalysisWorkspaceContent() {
 }
 
 function WorkspacePage() {
-	const { state, confirmDialog, newAnalysisModalOpen, setNewAnalysisModalOpen } =
-		useWorkspace();
+	const {
+		state,
+		confirmDialog,
+		newAnalysisModalOpen,
+		setNewAnalysisModalOpen,
+	} = useWorkspace();
 
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [versionPanelOpen, setVersionPanelOpen] = useState(false);
@@ -74,7 +78,9 @@ function WorkspacePage() {
 					<Header
 						userName={userName}
 						onToggleSidebar={() => setSidebarOpen((v) => !v)}
-						onToggleVersionPanel={() => setVersionPanelOpen((v) => !v)}
+						onToggleVersionPanel={() =>
+							setVersionPanelOpen((v) => !v)
+						}
 						onSignOut={() => {
 							window.location.href = getLogoutUrl();
 						}}
@@ -104,10 +110,12 @@ function WorkspacePage() {
 			)}
 
 			{state.loading.generating && state.mode === 'edit' && (
-				<div className="fixed inset-0 z-[var(--z-dialog)] bg-surface-overlay/80 flex items-center justify-center">
+				<div className="fixed inset-0 z-(--z-dialog) bg-surface-overlay/80 flex items-center justify-center">
 					<div className="flex flex-col items-center gap-3">
 						<div className="w-10 h-10 border-3 border-border border-t-primary rounded-full animate-spin" />
-						<p className="text-sm text-text-secondary">Generating analysis…</p>
+						<p className="text-sm text-text-secondary">
+							Generating analysis…
+						</p>
 					</div>
 				</div>
 			)}

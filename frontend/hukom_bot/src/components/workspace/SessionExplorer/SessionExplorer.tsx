@@ -27,11 +27,17 @@ export default function SessionExplorer() {
 
 	return (
 		<div className="flex flex-col h-full">
-			<div className="p-3 border-b border-border space-y-3 shrink-0">
+			{/* Search section */}
+			<section className="p-3 border-b border-border space-y-3 shrink-0">
 				<div className="flex items-center justify-between gap-2">
 					<h2 className="text-sm font-semibold text-text-primary">
+						<span className="mr-2">
+							<i className="bi bi-briefcase" />
+						</span>
 						Sessions
 					</h2>
+
+					{/* Retry button */}
 					<button
 						type="button"
 						onClick={() => void refreshSessions()}
@@ -45,10 +51,14 @@ export default function SessionExplorer() {
 						/>
 					</button>
 				</div>
+
+				{/* Search bar */}
 				<SessionSearchInput
 					onSearch={handleSearch}
 					disabled={isLoading}
 				/>
+
+				{/* Create new analysis button */}
 				<button
 					type="button"
 					onClick={requestNewAnalysis}
@@ -57,10 +67,11 @@ export default function SessionExplorer() {
 					<i className="bi bi-plus-lg" aria-hidden="true" />
 					New Analysis
 				</button>
-			</div>
+			</section>
 
-			<div
-				className="flex-1 overflow-y-auto p-2 space-y-1"
+			{/* Session list */}
+			<section
+				className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin"
 				role="listbox"
 				aria-label="Analysis sessions"
 			>
@@ -132,7 +143,7 @@ export default function SessionExplorer() {
 						)}
 					</>
 				)}
-			</div>
+			</section>
 		</div>
 	);
 }

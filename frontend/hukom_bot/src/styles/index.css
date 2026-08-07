@@ -178,6 +178,23 @@
 	--blur-lg: 16px;
 }
 
+/* Fade-in animation */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Version item hover effect */
+.version-item {
+  transition: transform var(--duration-fast);
+}
+.version-item:hover {
+  transform: scale(1.02);
+}
+
 html[data-theme='dark'] {
 	color-scheme: dark;
 

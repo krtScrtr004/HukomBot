@@ -59,13 +59,20 @@ export default function AnalysisViewer() {
 	);
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex items-start justify-between gap-4">
+		<div className="flex flex-col gap-4 fade-in">
+			<section className="flex items-start justify-between gap-4">
 				<div className="min-w-0">
+					{/* Tile */}
 					<h2 className="text-xl font-semibold text-text-primary">
+						<span className="mr-2">
+							<i className="bi bi-lightbulb" />
+						</span>
+
 						{analysis.title}
 					</h2>
-					<p className="text-sm text-text-secondary mt-1">
+
+					{/* Version number and date */}
+					<p className="text-sm text-text-muted mt-1">
 						Version {analysis.version_number}
 						<span aria-hidden="true"> · </span>
 						<time dateTime={analysis.created_at}>
@@ -73,6 +80,8 @@ export default function AnalysisViewer() {
 						</time>
 					</p>
 				</div>
+
+				{/* Edit & Reanalyze button */}
 				{isLatestVersionSelected && state.mode === 'view' && (
 					<button
 						type="button"
@@ -83,11 +92,12 @@ export default function AnalysisViewer() {
 						Edit &amp; Reanalyze
 					</button>
 				)}
-			</div>
+			</section>
 
-			<div className="rounded-md border border-border bg-surface-muted p-4 overflow-auto">
+			{/* Answer */}
+			<section className="rounded-md border border-border bg-surface-muted p-4 overflow-auto">
 				<AnalysisContent answer={analysis.answer} />
-			</div>
+			</section>
 		</div>
 	);
 }

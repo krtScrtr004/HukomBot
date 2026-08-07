@@ -11,7 +11,7 @@ interface CaseFactRowProps {
 	error?: string | null;
 }
 
-const statusBadge: Record<
+const STATUS_BADGE_MAP: Record<
 	FactStatus,
 	{ label: string; className: string } | null
 > = {
@@ -20,6 +20,19 @@ const statusBadge: Record<
 	new: { label: 'New', className: 'bg-info/15 text-info' },
 	deleted: { label: 'Deleted', className: 'bg-danger/15 text-danger' },
 };
+
+function getRowClassName(status: FactStatus): string {
+	if (status === 'modified') {
+		(" return 'border-warning bg-warning/5';");
+	}
+	if (status === 'new') {
+		return 'border-info bg-info/5';
+	}
+	if (status === 'deleted') {
+		return 'border-border-muted bg-surface-muted opacity-75';
+	}
+	return 'border-border bg-surface';
+}
 
 export default function CaseFactRow({
 	fact,
@@ -30,20 +43,60 @@ export default function CaseFactRow({
 	onUndo,
 	error,
 }: CaseFactRowProps) {
-	const badge = statusBadge[fact.status];
+	const badge = STATUS_BADGE_MAP[fact.status];
 	const isDeleted = fact.status === 'deleted';
+	const isModified = fact.status === 'modified';
+	const isNew = fact.status === 'new';
+
+	const renderActions = () => {
+		if (readOnly) return null;
+
+		if (isDeleted) {
+			return (
+				<button
+					type="button"
+					onClick={() => onRestore?.(fact.tempId)}
+					className="text-xs text-text-link hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+				>
+					<span className="mr-2">
+						<i className="bi bi-arrow-counterclockwise" />
+					</span>
+					Restore
+				</button>
+			);
+		}
+
+		return (
+			<>
+				{(isModified || isNew) && (
+					<button
+						type="button"
+						onClick={() => onUndo?.(fact.tempId)}
+						className="text-xs text-text-link hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+					>
+						<span className="mr-2">
+							<i className="bi bi-arrow-return-left" />
+						</span>
+						Undo
+					</button>
+				)}
+				<button
+					type="button"
+					onClick={() => onDelete?.(fact.tempId)}
+					className="text-xs text-danger hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+				>
+					<span className="mr-2">
+						<i className="bi bi-trash3" />
+					</span>
+					Delete
+				</button>
+			</>
+		);
+	};
 
 	return (
 		<div
-			className={`rounded-sm border p-3 transition-colors duration-fast ${
-				fact.status === 'modified'
-					? 'border-warning bg-warning/5'
-					: fact.status === 'new'
-						? 'border-info bg-info/5'
-						: isDeleted
-							? 'border-border-muted bg-surface-muted opacity-75'
-							: 'border-border bg-surface'
-			}`}
+			className={`rounded-sm border p-3 transition-colors duration-fast ${getRowClassName(fact.status)}`}
 		>
 			<div className="flex items-start gap-2">
 				{badge && (
@@ -67,8 +120,8 @@ export default function CaseFactRow({
 						}
 						disabled={isDeleted}
 						maxLength={CASE_FACT_MAX_LENGTH}
-						rows={2}
-						className={`flex-1 w-full text-sm rounded-sm border border-border bg-surface px-3 py-2 text-text-primary resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 ${isDeleted ? 'line-through' : ''}`}
+						rows={5}
+						className={`bg-surface-elevated flex-1 w-full min-h-20 max-h-50 text-sm rounded-sm border border-border bg-surface px-3 py-2 text-text-secondary resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 ${isDeleted ? 'line-through' : ''}`}
 						aria-label="Case fact"
 						aria-invalid={!!error}
 					/>
@@ -81,39 +134,9 @@ export default function CaseFactRow({
 				</p>
 			)}
 
-			{!readOnly && (
-				<div className="flex items-center gap-2 mt-2">
-					{isDeleted ? (
-						<button
-							type="button"
-							onClick={() => onRestore?.(fact.tempId)}
-							className="text-xs text-text-link hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-						>
-							Restore
-						</button>
-					) : (
-						<>
-							{(fact.status === 'modified' ||
-								fact.status === 'new') && (
-								<button
-									type="button"
-									onClick={() => onUndo?.(fact.tempId)}
-									className="text-xs text-text-link hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-								>
-									Undo
-								</button>
-							)}
-							<button
-								type="button"
-								onClick={() => onDelete?.(fact.tempId)}
-								className="text-xs text-danger hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-							>
-								Delete
-							</button>
-						</>
-					)}
-				</div>
-			)}
+			<div className="flex items-center gap-2 mt-2">
+				{renderActions()}
+			</div>
 		</div>
 	);
 }

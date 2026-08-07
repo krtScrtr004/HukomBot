@@ -19,25 +19,29 @@ export default function PendingChangesSummary() {
 			className="shrink-0 w-full lg:w-64 border border-border rounded-md bg-surface p-4 flex flex-col gap-4"
 			aria-label="Pending changes summary"
 		>
-			<div>
+			<section>
 				<h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-					Pending Changes
+						<i className="bi bi-hourglass-split"></i>
+						Pending Changes
+
 					{isDirty && (
 						<span className="px-2 py-0.5 rounded-full text-xs bg-warning/15 text-warning">
 							Unsaved
 						</span>
 					)}
 				</h3>
+
+				{/* Modification stats */}
 				<ul className="mt-3 space-y-1 text-sm text-text-secondary">
 					<li>New Facts: {pendingChanges.newFacts}</li>
 					<li>Modified Facts: {pendingChanges.modifiedFacts}</li>
 					<li>Deleted Facts: {pendingChanges.deletedFacts}</li>
 				</ul>
-			</div>
+			</section>
 
 			<hr className="border-border-muted" />
 
-			<div className="flex flex-col gap-2">
+			<section className="flex flex-col gap-2">
 				<button
 					type="button"
 					onClick={discardAllChanges}
@@ -46,6 +50,7 @@ export default function PendingChangesSummary() {
 				>
 					Discard Changes
 				</button>
+
 				<button
 					type="button"
 					onClick={() => void submitReanalysis()}
@@ -54,7 +59,7 @@ export default function PendingChangesSummary() {
 				>
 					{state.loading.generating ? 'Reanalyzing…' : 'Reanalyze'}
 				</button>
-			</div>
+			</section>
 		</aside>
 	);
 }

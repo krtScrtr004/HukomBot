@@ -28,22 +28,27 @@ export default function EditReanalyzeWorkspace() {
 	};
 
 	return (
-		<div className="flex flex-col lg:flex-row gap-6 h-full">
+		<div className="flex flex-col lg:flex-row gap-6 h-full p-6">
 			<div className="flex-1 min-w-0 flex flex-col gap-4">
-				<div className="flex items-center justify-between gap-4">
+				<section className="flex items-center justify-between gap-4">
 					<h2 className="text-lg font-semibold text-text-primary">
+						<span className="mr-2">
+							<i className="bi bi-arrow-repeat" />
+						</span>
 						Review &amp; Reanalyze
 					</h2>
+
+					{/* Close edit & reanalysis workspace button */}
 					<button
 						type="button"
 						onClick={exitEditMode}
-						className="text-sm text-text-secondary hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+						className="text-sm text-text-secondary hover:text-danger focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
 					>
 						Close
 					</button>
-				</div>
+				</section>
 
-				<div className="flex flex-col gap-3 overflow-y-auto flex-1">
+				<section className="flex flex-col gap-3 overflow-y-auto flex-1 scrollbar-thin">
 					{state.editState.map((fact) => (
 						<CaseFactRow
 							key={fact.tempId}
@@ -55,7 +60,7 @@ export default function EditReanalyzeWorkspace() {
 							error={errors[fact.tempId]}
 						/>
 					))}
-				</div>
+				</section>
 
 				<button
 					type="button"

@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWorkspace, validateCaseFact } from '@/contexts/WorkspaceContext';
-import { CASE_FACT_MAX_COUNT, CASE_FACT_MAX_LENGTH, CASE_FACT_MIN_LENGTH } from '@/types/workspace';
+import {
+	CASE_FACT_MAX_COUNT,
+	CASE_FACT_MAX_LENGTH,
+	CASE_FACT_MIN_LENGTH,
+} from '@/types/workspace';
 
 interface NewAnalysisModalProps {
 	open: boolean;
 	onClose: () => void;
 }
 
-export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProps) {
+export default function NewAnalysisModal({
+	open,
+	onClose,
+}: NewAnalysisModalProps) {
 	const { submitNewAnalysis, state } = useWorkspace();
 	const [facts, setFacts] = useState<string[]>(['']);
 	const [errors, setErrors] = useState<(string | null)[]>([null]);
@@ -15,7 +22,9 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 	const firstInputRef = useRef<HTMLTextAreaElement>(null);
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open) {
+			return;
+		}
 		setTimeout(() => {
 			setFacts(['']);
 			setErrors([null]);
@@ -25,9 +34,14 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 	}, [open]);
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open) {
+			return;
+		}
+
 		const handleKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape' && !state.loading.generating) onClose();
+			if (e.key === 'Escape' && !state.loading.generating) {
+				onClose();
+			}
 		};
 		document.addEventListener('keydown', handleKey);
 		return () => document.removeEventListener('keydown', handleKey);
@@ -36,13 +50,17 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 	if (!open) return null;
 
 	const addFact = () => {
-		if (facts.length >= CASE_FACT_MAX_COUNT) return;
+		if (facts.length >= CASE_FACT_MAX_COUNT) {
+			return;
+		}
 		setFacts((prev) => [...prev, '']);
 		setErrors((prev) => [...prev, null]);
 	};
 
 	const removeFact = (index: number) => {
-		if (facts.length <= 1) return;
+		if (facts.length <= 1) {
+			return;
+		}
 		setFacts((prev) => prev.filter((_, i) => i !== index));
 		setErrors((prev) => prev.filter((_, i) => i !== index));
 	};
@@ -77,33 +95,38 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 
 	return (
 		<div className="fixed inset-0 z-(--z-dialog) flex items-center justify-center p-4">
-			<div
+			<section
 				className="absolute inset-0 bg-black/40"
 				onClick={() => !state.loading.generating && onClose()}
 				aria-hidden="true"
 			/>
-			<div
+
+			<section
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="new-analysis-title"
-				className="relative z-10 w-full max-w-lg rounded-lg bg-surface border border-border shadow-lg flex flex-col max-h-[90vh]"
+				className="relative z-10 w-150 max-w-lg rounded-lg bg-surface border border-border shadow-lg flex flex-col max-h-[90vh]"
 			>
-				<div className="p-6 border-b border-border shrink-0">
+				{/* Heading */}
+				<section className="p-4 border-b border-border shrink-0">
 					<h2
 						id="new-analysis-title"
 						className="text-lg font-semibold text-text-primary"
 					>
 						New Analysis
 					</h2>
-					<p className="text-sm text-text-secondary mt-1">
-						Describe the facts of your legal case ({CASE_FACT_MIN_LENGTH}–
-						{CASE_FACT_MAX_LENGTH} characters each).
+					<p className="text-sm text-text-muted mt-1">
+						Describe the facts of your legal case (
+						{CASE_FACT_MIN_LENGTH}–{CASE_FACT_MAX_LENGTH} characters
+						each).
 					</p>
-				</div>
+				</section>
 
-				<div className="flex-1 overflow-y-auto p-6 space-y-4">
+				{/* Body */}
+				<section className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
 					{facts.map((fact, index) => (
 						<div key={index} className="space-y-1">
+							{/* Heading */}
 							<div className="flex items-center justify-between">
 								<label
 									htmlFor={`new-fact-${index}`}
@@ -111,6 +134,8 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 								>
 									Fact {index + 1}
 								</label>
+
+								{/* Remove fact button */}
 								{facts.length > 1 && (
 									<button
 										type="button"
@@ -122,17 +147,22 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 									</button>
 								)}
 							</div>
+
+							{/* Fact input form */}
 							<textarea
 								id={`new-fact-${index}`}
 								ref={index === 0 ? firstInputRef : undefined}
 								value={fact}
-								onChange={(e) => updateFact(index, e.target.value)}
+								onChange={(e) =>
+									updateFact(index, e.target.value)
+								}
 								disabled={state.loading.generating}
 								maxLength={CASE_FACT_MAX_LENGTH}
-								rows={3}
-								className="w-full text-sm rounded-sm border border-border bg-surface px-3 py-2 text-text-primary resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+								rows={2}
+								className="w-full min-h-10 max-h-15 text-sm rounded-sm border border-border bg-surface-elevated px-3 py-2 text-text-secondary resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
 								aria-invalid={!!errors[index]}
 							/>
+
 							{errors[index] && (
 								<p className="text-xs text-danger" role="alert">
 									{errors[index]}
@@ -141,6 +171,7 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 						</div>
 					))}
 
+					{/* Add fact button */}
 					{facts.length < CASE_FACT_MAX_COUNT && (
 						<button
 							type="button"
@@ -158,9 +189,10 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 							{submitError}
 						</p>
 					)}
-				</div>
+				</section>
 
-				<div className="p-6 border-t border-border flex justify-end gap-3 shrink-0">
+				{/* Footer */}
+				<section className="p-4 border-t border-border flex justify-end gap-3 shrink-0">
 					<button
 						type="button"
 						onClick={onClose}
@@ -169,6 +201,7 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 					>
 						Cancel
 					</button>
+
 					<button
 						type="button"
 						onClick={() => void handleSubmit()}
@@ -177,8 +210,9 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 					>
 						{state.loading.generating ? 'Analyzing…' : 'Analyze'}
 					</button>
-				</div>
+				</section>
 
+				{/* Gneration loading overlay */}
 				{state.loading.generating && (
 					<div className="absolute inset-0 bg-surface-overlay/80 flex items-center justify-center rounded-lg">
 						<div className="flex flex-col items-center gap-3">
@@ -189,7 +223,7 @@ export default function NewAnalysisModal({ open, onClose }: NewAnalysisModalProp
 						</div>
 					</div>
 				)}
-			</div>
+			</section>
 		</div>
 	);
 }

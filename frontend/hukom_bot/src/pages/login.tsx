@@ -5,7 +5,7 @@ import ThemeTogggle from '@/components/ui/ThemeToggle';
 export default function Login() {
     return (
         <CenteredLayout className="bg-background relative p-0.5">
-            <ThemeTogggle />
+            <ThemeTogggle className="bg-background absolute top-5 right-5 rounded-full border border-primary hover:bg-primary hover:text-background" />
 
             <LogoCard />
         </CenteredLayout>

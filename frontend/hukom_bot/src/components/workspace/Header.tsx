@@ -20,10 +20,11 @@ export default function Header({
 
 	return (
 		<header
-			className="h-(--header-height) shrink-0 flex items-center justify-between gap-4 px-4 border-b border-border bg-surface"
+			className="relative h-(--header-height) shrink-0 flex items-center justify-between gap-4 px-4 border-b border-border bg-surface"
 			role="banner"
 		>
-			<div className="flex items-center gap-3 min-w-0">
+			<section className="flex items-center gap-3 min-w-0">
+				{/* Session list toggle button */}
 				<button
 					type="button"
 					onClick={onToggleSidebar}
@@ -32,15 +33,20 @@ export default function Header({
 				>
 					<i className="bi bi-list text-xl" aria-hidden="true" />
 				</button>
-				<Logo />
-			</div>
+				
+				{/* Logo */}
+				<Logo className="h-20" />
+			</section>
 
-			<div className="flex items-center gap-3 shrink-0">
+			<section className="flex items-center gap-3 shrink-0">
+				{/* User name */}
 				{userName && (
 					<span className="hidden sm:inline text-sm text-text-secondary truncate max-w-48">
 						{userName}
 					</span>
 				)}
+
+				{/* Analysis version list toggle button */}
 				<button
 					type="button"
 					onClick={onToggleVersionPanel}
@@ -53,8 +59,10 @@ export default function Header({
 					/>
 				</button>
 
-		
-				<ThemeToggle />
+				{/* Theme toggle button */}
+				<ThemeToggle className="right-10 rounded-sm hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" />
+
+				{/* Logout button */}
 				<button
 					type="button"
 					onClick={onSignOut}
@@ -66,7 +74,7 @@ export default function Header({
 						aria-hidden="true"
 					/>
 				</button>
-			</div>
+			</section>
 		</header>
 	);
 }

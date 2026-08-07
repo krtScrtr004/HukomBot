@@ -13,8 +13,14 @@ export default function VersionExplorer() {
 
 	const attachSentinel = useCallback(
 		(node: HTMLDivElement | null) => {
-			if (observerRef.current) observerRef.current.disconnect();
-			if (!node) return;
+			if (observerRef.current) {
+				observerRef.current.disconnect();
+			}
+
+			if (!node) {
+				return;
+			}
+
 			observerRef.current = new IntersectionObserver(
 				(entries) => {
 					if (entries[0]?.isIntersecting) {
@@ -25,7 +31,7 @@ export default function VersionExplorer() {
 			);
 			observerRef.current.observe(node);
 		},
-		[],
+		[loadMoreVersions],
 	);
 
 	if (!state.selectedSessionId) {
@@ -41,14 +47,18 @@ export default function VersionExplorer() {
 
 	return (
 		<div className="flex flex-col h-full">
-			<div className="p-3 border-b border-border shrink-0">
+			<section className="p-3 border-b border-border shrink-0">
 				<h2 className="text-sm font-semibold text-text-primary">
+					<span className="mr-2">
+						<i className="bi bi-clock-history" />
+					</span>
 					Versions
 				</h2>
-			</div>
+			</section>
 
-			<div
-				className="flex-1 overflow-y-auto p-2 space-y-1"
+			{/* Version list */}
+			<section
+				className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin"
 				role="listbox"
 				aria-label="Analysis versions"
 			>
@@ -83,18 +93,20 @@ export default function VersionExplorer() {
 						description="No analysis versions exist for this session."
 					/>
 				) : (
-					<>{
-          [...state.versions]
-            .sort((a, b) => b.version_number - a.version_number)
-            .map((version) => (
-              <VersionListItem
-                key={version.id}
-                version={version}
-                isSelected={version.version_number === state.selectedVersionNumber}
-                onSelect={(n) => void selectVersion(n)}
-              />
-            ))
-        }
+					<>
+						{[...state.versions]
+							.sort((a, b) => b.version_number - a.version_number)
+							.map((version) => (
+								<VersionListItem
+									key={version.id}
+									version={version}
+									isSelected={
+										version.version_number ===
+										state.selectedVersionNumber
+									}
+									onSelect={(n) => void selectVersion(n)}
+								/>
+							))}
 						{state.versionsPagination.hasMore && (
 							<div
 								ref={attachSentinel}
@@ -110,7 +122,7 @@ export default function VersionExplorer() {
 						)}
 					</>
 				)}
-			</div>
+			</section>
 		</div>
 	);
 }
