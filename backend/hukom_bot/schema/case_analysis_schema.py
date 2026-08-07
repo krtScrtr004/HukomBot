@@ -9,6 +9,10 @@ from backend.hukom_bot.enum.case_analysis_answer_format import CaseAnalysisAnswe
 class CaseAnalysisGetBySessionId(PaginatableMixin):
     case_analysis_session_id: UUID
     user_id: UUID | None = Field(default=None)
+    
+class CaseAnalysisGetManyBySessionId(PaginatableMixin):
+    case_analysis_session_ids: list[UUID]
+    user_id: UUID | None = Field(default=None)
 
 
 class CaseAnalysisGetByVersionNumber(PaginatableMixin):
@@ -86,11 +90,6 @@ class CaseFactVersionUpdate(BaseModel):
     is_deleted: bool | None = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True}
-
-
-class CaseFactVersionGetManyBySessionIds(PaginatableMixin):
-    case_analysis_session_ids: list[UUID]
-    user_id: UUID | None = Field(default=None)
 
 
 class CaseFactVersionResponse(BaseModel):
