@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
 	createContext,
 	useState,
@@ -27,7 +28,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 		return 'light';
 	});
 
-    // Update the document's data-theme attribute and localStorage whenever the theme changes
+	// Update the document's data-theme attribute and localStorage whenever the theme changes
 	useEffect(() => {
 		document.documentElement.setAttribute('data-theme', theme);
 		localStorage.setItem('theme', theme);

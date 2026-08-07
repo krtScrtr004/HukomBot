@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from backend.hukom_bot.core.settings import settings
@@ -71,6 +72,15 @@ app.add_middleware(SessionMiddleware, secret_key=settings.JWT_SECRET)
 app.add_middleware(TimerMiddleware)
 
 app.add_middleware(RequestIdentifierMiddleware)
+
+origins = [settings.BASE_PAGE_URL]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 
 # Helper DB/Custom Mappers ============================================

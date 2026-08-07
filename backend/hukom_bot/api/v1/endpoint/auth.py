@@ -93,10 +93,17 @@ async def google_login_callback(
         token = jwt_service.encode(payload=JWTPayload(provider_id=user.provider_id))
 
         # TODO: Update the redirect url here
-        url = redirect_service.get_api_url("docs")
+        url = redirect_service.get_redirect_url("workspace")
         redirect = RedirectResponse(url=url)
         # Set jwt on cookie
-        redirect.set_cookie(key="token", value=token, httponly=True)
+        redirect.set_cookie(
+            key="token", 
+            value=token, 
+            httponly=True,
+            secure=True,        # REQUIRED when samesite="none" — cookie won't be sent otherwise
+            samesite="none",    # REQUIRED for cross-domain — "lax" (the default) blocks this
+            domain=None,
+        )
 
         return redirect
     except Exception as ex:
