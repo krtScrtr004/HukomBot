@@ -119,7 +119,7 @@ class CaseAnalysisSessionRepository:
             await cur.execute(
                 f"""
                 WITH query AS (
-                    SELECT plainto_tsquery('english', 'obligations and contracts') AS q
+                    SELECT plainto_tsquery('english', %(query)s) AS q
                 )
                 SELECT DISTINCT ON (cas.id)
                     cas.*,
@@ -130,7 +130,7 @@ class CaseAnalysisSessionRepository:
                 CROSS JOIN query
                 WHERE {user_query} 
                 cav.search_vector @@ query.q
-                AND EXISTS (
+                OR EXISTS (
                     SELECT 1
                     FROM case_facts cf
                     JOIN case_fact_versions cfv ON cfv.case_fact_id = cf.id
