@@ -15,6 +15,10 @@ export default function LoadingSpinner({
 	size = 'md',
 	className = '',
 }: LoadingSpinnerProps) {
+	const labelElem = label && (
+		<span className="text-sm text-text-secondary sr-only">{label}</span>
+	);
+
 	return (
 		<div
 			className={`flex flex-col items-center justify-center gap-2 ${className}`}
@@ -25,11 +29,7 @@ export default function LoadingSpinner({
 				className={`${sizeClasses[size]} rounded-full border-border border-t-primary animate-spin`}
 				aria-hidden="true"
 			/>
-			{label && (
-				<span className="text-sm text-text-secondary sr-only">
-					{label}
-				</span>
-			)}
+			{labelElem}
 		</div>
 	);
 }

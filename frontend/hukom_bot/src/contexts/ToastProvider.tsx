@@ -29,6 +29,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 	const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
 	const dismissToast = useCallback((id: string) => {
+		// Remove the toast with the given id from the state
 		setToasts((prev) => prev.filter((t) => t.id !== id));
 	}, []);
 
@@ -61,7 +62,9 @@ function ToastContainer({
 	toasts: ToastMessage[];
 	onDismiss: (id: string) => void;
 }) {
-	if (toasts.length === 0) return null;
+	if (toasts.length === 0) {
+		return null;
+	}
 
 	const variantClasses: Record<ToastVariant, string> = {
 		success: 'border-success bg-surface text-text-primary',
@@ -90,7 +93,9 @@ function ToastContainer({
 						className={`bi ${iconClasses[toast.variant]} text-lg shrink-0`}
 						aria-hidden="true"
 					/>
+					
 					<p className="text-sm flex-1">{toast.message}</p>
+
 					<button
 						type="button"
 						onClick={() => onDismiss(toast.id)}

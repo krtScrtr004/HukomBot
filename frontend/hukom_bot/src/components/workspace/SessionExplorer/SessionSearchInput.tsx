@@ -12,10 +12,12 @@ export default function SessionSearchInput({
 	const [value, setValue] = useState('');
 	const onSearchRef = useRef(onSearch);
 
+	// Update the ref whenever onSearch changes
 	useEffect(() => {
 		onSearchRef.current = onSearch;
 	}, [onSearch]);
 
+	// Debounce the search input to avoid excessive calls
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			const trimmed = value.trim();

@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import type { CaseAnalysisSessionPreviewResponse } from '@/types/workspace';
 
 interface SessionListItemProps {
@@ -29,18 +30,27 @@ export default function SessionListItem({
 	onSelect,
 	onDelete,
 }: SessionListItemProps) {
+	const selectedClassName = isSelected
+		? 'bg-sidebar-active border border-border-strong'
+		: 'hover:bg-sidebar-hover border border-transparent';
+
+	const selectButtonHandler = () =>
+		onSelect(session.case_analysis_session_id);
+
+	// Delete button handler
+	const deleteButtonHandler = (e: MouseEvent<HTMLButtonElement>) => {
+		e.stopPropagation();
+		onDelete(session.case_analysis_session_id);
+	};
+
 	return (
 		<div
-			className={`group relative rounded-sm transition-colors duration-fast ${
-				isSelected
-					? 'bg-sidebar-active border border-border-strong'
-					: 'hover:bg-sidebar-hover border border-transparent'
-			}`}
+			className={`"group relative rounded-sm transition-colors duration-fast ${selectedClassName}`}
 		>
 			{/* Info section */}
 			<button
 				type="button"
-				onClick={() => onSelect(session.case_analysis_session_id)}
+				onClick={selectButtonHandler}
 				className="w-full text-left p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
 				aria-selected={isSelected}
 				role="option"
@@ -66,10 +76,7 @@ export default function SessionListItem({
 			{/* Delete button */}
 			<button
 				type="button"
-				onClick={(e) => {
-					e.stopPropagation();
-					onDelete(session.case_analysis_session_id);
-				}}
+				onClick={deleteButtonHandler}
 				className="absolute top-2 right-2 p-1 rounded-sm text-text-muted opacity-0 group-hover:opacity-100 hover:text-danger focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 				aria-label="Delete session"
 			>

@@ -27,7 +27,7 @@ export async function listSessions(
 	const query = buildQuery({
 		limit: params.limit ?? 10,
 		offset: params.offset ?? 0,
-		query: params.query,
+		query: params.query?.trim(),
 	});
 	return apiFetch<CaseAnalysisSessionPreviewResponse[]>(
 		`/api/v1/case-analyses${query}`,

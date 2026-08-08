@@ -24,6 +24,7 @@ export default function PendingChangesSummary() {
 						<i className="bi bi-hourglass-split"></i>
 						Pending Changes
 
+					{/* Unsaved changes mark */}
 					{isDirty && (
 						<span className="px-2 py-0.5 rounded-full text-xs bg-warning/15 text-warning">
 							Unsaved

@@ -123,6 +123,7 @@ export default function SessionExplorer() {
 								onDelete={requestDeleteSession}
 							/>
 						))}
+						
 						{state.sessionsPagination.hasMore && (
 							<div className="py-4 flex justify-center">
 								{state.loading.sessionsMore ? (

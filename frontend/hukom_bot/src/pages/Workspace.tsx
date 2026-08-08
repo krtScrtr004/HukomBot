@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { WorkspaceProvider, useWorkspace } from '@/contexts/WorkspaceContext';
-import { ToastProvider } from '@/components/workspace/shared/ToastProvider';
 import { getLogoutUrl } from '@/services/authService';
 import WorkspaceLayout from '@/layouts/WorkspaceLayout';
 import Header from '@/components/workspace/Header';
@@ -125,10 +124,8 @@ function WorkspacePage() {
 
 export default function Workspace() {
 	return (
-		<ToastProvider>
-			<WorkspaceProvider>
-				<WorkspacePage />
-			</WorkspaceProvider>
-		</ToastProvider>
+		<WorkspaceProvider>
+			<WorkspacePage />
+		</WorkspaceProvider>
 	);
 }

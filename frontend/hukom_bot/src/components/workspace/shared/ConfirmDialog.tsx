@@ -23,22 +23,31 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
 	const cancelRef = useRef<HTMLButtonElement>(null);
 
+	// Focus the cancel button when the dialog opens
 	useEffect(() => {
 		if (open) {
 			cancelRef.current?.focus();
 		}
 	}, [open]);
 
+	// Close the dialog when the Escape key is pressed
 	useEffect(() => {
-		if (!open) return;
+		if (!open) {
+			return;
+		}
+		
 		const handleKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') onCancel();
+			if (e.key === 'Escape') {
+				onCancel();
+			}
 		};
 		document.addEventListener('keydown', handleKey);
 		return () => document.removeEventListener('keydown', handleKey);
 	}, [open, onCancel]);
 
-	if (!open) return null;
+	if (!open) {
+		return null;
+	}
 
 	const confirmClasses =
 		variant === 'danger'

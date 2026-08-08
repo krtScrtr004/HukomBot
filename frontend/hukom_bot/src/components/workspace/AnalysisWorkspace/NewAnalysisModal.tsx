@@ -5,6 +5,9 @@ import {
 	CASE_FACT_MAX_LENGTH,
 	CASE_FACT_MIN_LENGTH,
 } from '@/types/workspace';
+import FactTextArea from '../shared/FactTextArea';
+import CharacterCounter from '@/components/ui/CharacterCounter';
+import ErrorText from '@/components/ui/ErrorText';
 
 interface NewAnalysisModalProps {
 	open: boolean;
@@ -115,6 +118,7 @@ export default function NewAnalysisModal({
 					>
 						New Analysis
 					</h2>
+					
 					<p className="text-sm text-text-muted mt-1">
 						Describe the facts of your legal case (
 						{CASE_FACT_MIN_LENGTH}–{CASE_FACT_MAX_LENGTH} characters
@@ -149,34 +153,31 @@ export default function NewAnalysisModal({
 							</div>
 
 							{/* Fact input form */}
-							<textarea
+							<FactTextArea
 								id={`new-fact-${index}`}
-								ref={index === 0 ? firstInputRef : undefined}
 								value={fact}
-								onChange={(e) =>
-									updateFact(index, e.target.value)
-								}
 								disabled={state.loading.generating}
 								maxLength={CASE_FACT_MAX_LENGTH}
 								rows={2}
-								className="w-full min-h-10 max-h-15 text-sm rounded-sm border border-border bg-surface-elevated px-3 py-2 text-text-secondary resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
-								aria-invalid={!!errors[index]}
+								ref={index === 0 ? firstInputRef : undefined}
+								className="min-h-10 max-h-15"
+								hasError={!!errors[index]}
+								onChange={(e) =>
+									updateFact(index, e.target.value)
+								}
 							/>
+							
 							<div className="flex items-center justify-between">
+								{/* Error */}
 								{errors[index] && (
-									<p className="text-xs text-danger" role="alert">
-										{errors[index]}
-									</p>
+									<ErrorText text={errors[index]} />
 								)}
-								<span
-									className={`text-xs ml-auto ${
-										fact.length > CASE_FACT_MAX_LENGTH * 0.9
-											? 'text-danger'
-											: 'text-text-muted'
-									}`}
-								>
-									{fact.length}/{CASE_FACT_MAX_LENGTH}
-								</span>
+
+								{/* Character counter */}
+								<CharacterCounter
+									text={fact}
+									maxLength={CASE_FACT_MAX_LENGTH}
+								/>
 							</div>
 						</div>
 					))}

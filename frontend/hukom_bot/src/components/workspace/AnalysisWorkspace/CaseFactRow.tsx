@@ -1,5 +1,9 @@
 import type { EditableCaseFact, FactStatus } from '@/types/workspace';
 import { CASE_FACT_MAX_LENGTH } from '@/types/workspace';
+import FactRowActionButton from './FactRowActionButton';
+import FactTextArea from '../shared/FactTextArea';
+import CharacterCounter from '@/components/ui/CharacterCounter';
+import ErrorText from '@/components/ui/ErrorText';
 
 interface CaseFactRowProps {
 	fact: EditableCaseFact;
@@ -49,47 +53,41 @@ export default function CaseFactRow({
 	const isNew = fact.status === 'new';
 
 	const renderActions = () => {
-		if (readOnly) return null;
+		if (readOnly) {
+			return null;
+		}
 
 		if (isDeleted) {
+			// Delete fact button
 			return (
-				<button
-					type="button"
+				<FactRowActionButton
+					text="Restore"
+					iconClassName="bi-arrow-counterclockwise"
+					className="text-text-link"
 					onClick={() => onRestore?.(fact.tempId)}
-					className="text-xs text-text-link hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-				>
-					<span className="mr-2">
-						<i className="bi bi-arrow-counterclockwise" />
-					</span>
-					Restore
-				</button>
+				/>
 			);
 		}
 
 		return (
 			<>
+				{/* Undo changes button */}
 				{(isModified || isNew) && (
-					<button
-						type="button"
+					<FactRowActionButton
+						text="Undo"
+						iconClassName="bi-arrow-return-left"
+						className="text-text-link"
 						onClick={() => onUndo?.(fact.tempId)}
-						className="text-xs text-text-link hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-					>
-						<span className="mr-2">
-							<i className="bi bi-arrow-return-left" />
-						</span>
-						Undo
-					</button>
+					/>
 				)}
-				<button
-					type="button"
+
+				{/* Delete fact button */}
+				<FactRowActionButton
+					text="Delete"
+					iconClassName="bi-trash3"
+					className="text-danger"
 					onClick={() => onDelete?.(fact.tempId)}
-					className="text-xs text-danger hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-				>
-					<span className="mr-2">
-						<i className="bi bi-trash3" />
-					</span>
-					Delete
-				</button>
+				/>
 			</>
 		);
 	};
@@ -113,37 +111,31 @@ export default function CaseFactRow({
 						{fact.fact}
 					</p>
 				) : (
-					<textarea
+					<FactTextArea
+						id=""
 						value={fact.fact}
-						onChange={(e) =>
-							onChange?.(fact.tempId, e.target.value)
-						}
 						disabled={isDeleted}
 						maxLength={CASE_FACT_MAX_LENGTH}
 						rows={2}
-						className={`flex-1 w-full min-h-20 max-h-40 text-sm rounded-sm border border-border bg-surface px-3 py-2 text-text-primary resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 ${isDeleted ? 'line-through' : ''}`}
-						aria-label="Case fact"
-						aria-invalid={!!error}
+						className="min-h-20 max-h-40"
+						hasError={!!error}
+						onChange={(e) =>
+							onChange?.(fact.tempId, e.target.value)
+						}
 					/>
 				)}
 			</div>
 
 			{!readOnly && (
 				<div className="flex items-center justify-between mt-1">
-					{error && (
-						<p className="text-xs text-danger" role="alert">
-							{error}
-						</p>
-					)}
-					<span
-						className={`text-xs ml-auto ${
-							fact.fact.length > CASE_FACT_MAX_LENGTH * 0.9
-								? 'text-danger'
-								: 'text-text-muted'
-						}`}
-					>
-						{fact.fact.length}/{CASE_FACT_MAX_LENGTH}
-					</span>
+					{/* Errors */}
+					{error && <ErrorText text={error} />}
+
+					{/* Character counter */}
+					<CharacterCounter
+						text={fact.fact}
+						maxLength={CASE_FACT_MAX_LENGTH}
+					/>
 				</div>
 			)}
 

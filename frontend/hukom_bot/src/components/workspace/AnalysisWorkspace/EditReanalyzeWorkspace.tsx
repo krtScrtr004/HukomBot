@@ -48,6 +48,7 @@ export default function EditReanalyzeWorkspace() {
 					</button>
 				</section>
 
+				{/* Fact rows */}
 				<section className="flex flex-col gap-3 overflow-y-auto flex-1 scrollbar-thin">
 					{state.editState.map((fact) => (
 						<CaseFactRow
@@ -62,6 +63,7 @@ export default function EditReanalyzeWorkspace() {
 					))}
 				</section>
 
+				{/* Add fact button */}
 				<button
 					type="button"
 					onClick={addEditFact}

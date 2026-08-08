@@ -6,11 +6,19 @@ import AnalysisContent from '@/components/workspace/AnalysisWorkspace/AnalysisCo
 export default function AnalysisViewer() {
 	const { state, isLatestVersionSelected, enterEditMode, selectVersion } =
 		useWorkspace();
+
 	const analysis = state.currentAnalysis;
 
+	// Show loading
 	if (state.loading.analysis) {
 		return <LoadingSpinner label="Loading analysis" className="py-16" />;
 	}
+
+	const buttonHandler = () => {
+		if (state.selectedVersionNumber !== null && state.selectedSessionId) {
+			void selectVersion(state.selectedVersionNumber);
+		}
+	};
 
 	if (state.errors.analysis) {
 		return (
@@ -23,14 +31,7 @@ export default function AnalysisViewer() {
 						type="button"
 						className="flex items-center gap-2 px-4 py-2 mt-4 rounded-sm text-sm font-medium border border-border hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 						aria-label="Retry loading analysis"
-						onClick={() => {
-							if (
-								state.selectedVersionNumber !== null &&
-								state.selectedSessionId
-							) {
-								void selectVersion(state.selectedVersionNumber);
-							}
-						}}
+						onClick={buttonHandler}
 					>
 						<i
 							className="bi bi-arrow-clockwise"
@@ -58,6 +59,19 @@ export default function AnalysisViewer() {
 		},
 	);
 
+	// Edit & Reanalyze Button
+	const editNReanalyzeButtonElem =
+		isLatestVersionSelected && state.mode === 'view' ? (
+			<button
+				type="button"
+				onClick={enterEditMode}
+				className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium border border-border hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+			>
+				<i className="bi bi-pencil" aria-hidden="true" />
+				Edit &amp; Reanalyze
+			</button>
+		) : null;
+
 	return (
 		<div className="flex flex-col gap-4 fade-in">
 			<section className="flex items-start justify-between gap-4">
@@ -81,17 +95,8 @@ export default function AnalysisViewer() {
 					</p>
 				</div>
 
-				{/* Edit & Reanalyze button */}
-				{isLatestVersionSelected && state.mode === 'view' && (
-					<button
-						type="button"
-						onClick={enterEditMode}
-						className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium border border-border hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-					>
-						<i className="bi bi-pencil" aria-hidden="true" />
-						Edit &amp; Reanalyze
-					</button>
-				)}
+				{/* Edit & Reanalyze button, if latest analysis version */}
+				{editNReanalyzeButtonElem}
 			</section>
 
 			{/* Answer */}
