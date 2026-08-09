@@ -462,7 +462,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 		) {
 			return false;
 		}
-		const latest = state.versions[0];
+		const sorted = [...state.versions].sort(
+			(a, b) => b.version_number - a.version_number,
+		);
+		const latest = sorted[0];
 		return latest?.version_number === state.selectedVersionNumber;
 	}, [state.versions, state.selectedVersionNumber]);
 
@@ -658,7 +661,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
 			// If there are versions available for the selected session, select the latest version and load its analysis details
 			if (versions.length > 0) {
-				const latest = versions[0];
+				const sorted = [...versions].sort(
+					(a, b) => b.version_number - a.version_number,
+				);
+				const latest = sorted[0];
 				dispatch({
 					type: 'SET_SELECTED_VERSION',
 					versionNumber: latest.version_number,
