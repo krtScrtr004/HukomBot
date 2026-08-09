@@ -178,6 +178,36 @@
 	--blur-lg: 16px;
 }
 
+@keyframes toastEnter {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastExit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.toast-enter {
+  animation: toastEnter var(--duration-normal) var(--ease-standard) forwards;
+}
+
+.toast-exit {
+  animation: toastExit var(--duration-normal) var(--ease-standard) forwards;
+}
+
 /* Fade-in animation */
 @keyframes fadeIn {
   from { opacity: 0; }

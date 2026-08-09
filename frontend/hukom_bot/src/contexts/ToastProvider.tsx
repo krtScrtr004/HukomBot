@@ -5,6 +5,7 @@ import {
 	useContext,
 	useMemo,
 	useState,
+	useRef,
 } from 'react';
 
 export type ToastVariant = 'success' | 'error' | 'info';
@@ -24,13 +25,29 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const TOAST_DURATION_MS = 4000;
+const TOAST_EXIT_DURATION_MS = 200;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
 	const [toasts, setToasts] = useState<ToastMessage[]>([]);
+	const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
+	const dismissedRef = useRef<Set<string>>(new Set());
 
 	const dismissToast = useCallback((id: string) => {
-		// Remove the toast with the given id from the state
-		setToasts((prev) => prev.filter((t) => t.id !== id));
+		if (dismissedRef.current.has(id)) {
+			return;
+		}
+		dismissedRef.current.add(id);
+
+		setExitingIds((prev) => new Set(prev).add(id));
+
+		setTimeout(() => {
+			setToasts((prev) => prev.filter((t) => t.id !== id));
+			setExitingIds((prev) => {
+				const next = new Set(prev);
+				next.delete(id);
+				return next;
+			});
+		}, TOAST_EXIT_DURATION_MS);
 	}, []);
 
 	const showToast = useCallback(
@@ -50,7 +67,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 	return (
 		<ToastContext.Provider value={value}>
 			{children}
-			<ToastContainer toasts={toasts} onDismiss={dismissToast} />
+			<ToastContainer
+				toasts={toasts}
+				onDismiss={dismissToast}
+				exitingIds={exitingIds}
+			/>
 		</ToastContext.Provider>
 	);
 }
@@ -58,9 +79,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 function ToastContainer({
 	toasts,
 	onDismiss,
+	exitingIds,
 }: {
 	toasts: ToastMessage[];
 	onDismiss: (id: string) => void;
+	exitingIds: Set<string>;
 }) {
 	if (toasts.length === 0) {
 		return null;
@@ -87,13 +110,13 @@ function ToastContainer({
 				<div
 					key={toast.id}
 					role="status"
-					className={`pointer-events-auto flex items-start gap-3 p-4 rounded-md border shadow-md ${variantClasses[toast.variant]}`}
+					className={`pointer-events-auto flex items-center gap-3 p-4 rounded-md border shadow-md ${variantClasses[toast.variant]} ${exitingIds.has(toast.id) ? 'toast-exit' : 'toast-enter'}`}
 				>
 					<i
 						className={`bi ${iconClasses[toast.variant]} text-lg shrink-0`}
 						aria-hidden="true"
 					/>
-					
+
 					<p className="text-sm flex-1">{toast.message}</p>
 
 					<button

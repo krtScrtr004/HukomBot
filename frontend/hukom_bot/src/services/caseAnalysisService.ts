@@ -58,7 +58,7 @@ export async function getVersion(
 
 export async function runCaseAnalysis(
 	payload: CaseAnalysisPipelineCaseFactsPayload,
-	answerFormat: CaseAnalysisAnswerFormat = 'plaintext',
+	answerFormat: CaseAnalysisAnswerFormat = 'html',
 ): Promise<CaseAnalysisCreateResponse> {
 	return apiFetch<CaseAnalysisCreateResponse>('/api/v1/case-analyses', {
 		method: 'POST',
