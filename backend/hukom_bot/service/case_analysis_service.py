@@ -332,6 +332,7 @@ class CaseAnalysisService:
 
         case_facts = [
             CaseFactVersionResponse(
+                id=cfv.id,
                 case_fact_id=cfv.case_fact_id,
                 case_fact_version_id=case_analysis_version.id,
                 version_number=cfv.version_number,

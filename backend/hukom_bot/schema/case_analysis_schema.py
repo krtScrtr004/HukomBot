@@ -93,6 +93,7 @@ class CaseFactVersionUpdate(BaseModel):
 
 
 class CaseFactVersionResponse(BaseModel):
+    id: UUID
     case_fact_id: UUID
     case_fact_version_id: UUID
     version_number: int
