@@ -300,7 +300,7 @@ function buildEditStateFromAnalysis(
 ): EditableCaseFact[] {
 	return analysis.case_facts.map((cf) => ({
 		tempId: cf.case_fact_id,
-		case_fact_id: cf.case_fact_id,
+		case_fact_id: cf.id,
 		fact: cf.fact,
 		originalFact: cf.fact,
 		status: 'unchanged' as const,

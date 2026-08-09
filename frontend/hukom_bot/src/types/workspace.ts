@@ -11,6 +11,7 @@ export interface UserResponse {
 }
 
 export interface CaseFactResponse {
+	id: string;
 	case_fact_id: string;
 	case_fact_version_id: string;
 	version_number: number;
