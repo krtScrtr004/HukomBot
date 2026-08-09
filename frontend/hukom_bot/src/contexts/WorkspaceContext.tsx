@@ -1067,25 +1067,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 			dispatch({ type: 'SET_MODE', mode: 'view' });
 			dispatch({ type: 'SET_EDIT_STATE', editState: [] });
 
-			// Fetch the updated list of sessions and versions for the selected session after the reanalysis is completed
+			// Refresh sessions and versions after reanalysis
 			await fetchSessions(0, state.sessionQuery, false);
 			const versions = await loadVersionsForSession(
 				state.selectedSessionId,
 			);
 			if (versions.length > 0) {
-				// Select the newest version from the list of versions
-				// and update the state with the selected version number
-				// and current analysis details
 				const newest = result.case_analysis.version_number;
 				dispatch({
 					type: 'SET_SELECTED_VERSION',
 					versionNumber: newest,
 				});
 
-				dispatch({
-					type: 'SET_CURRENT_ANALYSIS',
-					analysis: result.case_analysis,
-				});
+				// Load full analysis (includes case_facts)
+				await loadAnalysis(state.selectedSessionId!, newest);
 			}
 		} catch (error) {
 			handleApiError(error, 'generating analysis');
