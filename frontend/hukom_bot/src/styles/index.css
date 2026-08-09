@@ -179,50 +179,54 @@
 }
 
 @keyframes toastEnter {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+	from {
+		opacity: 0;
+		transform: translateX(100%);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
 }
 
 @keyframes toastExit {
-  from {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(100%);
-  }
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateX(100%);
+	}
 }
 
 .toast-enter {
-  animation: toastEnter var(--duration-normal) var(--ease-standard) forwards;
+	animation: toastEnter var(--duration-normal) var(--ease-standard) forwards;
 }
 
 .toast-exit {
-  animation: toastExit var(--duration-normal) var(--ease-standard) forwards;
+	animation: toastExit var(--duration-normal) var(--ease-standard) forwards;
 }
 
 /* Fade-in animation */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 .fade-in {
-  animation: fadeIn 0.2s ease-out;
+	animation: fadeIn 0.2s ease-out;
 }
 
 /* Version item hover effect */
 .version-item {
-  transition: transform var(--duration-fast);
+	transition: transform var(--duration-fast);
 }
 .version-item:hover {
-  transform: scale(1.02);
+	transform: scale(1.02);
 }
 
 html[data-theme='dark'] {

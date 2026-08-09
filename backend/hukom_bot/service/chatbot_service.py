@@ -185,9 +185,7 @@ class ChatbotService:
         10. If none of the retrieved cases have meaningful factual or legal similarities to the user's facts, do not include them under "Relevant Cases." Instead, explain that no sufficiently relevant cases were identified.
         11. If a case appears only marginally related, explain why the connection is weak and assign an appropriate confidence level.
         12. Generate the answer in {answer_format.value} format.
-        13. If the requested format is HTML:
-            13.1. DO NOT include the <html>, <head>, <body>, or <footer> tags.
-            13.2. Apply proper Tailwind v4 classes.
+        13. If the requested format is HTML, DO NOT include the <html>, <head>, <body>, or <footer> tags.
         14. Return ONLY a valid JSON object. Do NOT wrap the JSON in markdown code fences or include any additional commentary.
 
         ==========================================================================
@@ -234,9 +232,7 @@ class ChatbotService:
 
         The value of the "answer" field must contain the complete analysis using the following structure.
 
-        ==========================================================================
-        Relevant Cases
-        ==========================================================================
+        ## Relevant Cases
 
         For each relevant case:
 
