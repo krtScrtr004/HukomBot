@@ -76,6 +76,7 @@ function WorkspacePage() {
 				header={
 					<Header
 						userName={userName}
+						userRole={state.user?.role}
 						onToggleSidebar={() => setSidebarOpen((v) => !v)}
 						onToggleVersionPanel={() =>
 							setVersionPanelOpen((v) => !v)
