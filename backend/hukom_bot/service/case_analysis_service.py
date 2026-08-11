@@ -145,7 +145,7 @@ class CaseAnalysisService:
 
     async def create_updated_fact_versions(
         self,
-        case_fact_versions: list[CaseFactVersionCreate],
+        case_fact_versions: list[CaseFactVersionCreateUpdate],
         connection: AsyncConnection = None,
     ):
         return await self._case_fact_version_repo.create_updated_many(
@@ -420,8 +420,8 @@ class CaseAnalysisService:
             fact = updated_case_facts[id]
             if id is not None and fact is not None:
                 case_fact_for_update.append(
-                    CaseFactVersionCreate(
-                        case_fact_id=id,
+                    CaseFactVersionCreateUpdate(
+                        previous_id=id,
                         fact=fact,
                         is_deleted=False,
                     )

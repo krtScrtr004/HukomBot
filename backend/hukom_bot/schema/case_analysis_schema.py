@@ -9,7 +9,8 @@ from backend.hukom_bot.enum.case_analysis_answer_format import CaseAnalysisAnswe
 class CaseAnalysisGetBySessionId(PaginatableMixin):
     case_analysis_session_id: UUID
     user_id: UUID | None = Field(default=None)
-    
+
+
 class CaseAnalysisGetManyBySessionId(PaginatableMixin):
     case_analysis_session_ids: list[UUID]
     user_id: UUID | None = Field(default=None)
@@ -49,6 +50,7 @@ class CaseAnalysisSessionPreviewSearch(SearchableMixin, PaginatableMixin):
 
     # Add methods here
 
+
 class CaseAnalysisSessionPreviewResponse(BaseModel):
     case_analysis_session_id: UUID
     latest_version_id: UUID
@@ -72,15 +74,23 @@ class CaseFactCreate(BaseModel):
 # Case Fact Version ==========================================
 
 
-class CaseFactVersionCreate(BaseModel):
+class CaseFactVersionCreateBase(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    case_fact_id: UUID
     version_number: int = Field(default=1)
     fact: str
     is_deleted: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.now)
 
+
+class CaseFactVersionCreate(CaseFactVersionCreateBase):
+    id: UUID = Field(default_factory=uuid4)
+    case_fact_id: UUID
+
     model_config = {"arbitrary_types_allowed": True}
+    
+    
+class CaseFactVersionCreateUpdate(CaseFactVersionCreateBase):
+    previous_id: UUID
 
 
 class CaseFactVersionUpdate(BaseModel):
