@@ -1,6 +1,98 @@
-export type CaseAnalysisAnswerFormat = 'plaintext' | 'html' | 'markdown';
+/***********************************************/
 
 export type UserRole = 'standard' | 'contributor' | 'admin';
+
+/***********************************************/
+
+export type CaseAnalysisAnswerFormat = 'plaintext' | 'html' | 'markdown';
+
+/***********************************************/
+
+export type UploadStatus = 'pending' | 'ongoing' | 'completed' | 'failed';
+
+export type LegalDocumentType =
+	// Contracts & Agreements
+	| 'contract'
+	| 'non_disclosure_agreement'
+	| 'service_agreement'
+	| 'employment_contract'
+	| 'lease_agreement'
+	| 'partnership_agreement'
+	| 'memorandum_of_agreement'
+	| 'memorandum_of_understanding'
+	| 'addendum_amendment'
+	| 'franchise_agreement'
+	| 'indemnity_agreement'
+
+	// Corporate Documents
+	| 'articles_of_incorporation'
+	| 'bylaws'
+	| 'board_resolution'
+	| 'shareholder_agreement'
+	| 'minutes_of_meeting'
+	| 'secretary_certificate'
+	| 'general_information_sheet'
+
+	// Court & Litigation
+	| 'complaint'
+	| 'affidavit'
+	| 'subpoena'
+	| 'court_order'
+	| 'judgment'
+	| 'supreme_court_decision'
+	| 'court_of_appeals_decision'
+	| 'motion'
+	| 'summons'
+	| 'pleading'
+	| 'brief_memorandum'
+
+	// Personal & Estate
+	| 'last_will_and_testament'
+	| 'deed_of_sale'
+	| 'power_of_attorney'
+	| 'trust_deed'
+	| 'birth_certificate'
+	| 'marriage_contract'
+	| 'deed_of_donation'
+	| 'prenuptial_agreement'
+
+	// Government & Regulatory
+	| 'permit'
+	| 'license'
+	| 'government_issued_id'
+	| 'tax_declaration'
+	| 'tax_clearance'
+	| 'certificate_of_registration'
+
+	// Regulatory & Administrative
+	| 'constitution'
+	| 'republic_act'
+	| 'revenue_regulation'
+	| 'revenue_memorandum_circular'
+	| 'executive_order'
+	| 'municipal_ordinance'
+
+	// Financial
+	| 'promissory_note'
+	| 'deed_of_mortgage'
+	| 'loan_agreement'
+	| 'invoice'
+	| 'receipt'
+	| 'audited_financial_statement'
+
+	// Intellectual Property
+	| 'patent'
+	| 'trademark_registration'
+	| 'copyright_registration'
+	| 'ip_assignment'
+
+	// Miscellaneous
+	| 'certification'
+	| 'waiver'
+	| 'notice'
+	| 'other';
+
+/***********************************************/
 
 export interface UserResponse {
 	id: string;
@@ -8,6 +100,16 @@ export interface UserResponse {
 	last_name: string;
 	email: string;
 	role: UserRole;
+}
+
+export interface UploadDocumentPayload {
+	file: File;
+	document_type?: LegalDocumentType;
+}
+
+export interface UploadDocumentResponse {
+	id: string;
+	status: UploadStatus;
 }
 
 export interface CaseFactResponse {
