@@ -104,7 +104,7 @@ export interface UserResponse {
 
 export interface UploadDocumentPayload {
 	file: File;
-	document_type?: LegalDocumentType;
+	document_type: LegalDocumentType;
 }
 
 export interface UploadDocumentResponse {
