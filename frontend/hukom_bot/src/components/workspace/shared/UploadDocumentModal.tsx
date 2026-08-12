@@ -234,13 +234,20 @@ export default function UploadDocumentModal({
 
 		try {
 			// Upload the document
-			await uploadDocument({
+			const result = await uploadDocument({
 				file: selectedFile,
 				document_type: documentType,
 			});
 			onClose();
 
-			showToast('Uploaded document is pending for approval.', 'success');
+			const message =
+				result.status === 'pending'
+					? 'Uploaded document is pending for approval.'
+					: result.status === 'ongoing'
+						? 'Uploaded document is being processed.'
+						: 'Document uploaded successfully.';
+
+			showToast(message, 'success');
 		} catch (err) {
 			if (isAuthError(err)) {
 				window.location.href = '/login';
