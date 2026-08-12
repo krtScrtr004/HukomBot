@@ -12,6 +12,7 @@ import NewAnalysisModal from '@/components/workspace/AnalysisWorkspace/NewAnalys
 import EmptyState from '@/components/workspace/shared/EmptyState';
 import LoadingSpinner from '@/components/workspace/shared/LoadingSpinner';
 import ConfirmDialog from '@/components/workspace/shared/ConfirmDialog';
+import UploadDocumentModal from '@/components/workspace/shared/UploadDocumentModal';
 
 function AnalysisWorkspaceContent() {
 	const { state } = useWorkspace();
@@ -53,6 +54,8 @@ function WorkspacePage() {
 
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [versionPanelOpen, setVersionPanelOpen] = useState(false);
+	const [uploadDocumentModalOpen, setUploadDocumentModalOpen] =
+		useState(false);
 
 	if (state.loading.auth) {
 		return (
@@ -84,6 +87,7 @@ function WorkspacePage() {
 						onSignOut={() => {
 							window.location.href = getLogoutUrl();
 						}}
+						onUploadClick={() => setUploadDocumentModalOpen(true)}
 					/>
 				}
 				sidebar={<SessionExplorer />}
@@ -94,6 +98,11 @@ function WorkspacePage() {
 			<NewAnalysisModal
 				open={newAnalysisModalOpen}
 				onClose={() => setNewAnalysisModalOpen(false)}
+			/>
+
+			<UploadDocumentModal
+				open={uploadDocumentModalOpen}
+				onClose={() => setUploadDocumentModalOpen(false)}
 			/>
 
 			{confirmDialog && (

@@ -53,6 +53,7 @@ interface PaginationState {
 
 interface LoadingState {
 	auth: boolean;
+	uploadDocument: boolean;
 	initializing: boolean;
 	sessions: boolean;
 	sessionsMore: boolean;
@@ -79,6 +80,7 @@ interface WorkspaceState {
 	mode: WorkspaceMode;
 	editState: EditableCaseFact[];
 	errors: {
+		uploadDocument: string | null;
 		sessions: string | null;
 		versions: string | null;
 		analysis: string | null;
@@ -90,6 +92,7 @@ const initialState: WorkspaceState = {
 	user: null,
 	loading: {
 		auth: true,
+		uploadDocument: false,
 		initializing: false,
 		sessions: false,
 		sessionsMore: false,
@@ -118,7 +121,12 @@ const initialState: WorkspaceState = {
 
 	mode: 'view',
 	editState: [],
-	errors: { sessions: null, versions: null, analysis: null },
+	errors: {
+		uploadDocument: null,
+		sessions: null,
+		versions: null,
+		analysis: null,
+	},
 };
 
 // Workspace actions for the reducer

@@ -8,6 +8,7 @@ interface HeaderProps {
 	onToggleSidebar?: () => void;
 	onToggleVersionPanel?: () => void;
 	onSignOut?: () => void;
+	onUploadClick?: () => void;
 }
 
 export default function Header({
@@ -16,6 +17,7 @@ export default function Header({
 	onToggleSidebar,
 	onToggleVersionPanel,
 	onSignOut,
+	onUploadClick,
 }: HeaderProps) {
 	return (
 		<header
@@ -42,7 +44,9 @@ export default function Header({
 				{userRole &&
 				(userRole === 'contributor' || userRole === 'admin') ? (
 					<button
+						type="button"
 						className="sm:bg-background sm:border sm:border-border rounded-sm text-sm text-text-secondary py-2 px-3 hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+						onClick={onUploadClick}
 						aria-label="Upload a document"
 					>
 						<span className="sm:mr-2">
