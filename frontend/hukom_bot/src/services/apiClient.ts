@@ -42,14 +42,22 @@ export async function apiFetch<T>(
 ): Promise<T> {
 	const { body, headers = {}, ...rest } = options;
 
+	const isFormData = body instanceof FormData;
+
 	const response = await fetch(`${API_BASE_URL}${path}`, {
 		...rest,
 		credentials: 'include',
 		headers: {
-			...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+			...(body !== undefined && !isFormData
+				? { 'Content-Type': 'application/json' }
+				: {}),
 			...headers,
 		},
-		body: body !== undefined ? JSON.stringify(body) : undefined,
+		body: isFormData
+			? body
+			: body !== undefined
+				? JSON.stringify(body)
+				: undefined,
 	});
 
 	let envelope: ApiEnvelope<T>;
@@ -58,7 +66,8 @@ export async function apiFetch<T>(
 	} catch {
 		throw new ApiError(response.status, {
 			code: 'NETWORK_ERROR',
-			message: 'Unable to reach the server. Please check your connection.',
+			message:
+				'Unable to reach the server. Please check your connection.',
 			details: [],
 		});
 	}
