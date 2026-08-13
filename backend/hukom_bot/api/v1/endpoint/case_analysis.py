@@ -17,6 +17,7 @@ from backend.hukom_bot.schema.http_schema import QueryParams
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
+    rate_limit,
     get_case_analysis_service,
     get_case_analysis_orchestrator,
 )
@@ -36,6 +37,7 @@ async def run_case_analysis_pipeline(
     orchistrator: Annotated[
         CaseAnalysisOrchistrator, Depends(get_case_analysis_orchestrator)
     ],
+    _=Depends(rate_limit(limit=5, window=60))
 ):
     answer_format = header.answer_format
     result = await orchistrator.run_pipeline(
@@ -49,6 +51,7 @@ async def get_user_case_analyses(
     params: Annotated[QueryParams, Query()],
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
+    _=Depends(rate_limit(limit=60, window=60))
 ):
     result = None
     
@@ -77,6 +80,7 @@ async def get_case_analysis_versions(
     params: Annotated[PaginatableMixin, Query()],
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
+    _=Depends(rate_limit(limit=60, window=60))
 ):
     results = await service.get_analysis_versions_by_session_id(
         CaseAnalysisGetBySessionId(
@@ -101,6 +105,7 @@ async def get_case_analysis_version(
     version_number: Annotated[int, Path(ge=1)],
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
+    _=Depends(rate_limit(limit=60, window=60))
 ):
     result = await service.get_by_version(
         CaseAnalysisGetByVersionNumber(
@@ -123,6 +128,7 @@ async def delete_case_analysis(
     case_analysis_session_id: UUID,
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
+    _=Depends(rate_limit(limit=10, window=60))
 ):
     await service.delete_session(id=case_analysis_session_id)
     return SuccessResponse(
