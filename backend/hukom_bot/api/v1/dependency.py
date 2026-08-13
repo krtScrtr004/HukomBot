@@ -1,9 +1,12 @@
 import logging
 
+from redis import Redis
 from fastapi import FastAPI, Request, Depends
 from contextlib import asynccontextmanager
 
 from backend.hukom_bot.database.database import Database
+
+from backend.hukom_bot.core.redis import get_redis, close_redis
 
 from backend.hukom_bot.repository.case_analysis_session_repository import (
     CaseAnalysisSessionRepository,
@@ -56,6 +59,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     app.state.db = Database()
     logging.info("Database initialized successfully")
+    
+    app.state.redis = get_redis()
+    logging.info("Redis initialized successfully")    
 
     app.state.embedding_service = EmbeddingService.initialize()
     logging.info("Embedding model loaded successfully")
@@ -64,12 +70,21 @@ async def lifespan(app: FastAPI):
     logging.info("Reranker model loaded successfully")
 
     await app.state.db.open()
+    
     yield
+    
     await app.state.db.close()
+    logger.info("Database connection shutdown successfully")
+    
+    await close_redis()
+    logger.info("Redis connection shutdow successfully")
 
 
 def get_db(request: Request) -> Database:
     return request.app.state.db
+
+def get_redis(request: Request) -> Redis:
+    return request.app.state.redis
 
 
 # ============================================================================
