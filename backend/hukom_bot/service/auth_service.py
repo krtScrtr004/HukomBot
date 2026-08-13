@@ -95,30 +95,37 @@ class AuthService:
                 await conn.rollback()
                 raise
 
-    async def redirect_authorized(self, request: Request) -> RedirectResponse | None:
+    async def redirect_authorized(self, request: Request, token: str) -> RedirectResponse | None:
         try:
-            token = request.cookies.get("token")
-            request_id = request.state.request_id
+            if not token:
+                raise UnauthorizedException("Token not found")
 
-            if not token or not request_id:
-                return None
-
-            user = await self.authenticate(request_id, token)
-            if not user:
-                return None
-
-            # TODO: Change the url here
-            redirect = RedirectResponse("http://127.0.0.1:8000/docs", status_code=303)
-            redirect.set_cookie(key="token", value=token, httponly=True)
-            return redirect
-
-        except Exception:
-            request.session.clear()
-            redirect = RedirectResponse(
-                url=str(request.url_for("login_page")), status_code=303
+            url = redirect_service.get_redirect_url("workspace")
+            redirect = RedirectResponse(url=url)
+            # Set jwt on cookie
+            redirect.set_cookie(
+                key="token",
+                value=token,
+                httponly=True,
+                secure=True,  # REQUIRED when samesite="none" — cookie won't be sent otherwise
+                samesite="none",  # REQUIRED for cross-domain — "lax" (the default) blocks this
+                domain=None,
             )
-            redirect.delete_cookie(key="token", path="/", httponly=True)
+            
             return redirect
+        except Exception:
+            return self.redirect_unauthorized(request)
+
+    def redirect_unauthorized(
+        request: Request, error_code: str = "INTERNAL_SERVER_ERROR"
+    ) -> RedirectResponse:
+        request.session.clear()
+        url = redirect_service.get_redirect_url(
+            "login", payload={"error_code": error_code}
+        )
+        redirect = RedirectResponse(url=url)
+        redirect.delete_cookie(key="token", path="/", httponly=True)
+        return redirect
 
     async def logout(self, request: Request) -> RedirectResponse:
         # Rovoke the token
