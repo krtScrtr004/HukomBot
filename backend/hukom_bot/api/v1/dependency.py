@@ -1,12 +1,12 @@
 import logging
 
-from redis import Redis
+from redis.asyncio import Redis
 from fastapi import FastAPI, Request, Depends
 from contextlib import asynccontextmanager
 
-from backend.hukom_bot.database.database import Database
+import backend.hukom_bot.core.redis as rd
 
-from backend.hukom_bot.core.redis import get_redis, close_redis
+from backend.hukom_bot.database.database import Database
 
 from backend.hukom_bot.middleware.rate_limiter import RateLimiter
 
@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI):
     app.state.db = Database()
     logging.info("Database initialized successfully")
 
-    app.state.redis = get_redis()
+    app.state.redis = rd.get_redis()
     logging.info("Redis initialized successfully")
 
     app.state.embedding_service = EmbeddingService.initialize()
@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI):
     await app.state.db.close()
     logger.info("Database connection shutdown successfully")
 
-    await close_redis()
+    await rd.close_redis()
     logger.info("Redis connection shutdow successfully")
 
 
@@ -315,16 +315,18 @@ async def verify_user(
     request: Request,
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    request_id = request.state.request_id
+    try:
+        request_id = request.state.request_id
 
-    token = request.cookies.get("token")
-    if token is None:
-        raise UnauthorizedException()
+        token = request.cookies.get("token")
+        if not token:
+            raise UnauthorizedException()
 
-    # Check if valid token
-    user = await auth_service.authenticate(request_id, token)
-
-    return user
+        # Check if valid token
+        user = await auth_service.authenticate(request_id, token)
+        return user
+    except:
+        auth_service.redirect_unauthorized(request=request, error_code="UNAUTHORIZED")
 
 
 def rate_limit(limit: int = 10, window: int = 360):
