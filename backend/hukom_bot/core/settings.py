@@ -12,10 +12,14 @@ class Settings(BaseSettings):
     
     BASE_PAGE_URL: str
     BASE_API_URL: str
+    
+    # -- Redis --
+    REDIS_HOST: str
+    REDIS_PORT: int
 
     # -- Database --
     DB_HOST: str
-    DB_PORT: str
+    DB_PORT: int
     DB_NAME: str
     DB_USER: str
     DB_PASSWORD: str
