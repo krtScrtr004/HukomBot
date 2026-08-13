@@ -8,6 +8,8 @@ from backend.hukom_bot.database.database import Database
 
 from backend.hukom_bot.core.redis import get_redis, close_redis
 
+from backend.hukom_bot.middleware.rate_limiter import RateLimiter
+
 from backend.hukom_bot.repository.case_analysis_session_repository import (
     CaseAnalysisSessionRepository,
 )
@@ -26,6 +28,8 @@ from backend.hukom_bot.repository.document_repository import DocumentRepository
 from backend.hukom_bot.repository.revoked_token_repository import RevokedTokenRepository
 from backend.hukom_bot.repository.user_repository import UserRepository
 
+from backend.hukom_bot.schema.auth_schema import JWTPayload
+
 from backend.hukom_bot.service.auth_service import AuthService
 from backend.hukom_bot.service.case_analysis_service import CaseAnalysisService
 from backend.hukom_bot.service.chatbot_service import ChatbotService
@@ -37,6 +41,7 @@ from backend.hukom_bot.service.google_service import GoogleService
 from backend.hukom_bot.service.llm_service import LLMService
 from backend.hukom_bot.service.reranker_service import RerankerService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
+from backend.hukom_bot.service.jwt_service import JWTService
 from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
 
@@ -46,6 +51,8 @@ from backend.hukom_bot.orchistrator.case_analysis_orchistrator import (
 from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchistrator
 
 from backend.hukom_bot.exception.app_exception import UnauthorizedException
+
+from backend.hukom_bot.util.utility import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +66,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     app.state.db = Database()
     logging.info("Database initialized successfully")
-    
+
     app.state.redis = get_redis()
-    logging.info("Redis initialized successfully")    
+    logging.info("Redis initialized successfully")
 
     app.state.embedding_service = EmbeddingService.initialize()
     logging.info("Embedding model loaded successfully")
@@ -70,18 +77,19 @@ async def lifespan(app: FastAPI):
     logging.info("Reranker model loaded successfully")
 
     await app.state.db.open()
-    
+
     yield
-    
+
     await app.state.db.close()
     logger.info("Database connection shutdown successfully")
-    
+
     await close_redis()
     logger.info("Redis connection shutdow successfully")
 
 
 def get_db(request: Request) -> Database:
     return request.app.state.db
+
 
 def get_redis(request: Request) -> Redis:
     return request.app.state.redis
@@ -98,6 +106,10 @@ def get_embedding_service(request: Request) -> EmbeddingService:
 
 def get_reranker_service(request: Request) -> RerankerService:
     return request.app.state.reranker_service.get_instance()
+
+
+def get_ip(request: Request) -> str:
+    return get_client_ip(request=request)
 
 
 # ============================================================================
@@ -295,7 +307,7 @@ def get_case_analysis_orchestrator(
 
 
 # ============================================================================
-# Authorization
+# Authorization / Authentication Dependencies
 # ============================================================================
 
 
@@ -313,3 +325,31 @@ async def verify_user(
     user = await auth_service.authenticate(request_id, token)
 
     return user
+
+
+def rate_limit(limit: int = 10, window: int = 360):
+    async def dependency(request: Request):
+        token = request.cookies.get("token")
+
+        # If the user is authenticated, use their provider_id as the key; otherwise, use their IP address
+        if token:
+            try:
+                jwt_service = JWTService()
+                decoded = jwt_service.verify(token)
+                payload = JWTPayload.model_validate(decoded)
+                if payload.provider_id:
+                    key = f"user:{payload.provider_id}"
+                else:
+                    raise ValueError("Missing provider_id")
+            except Exception:
+                ip = get_client_ip(request)
+                key = f"user:{ip}" if ip else "user:unknown"
+        else:
+            ip = get_client_ip(request)
+            key = f"user:{ip}" if ip else "user:unknown"
+
+        redis = request.app.state.redis
+        rate_limiter = RateLimiter(redis=redis, limit=limit, window=window)
+        await rate_limiter(key=key)
+
+    return dependency

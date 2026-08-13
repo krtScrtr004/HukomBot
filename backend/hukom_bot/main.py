@@ -351,6 +351,7 @@ custom_exceptions = [
     InvalidDocumentTypeException,
     NotFoundException,
     OAuthException,
+    RateLimitException,
     UnauthorizedException,
 ]
 for custom_exec in custom_exceptions:

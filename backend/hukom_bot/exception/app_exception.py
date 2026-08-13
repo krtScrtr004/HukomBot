@@ -5,7 +5,8 @@ class AppException(Exception):
         self.code = code
         self.details = details
         super().__init__(self.message)
-        
+
+
 class UnauthorizedException(AppException):
     def __init__(
         self,
@@ -14,8 +15,8 @@ class UnauthorizedException(AppException):
         details: list[str] = [],
     ):
         super().__init__(message, 401, code, details)
-        
-        
+
+
 class ForbiddenException(AppException):
     def __init__(
         self,
@@ -24,7 +25,8 @@ class ForbiddenException(AppException):
         details: list[str] = [],
     ):
         super().__init__(message, 403, code, details)
-        
+
+
 class NotFoundException(AppException):
     def __init__(
         self,
@@ -33,3 +35,12 @@ class NotFoundException(AppException):
         details: list[str] = [],
     ):
         super().__init__(message, 404, code, details)
+
+
+class RateLimitException(AppException):
+    def __init__(
+        self,
+        message: str = "Too many requests. Please try again later.",
+        details: list[str] = [],
+    ):
+        super().__init__(message, 429, "RATE_LIMIT_EXCEEDED", details)
