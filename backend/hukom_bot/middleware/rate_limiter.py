@@ -1,8 +1,5 @@
-from redis import Redis
-from fastapi import HTTPException
-
-from backend.hukom_bot.exception.rate_limit_exeception import RateLimitException
-
+from redis.asyncio import Redis
+from backend.hukom_bot.exception.app_exception import RateLimitException
 
 class RateLimiter:
     def __init__(self, 
@@ -14,13 +11,13 @@ class RateLimiter:
         self._limit = limit
         self._window = window
 
-    def __call__(self, key: str):
+    async def __call__(self, key: str):
         # Increment the counter for the given key
-        current = self._redis.incr(1)
+        current = await self._redis.incr(name=key, amount=1)
         
         # Set the expiration time for the key if it's the first request
         if current == 1:
-            self._redis.expire(name=key, time=self._window)
+            await self._redis.expire(name=key, time=self._window)
         
         # Check if the current count exceeds the limit
         if current >= self._limit:
