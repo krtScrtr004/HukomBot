@@ -95,7 +95,7 @@ class AuthService:
                 await conn.rollback()
                 raise
 
-    async def redirect_authorized(self, request: Request, token: str) -> RedirectResponse | None:
+    def redirect_authorized(self, request: Request, token: str) -> RedirectResponse | None:
         try:
             if not token:
                 raise UnauthorizedException("Token not found")
@@ -117,7 +117,7 @@ class AuthService:
             return self.redirect_unauthorized(request)
 
     def redirect_unauthorized(
-        request: Request, error_code: str = "INTERNAL_SERVER_ERROR"
+        self, request: Request, error_code: str = "INTERNAL_SERVER_ERROR"
     ) -> RedirectResponse:
         request.session.clear()
         url = redirect_service.get_redirect_url(
