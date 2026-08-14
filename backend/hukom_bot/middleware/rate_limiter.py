@@ -4,13 +4,18 @@ from backend.hukom_bot.exception.app_exception import RateLimitException
 
 class RateLimiter:
     _SCRIPT = """
+        -- KEYS[1] = key
+        
+        -- ARGS[1] = limit
+        -- ARGS[2] = window
+    
         local current = redis.call("INCR", KEYS[1])
         
         if current == 1 then
-            redis.call("EXPIRE", KEYS[1], ARGV[1])
+            redis.call("EXPIRE", KEYS[1], ARGV[2])
         end
         
-        local remaining = tonumber(ARGV[2]) - current
+        local remaining = tonumber(ARGV[1]) - current
         
         if remaining < 0 then
             remaining = 0
