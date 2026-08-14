@@ -302,10 +302,12 @@ def get_document_orchestrator(
 def get_case_analysis_orchestrator(
     db: Database = Depends(get_db),
     case_analysis_service: CaseAnalysisService = Depends(get_case_analysis_service),
+    token_quota_service: TokenQuotaService = Depends(get_token_quota_service)
 ) -> CaseAnalysisOrchistrator:
     return CaseAnalysisOrchistrator(
         db=db,
         case_analysis_service=case_analysis_service,
+        token_quota_service=token_quota_service
     )
 
 

@@ -383,15 +383,15 @@ class CaseAnalysisService:
         # Vector Search
         vector_results = await self._retrieve_from_vector_search(generated_queries.data)
         logger.info(
-            "Fetched %i chunks from vector search for sesssion with id: %s",
+            "Retrieved %i chunks from vector search for sesssion with id: %s",
             len(vector_results),
             case_analysis_session_id,
         )
 
         # Keyword Search
-        keyword_result = await self._retrieve_from_keyword_search(generated_queries)
+        keyword_result = await self._retrieve_from_keyword_search(generated_queries.data)
         logger.info(
-            "Fetched %i chunks from keyword search for sesssion with id: %s",
+            "Retrieved %i chunks from keyword search for sesssion with id: %s",
             len(keyword_result),
             case_analysis_session_id,
         )

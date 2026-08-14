@@ -9,16 +9,29 @@ from backend.hukom_bot.schema.chatbot_schema import (
     PostCaseAnalysisResponse,
 )
 from backend.hukom_bot.schema.orchistrator_schema import OrchistratorResult
-from backend.hukom_bot.util.case_analysis_version_caster import CaseAnalysisVersionCaster
+from backend.hukom_bot.service.token_quota_service import TokenQuotaService
+from backend.hukom_bot.util.case_analysis_version_caster import (
+    CaseAnalysisVersionCaster,
+)
 from backend.hukom_bot.exception.app_exception import NotFoundException
+
+from backend.hukom_bot.util.token_counter import estimate_text_tokens
 
 logger = logging.getLogger(__name__)
 
 
 class CaseAnalysisOrchistrator:
-    def __init__(self, db: Database, case_analysis_service: CaseAnalysisService):
+    _OUTPUT_MARGIN = 10000
+
+    def __init__(
+        self,
+        db: Database,
+        case_analysis_service: CaseAnalysisService,
+        token_quota_service: TokenQuotaService,
+    ):
         self._db = db
         self._service = case_analysis_service
+        self._token_quota_service = token_quota_service
 
     async def run_pipeline(
         self,
@@ -34,6 +47,7 @@ class CaseAnalysisOrchistrator:
             )
         else:
             return await self._run_existing_pipeline(
+                user_id=user_id,
                 session_id=payload.case_analysis_session_id,
                 new_facts=payload.new_case_facts,
                 updated_facts=payload.updated_case_facts,
@@ -49,14 +63,30 @@ class CaseAnalysisOrchistrator:
     ):
         session = CaseAnalysisSessionCreate(user_id=user_id)
 
+        redis_key = self._generate_daily_token_quota_key(user_id)
+
+        estimated_tokens = (
+            estimate_text_tokens("\n".join(fact for fact in case_facts))
+            + self._OUTPUT_MARGIN
+        )
+
         async with self._db.connection() as conn:
             async with conn.transaction():
                 try:
-                    final_answer = await self._service.generate_analysis_answer(
+                    # Reserve tokens
+                    await self._token_quota_service.reserve_token(
+                        key=redis_key,
+                        estimated_token=estimated_tokens,
+                    )
+
+                    result = await self._service.generate_analysis_answer(
                         case_analysis_session_id=session.id,
                         case_facts=case_facts,
                         answer_format=answer_format,
                     )
+
+                    final_answer = result.data
+                    total_tokens = result.total_tokens
 
                     # Create session
                     await self._service.create_session(session, conn)
@@ -97,6 +127,12 @@ class CaseAnalysisOrchistrator:
                         connection=conn,
                     )
 
+                    # Reconcile tokens
+                    await self._token_quota_service.reconcile_token(
+                        key=redis_key,
+                        actual_tokens_used=total_tokens,
+                    )
+
                     logger.info(
                         "Responded to case analysis session id: %s successfully",
                         session.id,
@@ -113,10 +149,17 @@ class CaseAnalysisOrchistrator:
                     )
                 except Exception as ex:
                     logger.exception(str(ex))
+
+                    await self._token_quota_service.reconcile_token(
+                        key=redis_key,
+                        actual_tokens_used=0,
+                    )
+
                     raise
 
     async def _run_existing_pipeline(
         self,
+        user_id: UUID,
         session_id: UUID,
         new_facts: list[str] | None = None,
         updated_facts: dict[UUID, str] | None = None,
@@ -125,47 +168,75 @@ class CaseAnalysisOrchistrator:
     ):
         await self._service.ensure_valid_session_id(session_id)
 
-        # Retrieve the last anlysis version
-        latest_analysis_version = (
-            await self._service.get_latest_analysis_version_by_session_id(
-                CaseAnalysisGetBySessionId(case_analysis_session_id=session_id)
-            )
-        )
-        if not latest_analysis_version:
-            raise NotFoundException(
-                code="CASE_ANALYSIS_VERSION_NOT_FOUND",
-                message="Case analysis failed",
-                details=[
-                    f"Latest case analysis version for session with id: {session_id} not found"
-                ],
-            )
-        updated_analysis_version = latest_analysis_version.version_number + 1
+        temp_new_facts = new_facts or []
+        temp_updated_facts = updated_facts or {}
 
-        # Used for performing rollback on phase 1
-        [created_new_case_fact_ids, updated_case_fact_version_ids] = (
-            await self._perform_phase_one(
-                session_id, new_facts, updated_facts, deleted_facts
+        redis_key = self._generate_daily_token_quota_key(user_id)
+
+        try:
+            estimated_tokens = (
+                estimate_text_tokens(
+                    "\n".join(
+                        fact
+                        for fact in (temp_new_facts + list(temp_updated_facts.values()))
+                    )
+                )
+                + self._OUTPUT_MARGIN
             )
-        )
 
-        case_analysis_version_obj = await self._perform_phase_two(
-            session_id,
-            deleted_facts,
-            updated_analysis_version,
-            created_new_case_fact_ids,
-            updated_case_fact_version_ids,
-            answer_format,
-        )
+            # Reserve tokens
+            await self._token_quota_service.reserve_token(
+                key=redis_key,
+                estimated_token=estimated_tokens,
+            )
 
-        return OrchistratorResult(
-            message="Case analysis created successfully",
-            data=PostCaseAnalysisResponse(
-                case_analysis_session_id=session_id,
-                case_analysis=CaseAnalysisVersionCaster.base_to_response(
-                    case_analysis_version_obj
+            # Retrieve the last anlysis version
+            latest_analysis_version = (
+                await self._service.get_latest_analysis_version_by_session_id(
+                    CaseAnalysisGetBySessionId(case_analysis_session_id=session_id)
+                )
+            )
+            if not latest_analysis_version:
+                raise NotFoundException(
+                    code="CASE_ANALYSIS_VERSION_NOT_FOUND",
+                    message="Case analysis failed",
+                    details=[
+                        f"Latest case analysis version for session with id: {session_id} not found"
+                    ],
+                )
+            updated_analysis_version = latest_analysis_version.version_number + 1
+
+            # Used for performing rollback on phase 1
+            [created_new_case_fact_ids, updated_case_fact_version_ids] = (
+                await self._perform_phase_one(
+                    session_id, new_facts, updated_facts, deleted_facts
+                )
+            )
+
+            case_analysis_version_obj = await self._perform_phase_two(
+                user_id,
+                session_id,
+                deleted_facts,
+                updated_analysis_version,
+                created_new_case_fact_ids,
+                updated_case_fact_version_ids,
+                answer_format,
+            )
+
+            return OrchistratorResult(
+                message="Case analysis created successfully",
+                data=PostCaseAnalysisResponse(
+                    case_analysis_session_id=session_id,
+                    case_analysis=CaseAnalysisVersionCaster.base_to_response(
+                        case_analysis_version_obj
+                    ),
                 ),
-            ),
-        )
+            )
+        except:
+            await self._token_quota_service.reconcile_token(
+                key=redis_key,
+                actual_tokens_used=0,
+            )
 
     async def _perform_phase_one(
         self,
@@ -235,6 +306,7 @@ class CaseAnalysisOrchistrator:
 
     async def _perform_phase_two(
         self,
+        user_id: UUID,
         session_id: UUID,
         deleted_facts: list[UUID],
         updated_analysis_version: int,
@@ -246,9 +318,7 @@ class CaseAnalysisOrchistrator:
             try:
                 latest_case_fact_objs = (
                     await self._service.get_latest_fact_version_by_session_id(
-                        CaseAnalysisGetBySessionId(
-                            case_analysis_session_id=session_id
-                        )
+                        CaseAnalysisGetBySessionId(case_analysis_session_id=session_id)
                     )
                 )
                 if not latest_case_fact_objs:
@@ -266,11 +336,14 @@ class CaseAnalysisOrchistrator:
                         if cf.id in deleted_facts:
                             latest_case_fact_objs.remove(cf)
 
-                final_answer = await self._service.generate_analysis_answer(
+                result = await self._service.generate_analysis_answer(
                     case_analysis_session_id=session_id,
                     case_facts=[fact.fact for fact in latest_case_fact_objs],
                     answer_format=answer_format,
                 )
+
+                final_answer = result.data
+                total_tokens = result.total_tokens
 
                 # Create case analysis version
                 case_analysis_version_obj = await self._service.create_analysis_version(
@@ -290,6 +363,12 @@ class CaseAnalysisOrchistrator:
                 )
 
                 await conn.commit()
+
+                # Reconcile tokens
+                await self._token_quota_service.reconcile_token(
+                    key=self._generate_daily_token_quota_key(user_id),
+                    actual_tokens_used=total_tokens,
+                )
 
                 logger.info(
                     "Responded to case analysis session id: %s successfully",
@@ -352,3 +431,6 @@ class CaseAnalysisOrchistrator:
             )
 
         await conn.commit()
+
+    def _generate_daily_token_quota_key(self, user_id: UUID) -> str:
+        return f"token:user:{user_id}:daily"
