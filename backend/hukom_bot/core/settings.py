@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     RERANKER_MODEL: str
     RERANKER_DEVICE_CPU: str
     RERANKER_DEVICE_GPU: str
+    
+    TOKEN_QUOTA_DAILY: int
+    TOKEN_QUOTA_WINDOW: int
 
 
 settings = Settings()
