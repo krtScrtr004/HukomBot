@@ -87,10 +87,10 @@ class ChatbotService:
             prompt=prompt, temperature=0.1, max_tokens=500
         )
         if not response:
-            return LLMResponse(total_token=0, data=[])
+            return LLMResponse(total_tokens=0, data=[])
 
         return LLMResponse(
-            total_token=response.total_token,
+            total_tokens=response.total_tokens,
             data=[line.strip() for line in response.data.splitlines() if line.strip()],
         )
 
@@ -152,14 +152,15 @@ class ChatbotService:
         response = await self._llm_service.chat(prompt=prompt, temperature=0)
         if not response:
             return LLMResponse(
-                total_token=0,
+                total_tokens=0,
                 data=[legal_issues[0]] if legal_issues else [],
             )
 
-        queries = [line.strip() for line in response.splitlines() if line.strip()]
+        queries = [line.strip() for line in response.data.splitlines() if line.strip()]
 
         return LLMResponse(
-            total_token=response.total_token, data=queries if queries else legal_issues
+            total_tokens=response.total_tokens,
+            data=queries if queries else legal_issues,
         )
 
     async def generate_answer(
@@ -307,8 +308,8 @@ class ChatbotService:
             raise RuntimeError("LLM service failed to generate the final answer")
 
         return LLMResponse(
-            total_token=response.total_token,
-            data=CaseAnalysisGeneratedAnswer.model_validate_json(response),
+            total_tokens=response.total_tokens,
+            data=CaseAnalysisGeneratedAnswer.model_validate_json(response.data),
         )
 
     async def contextualize_query(
@@ -345,7 +346,7 @@ class ChatbotService:
         )
         if not response:
             return LLMResponse(
-                total_token=0, data=query  # Just return original query if LLM fails
+                total_tokens=0, data=query  # Just return original query if LLM fails
             )
 
         return response
@@ -369,12 +370,12 @@ class ChatbotService:
             prompt=prompt,
         )
         if not response:
-            return LLMResponse(total_token=0, data=[query])
+            return LLMResponse(total_tokens=0, data=[query])
 
         generated_queries = [
             line.strip() for line in response.splitlines() if line.strip()
         ]
 
         return LLMResponse(
-            total_token=response.total_token, data=[query, *generated_queries]
+            total_tokens=response.total_tokens, data=[query, *generated_queries]
         )

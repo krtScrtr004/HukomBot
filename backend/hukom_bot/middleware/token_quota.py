@@ -1,7 +1,3 @@
-# Keys:
-# Daily: token:user:<provider_id>:daily
-# Weekly: token:user:<provider_id>:weekly
-
 from redis.asyncio import Redis
 from backend.hukom_bot.exception.app_exception import RateLimitException
 

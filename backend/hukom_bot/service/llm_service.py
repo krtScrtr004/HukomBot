@@ -38,6 +38,6 @@ class LLMService:
             return None
         
         return LLMResponse(
-            total_token=response.usage.total_tokens,
+            total_tokens=response.usage.total_tokens,
             data=response.choices[0].message.content
         )
