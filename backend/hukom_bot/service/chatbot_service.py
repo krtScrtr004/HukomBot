@@ -1,9 +1,8 @@
-from typing import List
-
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.service.llm_service import LLMService
 from backend.hukom_bot.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
 from backend.hukom_bot.schema.case_analysis_schema import CaseAnalysisGeneratedAnswer
+from backend.hukom_bot.schema.chatbot_schema import LLMResponse
 
 from backend.hukom_bot.util.utility import format_conversation_history
 
@@ -13,7 +12,7 @@ class ChatbotService:
         self._db = db
         self._llm_service = llm_service
 
-    async def extract_issues(self, case_facts: List[str]) -> List[str]:
+    async def extract_issues(self, case_facts: list[str]) -> LLMResponse[list[str]]:
         facts = "\n".join(f"- {fact}" for fact in case_facts)
 
         prompt = f"""
@@ -88,13 +87,16 @@ class ChatbotService:
             prompt=prompt, temperature=0.1, max_tokens=500
         )
         if not response:
-            return []
+            return LLMResponse(total_token=0, data=[])
 
-        return [line.strip() for line in response.splitlines() if line.strip()]
+        return LLMResponse(
+            total_token=response.total_token,
+            data=[line.strip() for line in response.data.splitlines() if line.strip()],
+        )
 
     async def generate_queries(
-        self, legal_issues: List[str], query_count: int = 5
-    ) -> List[str]:
+        self, legal_issues: list[str], query_count: int = 5
+    ) -> LLMResponse[list[str]]:
         issues = "\n".join(f"- {issue}" for issue in legal_issues)
 
         prompt = f"""
@@ -149,18 +151,23 @@ class ChatbotService:
 
         response = await self._llm_service.chat(prompt=prompt, temperature=0)
         if not response:
-            return [legal_issues[0]] if legal_issues else []
+            return LLMResponse(
+                total_token=0,
+                data=[legal_issues[0]] if legal_issues else [],
+            )
 
         queries = [line.strip() for line in response.splitlines() if line.strip()]
 
-        return queries if queries else legal_issues
+        return LLMResponse(
+            total_token=response.total_token, data=queries if queries else legal_issues
+        )
 
     async def generate_answer(
         self,
-        case_facts: List[str],
+        case_facts: list[str],
         context: str,
         answer_format: CaseAnalysisAnswerFormat = CaseAnalysisAnswerFormat.PLAINTEXT,
-    ) -> CaseAnalysisGeneratedAnswer:
+    ) -> LLMResponse[CaseAnalysisGeneratedAnswer]:
         retrieved_cases = "\n---\n".join(case_facts)
 
         prompt = f"""
@@ -299,11 +306,14 @@ class ChatbotService:
         if not response:
             raise RuntimeError("LLM service failed to generate the final answer")
 
-        return CaseAnalysisGeneratedAnswer.model_validate_json(response)
+        return LLMResponse(
+            total_token=response.total_token,
+            data=CaseAnalysisGeneratedAnswer.model_validate_json(response),
+        )
 
     async def contextualize_query(
-        self, query: str, conversation_history: List[dict[str, str]]
-    ):
+        self, query: str, conversation_history: list[dict[str, str]]
+    ) -> LLMResponse[str]:
         prompt = f"""
         You are a query contextualization assistant for a Philippine legal retrieval system.
 
@@ -334,11 +344,13 @@ class ChatbotService:
             prompt=prompt,
         )
         if not response:
-            return query  # Just return original query if LLM fails
+            return LLMResponse(
+                total_token=0, data=query  # Just return original query if LLM fails
+            )
 
         return response
 
-    async def expand_query(self, query: str) -> List[str] | None:
+    async def expand_query(self, query: str) -> LLMResponse[list[str]] | None:
         prompt = f"""
         Generate 5 alternative legal search queries for the following question.
 
@@ -357,10 +369,12 @@ class ChatbotService:
             prompt=prompt,
         )
         if not response:
-            return [query]
+            return LLMResponse(total_token=0, data=[query])
 
         generated_queries = [
             line.strip() for line in response.splitlines() if line.strip()
         ]
 
-        return [query, *generated_queries]
+        return LLMResponse(
+            total_token=response.total_token, data=[query, *generated_queries]
+        )

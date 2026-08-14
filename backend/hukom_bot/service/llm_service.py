@@ -1,5 +1,6 @@
 from openai import AsyncOpenAI
 from backend.hukom_bot.core.settings import settings
+from backend.hukom_bot.schema.chatbot_schema import LLMResponse
 
 
 class LLMService:
@@ -19,7 +20,7 @@ class LLMService:
         model: str | None = None,
         temperature: float = 0.2,
         max_tokens: int = 1000,
-    ) -> str | None:
+    ) -> LLMResponse | None:
         model = (
             model
             or settings.GEMINI_MODEL
@@ -35,5 +36,8 @@ class LLMService:
 
         if not response.choices:
             return None
-
-        return response.choices[0].message.content
+        
+        return LLMResponse(
+            total_token=response.usage.total_tokens,
+            data=response.choices[0].message.content
+        )

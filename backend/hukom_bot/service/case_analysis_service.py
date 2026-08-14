@@ -9,6 +9,7 @@ from backend.hukom_bot.model.chunk_model import Chunk
 from backend.hukom_bot.model.case_analysis_model import *
 from backend.hukom_bot.schema.chunk_schema import ChunkSearchKeyword, ChunkSearchVector
 from backend.hukom_bot.schema.case_analysis_schema import *
+from backend.hukom_bot.schema.chatbot_schema import LLMResponse
 from backend.hukom_bot.service.chatbot_service import ChatbotService
 from backend.hukom_bot.service.chunk_service import ChunkService
 from backend.hukom_bot.service.embedding_service import EmbeddingService
@@ -350,7 +351,7 @@ class CaseAnalysisService:
         case_analysis_session_id: UUID,
         case_facts: list[str],
         answer_format: CaseAnalysisAnswerFormat = CaseAnalysisAnswerFormat.PLAINTEXT,
-    ) -> CaseAnalysisGeneratedAnswer:
+    ) -> LLMResponse[CaseAnalysisGeneratedAnswer]:
         logger.info(
             "Attempting to extract legal issues for case analysis with session id: %s",
             case_analysis_session_id,
@@ -358,7 +359,7 @@ class CaseAnalysisService:
 
         # Extract legal issues from case facts
         legal_issues = await self._chatbot_service.extract_issues(case_facts)
-        if not legal_issues:
+        if not legal_issues.data:
             raise ChatException(
                 code="LLM_SERVICE_ERROR",
                 message="Cannot extract legal issues from provided case facts",
@@ -370,15 +371,17 @@ class CaseAnalysisService:
         )
 
         # Generate queries from legal issues
-        generated_queries = await self._chatbot_service.generate_queries(legal_issues)
-        if not generated_queries:
+        generated_queries = await self._chatbot_service.generate_queries(
+            legal_issues.data
+        )
+        if not generated_queries.data:
             raise ChatException(
                 code="LLM_SERVICE_ERROR",
                 message="Cannot generate queries for legal issues extracted",
             )
 
         # Vector Search
-        vector_results = await self._retrieve_from_vector_search(generated_queries)
+        vector_results = await self._retrieve_from_vector_search(generated_queries.data)
         logger.info(
             "Fetched %i chunks from vector search for sesssion with id: %s",
             len(vector_results),
@@ -412,7 +415,14 @@ class CaseAnalysisService:
             answer_format=answer_format,
         )
 
-        return final_answer
+        return LLMResponse(
+            total_tokens=(
+                legal_issues.total_tokens
+                + generated_queries.total_tokens
+                + final_answer.total_tokens
+            ),
+            data=final_answer.data,
+        )
 
     def create_case_fact_version_for_update(self, updated_case_facts: dict[UUID, str]):
         case_fact_for_update = []
