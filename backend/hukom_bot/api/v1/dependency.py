@@ -30,6 +30,8 @@ from backend.hukom_bot.repository.user_repository import UserRepository
 
 from backend.hukom_bot.schema.auth_schema import JWTPayload
 
+from backend.hukom_bot.middleware.token_quota import TokenQuota
+
 from backend.hukom_bot.service.auth_service import AuthService
 from backend.hukom_bot.service.case_analysis_service import CaseAnalysisService
 from backend.hukom_bot.service.chatbot_service import ChatbotService
@@ -44,6 +46,7 @@ from backend.hukom_bot.service.file_storage_service import FileStorageService
 from backend.hukom_bot.service.jwt_service import JWTService
 from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
+from backend.hukom_bot.service.token_quota_service import TokenQuotaService
 
 from backend.hukom_bot.orchistrator.case_analysis_orchistrator import (
     CaseAnalysisOrchistrator,
@@ -106,10 +109,6 @@ def get_embedding_service(request: Request) -> EmbeddingService:
 
 def get_reranker_service(request: Request) -> RerankerService:
     return request.app.state.reranker_service.get_instance()
-
-
-def get_ip(request: Request) -> str:
-    return get_client_ip(request=request)
 
 
 # ============================================================================
@@ -215,6 +214,10 @@ def get_user_service(
     user_repo: UserRepository = Depends(get_user_repository),
 ) -> UserService:
     return UserService(db=db, user_repo=user_repo)
+
+
+def get_token_quota_service(redis: Redis = Depends(get_redis)) -> TokenQuotaService:
+    return TokenQuotaService(redis=redis)
 
 
 def get_auth_service(
@@ -355,3 +358,12 @@ def rate_limit(limit: int = 10, window: int = 360):
         await rate_limiter(key=key)
 
     return dependency
+
+
+# ============================================================================
+# Others
+# ============================================================================
+
+
+def get_ip(request: Request) -> str:
+    return get_client_ip(request=request)
