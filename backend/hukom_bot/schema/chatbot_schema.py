@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from uuid import UUID
+from typing import Generic, TypeVar
 from pydantic import BaseModel, Field, model_validator, field_validator, Field
 
 from backend.hukom_bot.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
@@ -8,8 +9,16 @@ from backend.hukom_bot.schema.case_analysis_schema import CaseAnalysisVersionRes
 
 # API Schemas ========================================
 
+
+T = TypeVar("T")
+
 CASE_FACT_MIN_LEN = 8
 CASE_FACT_MAX_LEN = 500
+
+
+class LLMResponse(BaseModel, Generic[T]):
+    total_tokens: int
+    data: T
 
 
 class CaseAnalysiPipelineCaseFactsHeader(BaseModel):
