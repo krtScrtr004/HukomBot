@@ -84,13 +84,13 @@ class DocumentRepository:
             return
 
         if connection is not None:
-            return await self._update_implement(connection, document)
+            await self._update_implement(connection, document)
+            return
 
         async with self._database.connection() as conn:
             try:
-                result = await self._update_implement(conn, document)
+                await self._update_implement(conn, document)
                 await conn.commit()
-                return result
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
                 raise
