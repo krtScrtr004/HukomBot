@@ -130,7 +130,10 @@ class TokenQuota:
         remaining = response[1]
         
         if not result or remaining < 0:
-            raise RateLimitException("Insifficient remaing tokens")
+            raise RateLimitException(
+                code="TOKEN_QUOTA_ERROR",
+                message="Insifficient remaing tokens"
+            )
         
     async def reconcile_token(self, key: str, actual_tokens_used: int):
         script = self._redis.register_script(self._RECONCILE_SCRIPT)

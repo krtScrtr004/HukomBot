@@ -41,6 +41,7 @@ class RateLimitException(AppException):
     def __init__(
         self,
         message: str = "Too many requests. Please try again later.",
+        code: str = "RATE_LIMIT_EXCEEDED",
         details: list[str] = [],
     ):
-        super().__init__(message, 429, "RATE_LIMIT_EXCEEDED", details)
+        super().__init__(message, 429, code, details)
