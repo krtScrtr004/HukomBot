@@ -9,7 +9,10 @@ class OAuthException(AppException):
         code: str = "OAUTH_FAIL",
         details: list[str] = [],
     ):
-        super().__init__(message, status_code, code, details)
+        super().__init__(
+            message=message, status_code=status_code, code=code, details=details
+        )
+
 
 class GoogleEmailNotVerifiedException(AppException):
     def __init__(
@@ -18,4 +21,4 @@ class GoogleEmailNotVerifiedException(AppException):
         code: str = "GOOGLE_EMAIL_NOT_VERIFIED",
         details: list[str] = [],
     ):
-        super().__init__(message, 400, code, details)
+        super().__init__(message=message, status_code=400, code=code, details=details)

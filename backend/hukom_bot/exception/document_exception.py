@@ -9,4 +9,6 @@ class InvalidDocumentTypeException(AppException):
         code: str = "INVALID_FILE_TYPE",
         details: list[str] = [],
     ):
-        super().__init__(message, status_code, code, details)
+        super().__init__(
+            message=message, status_code=status_code, code=code, details=details
+        )

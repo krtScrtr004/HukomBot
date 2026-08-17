@@ -106,16 +106,21 @@ async def handle_custom_exception(request: Request, exc: Exception):
     logger.exception(getattr(exc, "message", str(exc)))
 
     # Fallbacks in case code or status_code are omitted on custom classes
+    headers = getattr(exc, "headers", None)
     code = getattr(exc, "code", "APPLICATION_ERROR")
     status_code = getattr(exc, "status_code", 400)
     message = getattr(exc, "message", "An application rule was violated.")
-
+    
+    if isinstance(headers, dict):
+        headers = {k: str(v) for k, v in headers.items()}
+    
     error_details = [ErrorDetail(issue=iss) for iss in getattr(exc, "details", [])]
 
     response_payload = ErrorResponse(
         error=ErrorPayload(code=code, message=message, details=error_details)
     )
     return JSONResponse(
+        headers=headers,
         status_code=status_code,
         content=response_payload.model_dump(),
     )
