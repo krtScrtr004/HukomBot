@@ -1,4 +1,5 @@
 from redis.asyncio import Redis
+from backend.hukom_bot.schema.auth_schema import TokenQuotaUsage
 from backend.hukom_bot.exception.app_exception import RateLimitException
 
 
@@ -81,8 +82,8 @@ class TokenQuota:
         script = self._redis.register_script("""
             -- KEYS[1] = key
             
-            -- ARGS[1] = daily_quota
-            -- ARGS[2] = actual token used
+            -- ARGV[1] = daily_quota
+            -- ARGV[2] = actual token used
             
             local key = KEYS[1]
 
@@ -139,3 +140,27 @@ class TokenQuota:
             """)
 
         await script(keys=[key], args=[self._daily_quota, actual_tokens_used])
+
+    async def retrieve_usage(self, key: str) -> TokenQuotaUsage:
+        script = self._redis.register_script("""
+            local key = KEYS[1]
+            local daily_quota = tonumber(ARGV[1])
+            
+            local daily_used = tonumber(redis.call("HGET", key, "used") or "0")
+            local daily_reserved = tonumber(redis.call("HGET", key, "reserved") or "0")
+            local daily_remaining = daily_quota - (daily_used + daily_reserved)
+            
+            local raw_ttl = redis.call("TTL", key)
+            local daily_ttl = raw_ttl > 0 and raw_ttl or 0
+            
+            return {
+                daily_remaining,
+                daily_ttl
+            }
+        """)
+
+        response = await script(keys=[key], args=[self._daily_quota])
+        remaining = response[0]
+        ttl = response[1]
+
+        return TokenQuotaUsage(quota=self._daily_quota, remaining=remaining, ttl=ttl)
