@@ -1,6 +1,9 @@
+from uuid import UUID
 from redis.asyncio import Redis
 from backend.hukom_bot.core.settings import settings
 from backend.hukom_bot.middleware.token_quota import TokenQuota
+from backend.hukom_bot.schema.auth_schema import TokenQuotaUsage
+from backend.hukom_bot.util.utility import generate_daily_token_quota_key
 
 
 class TokenQuotaService:
@@ -20,4 +23,9 @@ class TokenQuotaService:
     async def reconcile_token(self, key: str, actual_tokens_used: int):
         await self._middleware.reconcile_token(
             key=key, actual_tokens_used=actual_tokens_used
+        )
+
+    async def retrieve_usage(self, user_id: UUID) -> TokenQuotaUsage:
+        return await self._middleware.retrieve_usage(
+            key=generate_daily_token_quota_key(user_id)
         )
