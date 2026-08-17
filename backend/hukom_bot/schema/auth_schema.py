@@ -20,6 +20,12 @@ class RevokedToken(BaseModel):
     expires_at: datetime
 
 
+class TokenQuotaUsage(BaseModel):
+    quota: int
+    remaining: int
+    ttl: int
+
+
 class JWTPayload(BaseModel):
     jti: UUID = Field(default_factory=uuid4)
     provider_id: str
