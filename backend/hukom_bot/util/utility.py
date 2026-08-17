@@ -1,3 +1,4 @@
+from uuid import UUID
 from pathlib import Path
 from fastapi import Request
 
@@ -56,3 +57,7 @@ def get_client_ip(request: Request, trusted_proxies: bool = True) -> str | None:
         return request.client.host
 
     return None
+
+
+def generate_daily_token_quota_key(user_id: UUID) -> str:
+    return f"token:user:{user_id}:daily"

@@ -16,6 +16,7 @@ from backend.hukom_bot.util.case_analysis_version_caster import (
 from backend.hukom_bot.exception.app_exception import NotFoundException
 
 from backend.hukom_bot.util.token_counter import estimate_text_tokens
+from backend.hukom_bot.util.utility import generate_daily_token_quota_key
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class CaseAnalysisOrchistrator:
     ):
         session = CaseAnalysisSessionCreate(user_id=user_id)
 
-        redis_key = self._generate_daily_token_quota_key(user_id)
+        redis_key = generate_daily_token_quota_key(user_id)
 
         estimated_tokens = (
             estimate_text_tokens("\n".join(fact for fact in case_facts))
@@ -171,7 +172,7 @@ class CaseAnalysisOrchistrator:
         temp_new_facts = new_facts or []
         temp_updated_facts = updated_facts or {}
 
-        redis_key = self._generate_daily_token_quota_key(user_id)
+        redis_key = generate_daily_token_quota_key(user_id)
 
         try:
             estimated_tokens = (
@@ -366,7 +367,7 @@ class CaseAnalysisOrchistrator:
 
                 # Reconcile tokens
                 await self._token_quota_service.reconcile_token(
-                    key=self._generate_daily_token_quota_key(user_id),
+                    key=generate_daily_token_quota_key(user_id),
                     actual_tokens_used=total_tokens,
                 )
 
@@ -431,6 +432,3 @@ class CaseAnalysisOrchistrator:
             )
 
         await conn.commit()
-
-    def _generate_daily_token_quota_key(self, user_id: UUID) -> str:
-        return f"token:user:{user_id}:daily"
