@@ -26,6 +26,7 @@ class TokenQuota:
             -- Get current daily usage
             local daily_used = tonumber(redis.call("HGET", key, "used") or "0")
             local daily_reserved = tonumber(redis.call("HGET", key, "reserved") or "0")
+            local daily_remaining_ttl = tonumber(redis.call("TTL", key) or 0)
     
             -- Calculate remaining available quota
             local daily_remaining =
@@ -34,8 +35,9 @@ class TokenQuota:
             -- Check daily quota
             if estimated_tokens > daily_remaining then
                 return {
-                    0, -- allowed = false
+                    0,
                     daily_remaining,
+                    daily_remaining_ttl
                 }
             end
     
@@ -54,8 +56,9 @@ class TokenQuota:
     
             -- Return successful reservation
             return {
-                1, -- allowed = true
+                1,
                 daily_remaining - estimated_tokens,
+                daily_remaining_ttl
             }
             """)
 
@@ -65,10 +68,13 @@ class TokenQuota:
 
         result = response[0]
         remaining = response[1]
+        remaining_ttl = response[2]
 
         if not result or remaining < 0:
             raise RateLimitException(
-                code="TOKEN_QUOTA_ERROR", message="Insifficient remaing tokens"
+                headers={"Retry-At": f"{remaining_ttl}s"},
+                code="TOKEN_QUOTA_ERROR",
+                message="Insufficient remaing tokens",
             )
 
     async def reconcile_token(self, key: str, actual_tokens_used: int):
@@ -132,8 +138,4 @@ class TokenQuota:
             }
             """)
 
-        response = await script(
-            keys=[key], args=[self._daily_quota, actual_tokens_used]
-        )
-
-        # TODO: Decide whether to raise error if result is is an error
+        await script(keys=[key], args=[self._daily_quota, actual_tokens_used])
