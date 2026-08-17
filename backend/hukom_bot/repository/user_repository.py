@@ -3,7 +3,7 @@ from psycopg import AsyncConnection
 
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.user_model import User
-from backend.hukom_bot.schema.user_schema import UserCreate, UserSearch
+from backend.hukom_bot.schema.user_schema import UserCreate, UserSearch, UserUpdate
 from backend.hukom_bot.util.user_caster import UserCaster
 
 
@@ -70,6 +70,60 @@ class UserRepository:
             created_at=user_created_at,
             updated_at=user_updated_at,
         )
+
+    async def update(
+        self,
+        user: UserUpdate,
+        connection: AsyncConnection = None,
+    ):
+        if not user.model_dump(exclude={"id"}, exclude_none=True):
+            return
+
+        if connection is not None:
+            await self._update_implement(connection, user)
+            return
+
+        async with self._database.connection() as conn:
+            try:
+                await self._update_implement(conn, user)
+                await conn.commit()
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
+
+    async def _update_implement(self, conn: AsyncConnection, user: UserUpdate):
+        query, params = self._build_update_query(user)
+
+        async with conn.cursor() as cur:
+            await cur.execute(query, params)
+
+    def _build_update_query(self, user: UserUpdate) -> tuple[str, tuple]:
+        set_clauses = []
+        values = {"id": user.id}
+
+        if user.first_name:
+            set_clauses.append("first_name = %(first_name)s")
+            values["first_name"] = user.first_name
+        if user.last_name:
+            set_clauses.append("last_name = %(last_name)s")
+            values["last_name"] = user.last_name
+        if user.profile_picture:
+            set_clauses.append("profile_picture = %(profile_picture)s")
+            values["profile_picture"] = user.profile_picture
+        if user.role:
+            set_clauses.append("role = %(role)s")
+            values["role"] = user.role.value
+
+        if not set_clauses:
+            raise RuntimeError("No fields to update")
+
+        query = f"""
+            UPDATE users 
+            SET {", ".join(set_clauses)}
+            WHERE id = %(id)s
+        """
+
+        return query, values
 
     async def get_by_provider_id(
         self, provider_id: str, connection: AsyncConnection = None
