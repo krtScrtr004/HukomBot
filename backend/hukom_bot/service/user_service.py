@@ -1,20 +1,21 @@
 from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
-from backend.hukom_bot.schema.user_schema import UserCreate
+from backend.hukom_bot.schema.user_schema import UserCreate, UserUpdate
 from backend.hukom_bot.repository.user_repository import UserRepository
 
 
 class UserService:
     def __init__(self, db: Database, user_repo: UserRepository):
-        self._id = db
+        self._db = db
         self._user_repo = user_repo
-        
+
     # Repository ===========================
-        
+
     async def create(self, user: UserCreate, connection: AsyncConnection = None):
-        return await self._user_repo.create(
-            user=user, connection=connection
-        )
+        return await self._user_repo.create(user=user, connection=connection)
+
+    async def update(self, user: UserUpdate, connection: AsyncConnection = None):            
+        await self._user_repo.update(user=user, connection=connection)
 
     async def get_by_provider_id(
         self, provider_id: str, connection: AsyncConnection = None
