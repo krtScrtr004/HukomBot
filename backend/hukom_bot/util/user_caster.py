@@ -1,6 +1,6 @@
 from datetime import datetime
 from backend.hukom_bot.model.user_model import User
-from backend.hukom_bot.schema.user_schema import UserCreate, UserResponse
+from backend.hukom_bot.schema.user_schema import UserCreate, UserUpdateBase, UserUpdate, UserResponse
 
 
 class UserCaster:
@@ -23,6 +23,15 @@ class UserCaster:
             updated_at=updated_at,
         )
 
+    @staticmethod
+    def update_base_to_update(id, UUID, user: UserUpdateBase) -> UserUpdate:
+        return UserUpdate(
+            id=id,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            profile_picture=user.profile_picture,
+            role=user.role
+        )
 
     @staticmethod
     def base_to_response(user: User) -> UserResponse:
