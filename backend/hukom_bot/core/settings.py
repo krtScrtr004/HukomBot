@@ -66,5 +66,9 @@ class Settings(BaseSettings):
     TOKEN_QUOTA_DAILY: int
     TOKEN_QUOTA_WINDOW: int
 
+    CLOUDINARY_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_SECRET: str
+
 
 settings = Settings()
