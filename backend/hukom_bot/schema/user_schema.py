@@ -1,5 +1,6 @@
 from __future__ import annotations
 from uuid import UUID, uuid4
+from fastapi import UploadFile
 from pydantic import BaseModel, model_validator, EmailStr, Field
 from backend.hukom_bot.model.user_model import UserBase
 from backend.hukom_bot.enum.user_role import UserRole
@@ -16,7 +17,6 @@ class UserCreate(UserBase):
 class UserUpdateBase(BaseModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=255)
     last_name: str | None = Field(default=None, min_length=1, max_length=255)
-    profile_picture: str | None = Field(default=None)
     role: UserRole | None = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True}
@@ -24,6 +24,11 @@ class UserUpdateBase(BaseModel):
 
 class UserUpdate(UserUpdateBase):
     id: UUID
+    profile_picture: str | None = Field(default=None)
+
+
+class UserUpdatePayload(UserUpdateBase):
+    profile_picture: UploadFile | None = Field(default=None)
 
 
 class UserSearch(PaginatableMixin):

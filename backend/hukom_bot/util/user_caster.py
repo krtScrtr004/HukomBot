@@ -25,7 +25,7 @@ class UserCaster:
         )
 
     @staticmethod
-    def update_base_to_update(id: UUID, user: UserUpdateBase) -> UserUpdate:
+    def update_payload_to_update(id: UUID, user: UserUpdateBase) -> UserUpdate:
         return UserUpdate(
             id=id,
             first_name=user.first_name,
