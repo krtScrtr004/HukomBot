@@ -24,7 +24,6 @@ from backend.hukom_bot.schema.response_schema import ErrorResponse, ErrorPayload
 from backend.hukom_bot.exception.app_exception import *
 from backend.hukom_bot.exception.chat_exception import ChatException
 from backend.hukom_bot.exception.chunk_exception import ChunkFileException
-from backend.hukom_bot.exception.document_exception import InvalidDocumentTypeException
 from backend.hukom_bot.exception.oauth_exception import (
     OAuthException,
     GoogleEmailNotVerifiedException,
@@ -353,7 +352,7 @@ custom_exceptions = [
     ChunkFileException,
     ForbiddenException,
     GoogleEmailNotVerifiedException,
-    InvalidDocumentTypeException,
+    InvalidFileTypeException,
     NotFoundException,
     OAuthException,
     RateLimitException,
