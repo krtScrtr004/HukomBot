@@ -1,22 +1,17 @@
 import magic
 import hashlib
 import logging
-
 from pathlib import Path
 from uuid import UUID, uuid4
 from psycopg import AsyncConnection
-
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
-
 from backend.hukom_bot.model.document_model import Document
 from backend.hukom_bot.schema.document_schema import *
-
 from backend.hukom_bot.repository.document_repository import DocumentRepository
-
 from backend.hukom_bot.service.embedding_service import EmbeddingService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
-
 from backend.hukom_bot.exception.app_exception import NotFoundException
+from backend.hukom_bot.util.file_utilities import is_valid_file_type
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +62,9 @@ class DocumentService:
         return upload_status
 
     def is_valid_file_type(self, contents: bytes) -> bool:
-        mime = magic.from_buffer(contents, mime=True)
-        return mime in DocumentService.ALLOWED_FILE_TYPES
+        return is_valid_file_type(
+            content=contents, allowed_file_types=DocumentService.ALLOWED_FILE_TYPES
+        )
 
     def build_metadata(
         self,
