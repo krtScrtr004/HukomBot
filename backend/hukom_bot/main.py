@@ -19,11 +19,19 @@ from backend.hukom_bot.api.v1.endpoint.document import document_api_router
 from backend.hukom_bot.middleware.timer import TimerMiddleware
 from backend.hukom_bot.middleware.request_identifier import RequestIdentifierMiddleware
 
-from backend.hukom_bot.schema.response_schema import ErrorResponse, ErrorPayload, ErrorDetail
+from backend.hukom_bot.schema.response_schema import (
+    ErrorResponse,
+    ErrorPayload,
+    ErrorDetail,
+)
 
 from backend.hukom_bot.exception.app_exception import *
 from backend.hukom_bot.exception.chat_exception import ChatException
 from backend.hukom_bot.exception.chunk_exception import ChunkFileException
+from backend.hukom_bot.exception.file_exception import (
+    InvalidFileTypeException,
+    FileSizeTooLargeException,
+)
 from backend.hukom_bot.exception.oauth_exception import (
     OAuthException,
     GoogleEmailNotVerifiedException,
@@ -78,7 +86,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 
@@ -109,10 +117,10 @@ async def handle_custom_exception(request: Request, exc: Exception):
     code = getattr(exc, "code", "APPLICATION_ERROR")
     status_code = getattr(exc, "status_code", 400)
     message = getattr(exc, "message", "An application rule was violated.")
-    
+
     if isinstance(headers, dict):
         headers = {k: str(v) for k, v in headers.items()}
-    
+
     error_details = [ErrorDetail(issue=iss) for iss in getattr(exc, "details", [])]
 
     response_payload = ErrorResponse(
@@ -350,6 +358,7 @@ custom_exceptions = [
     AppException,
     ChatException,
     ChunkFileException,
+    FileSizeTooLargeException,
     ForbiddenException,
     GoogleEmailNotVerifiedException,
     InvalidFileTypeException,

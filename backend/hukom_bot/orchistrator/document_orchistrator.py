@@ -13,7 +13,8 @@ from backend.hukom_bot.service.chunk_service import ChunkService
 from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.service.embedding_service import EmbeddingService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
-from backend.hukom_bot.exception.app_exception import NotFoundException, InvalidFileTypeException
+from backend.hukom_bot.exception.app_exception import NotFoundException
+from backend.hukom_bot.exception.file_exception import InvalidFileTypeException
 from backend.hukom_bot.util.document_caster import DocumentCaster
 
 logger = logging.getLogger(__name__)
