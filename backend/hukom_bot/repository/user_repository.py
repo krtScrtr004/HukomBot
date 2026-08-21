@@ -1,6 +1,6 @@
+from uuid import UUID
 from psycopg import errors
 from psycopg import AsyncConnection
-
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.user_schema import UserCreate, UserSearch, UserUpdate
@@ -124,6 +124,42 @@ class UserRepository:
         """
 
         return query, values
+
+    async def get_by_id(
+        self, id: UUID, connection: AsyncConnection = None
+    ):
+        if not id:
+            return None
+
+        if connection is not None:
+            return await self._get_by_id_implement(connection, id)
+
+        async with self._database.connection() as conn:
+            try:
+                result = await self._get_by_id_implement(conn, id)
+                await conn.commit()
+                return result
+            except errors.OperationalError as ex:
+                await conn.rollback()
+                raise
+
+    async def _get_by_id_implement(
+        self, conn: AsyncConnection, id: UUID
+    ) -> User | None:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT *
+                FROM users
+                WHERE id = %s
+                LIMIT 1
+                """,
+                (id,),
+            )
+
+            row = await cur.fetchone()
+
+        return User.model_validate(row) if row is not None else None
 
     async def get_by_provider_id(
         self, provider_id: str, connection: AsyncConnection = None
