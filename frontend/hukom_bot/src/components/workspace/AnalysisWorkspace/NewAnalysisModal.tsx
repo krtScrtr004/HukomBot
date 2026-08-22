@@ -5,7 +5,7 @@ import {
 	CASE_FACT_MAX_LENGTH,
 	CASE_FACT_MIN_LENGTH,
 } from '@/types/workspace';
-import FactTextArea from '../shared/FactTextArea';
+import FactTextArea from '../shared/FactTextarea';
 import CharacterCounter from '@/components/ui/CharacterCounter';
 import ErrorText from '@/components/ui/ErrorText';
 

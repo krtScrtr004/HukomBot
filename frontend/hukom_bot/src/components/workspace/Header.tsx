@@ -9,6 +9,7 @@ interface HeaderProps {
 	onToggleVersionPanel?: () => void;
 	onSignOut?: () => void;
 	onUploadClick?: () => void;
+	onSettingsClick?: () => void;
 }
 
 export default function Header({
@@ -18,6 +19,7 @@ export default function Header({
 	onToggleVersionPanel,
 	onSignOut,
 	onUploadClick,
+	onSettingsClick,
 }: HeaderProps) {
 	return (
 		<header
@@ -56,13 +58,6 @@ export default function Header({
 					</button>
 				) : null}
 
-				{/* User name */}
-				{userName && (
-					<span className="hidden sm:inline text-sm text-text-secondary truncate max-w-48">
-						{userName}
-					</span>
-				)}
-
 				{/* Analysis version list toggle button */}
 				<button
 					type="button"
@@ -78,19 +73,6 @@ export default function Header({
 
 				{/* Theme toggle button */}
 				<ThemeToggle className="right-10 rounded-sm hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" />
-
-				{/* Logout button */}
-				<button
-					type="button"
-					onClick={onSignOut}
-					className="p-2 rounded-sm text-text-secondary hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-					aria-label="Sign out"
-				>
-					<i
-						className="bi bi-box-arrow-right text-xl"
-						aria-hidden="true"
-					/>
-				</button>
 			</section>
 		</header>
 	);

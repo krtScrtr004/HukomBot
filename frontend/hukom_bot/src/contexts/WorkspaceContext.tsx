@@ -426,6 +426,7 @@ interface WorkspaceContextValue {
 	deleteSelectedSession: () => Promise<void>;
 	requestDeleteSession: (sessionId: string) => void;
 	handleApiError: (error: unknown, context: string) => void;
+	refreshUser: () => Promise<void>;
 }
 
 // Create the workspace context
@@ -1284,6 +1285,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 		});
 	}, [blocker]);
 
+	const refreshUser = useCallback(async () => {
+		try {
+			const user = await getCurrentUser();
+			dispatch({ type: 'SET_USER', user });
+		} catch (error) {
+			handleApiError(error, 'refreshing user profile');
+		}
+	}, [handleApiError]);
+
 	const value: WorkspaceContextValue = {
 		state,
 		isDirty,
@@ -1313,6 +1323,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 		deleteSelectedSession,
 		requestDeleteSession,
 		handleApiError,
+		refreshUser,
 	};
 
 	return (

@@ -100,6 +100,13 @@ export interface UserResponse {
 	last_name: string;
 	email: string;
 	role: UserRole;
+	profile_picture?: string;
+}
+
+export interface UserTokenUsageResponse {
+	quota: number;
+	remaining: number;
+	ttl: number;
 }
 
 export interface UploadDocumentPayload {
