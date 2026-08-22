@@ -48,3 +48,4 @@ class UserResponse(BaseModel):
     last_name: str
     email: EmailStr
     role: UserRole
+    profile_picture: str | None
