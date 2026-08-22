@@ -1,6 +1,5 @@
 import cloudinary
 import cloudinary.uploader
-from fastapi import UploadFile
 from backend.hukom_bot.core.settings import settings
 from backend.hukom_bot.schema.util_schema import CloudinaryUploadResponse
 
@@ -12,8 +11,8 @@ cloudinary.config(
 )
 
 
-def upload_to_cloudinary(file: UploadFile) -> CloudinaryUploadResponse:
-    result = cloudinary.uploader.upload(file.file, folder="hukom_bot/images")
+def upload_to_cloudinary(file: bytes) -> CloudinaryUploadResponse:
+    result = cloudinary.uploader.upload(file, folder="hukom_bot/images")
     return CloudinaryUploadResponse.model_validate(result, extra="ignore")
 
 
