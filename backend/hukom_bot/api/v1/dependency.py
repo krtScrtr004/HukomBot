@@ -48,10 +48,11 @@ from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.service.token_quota_service import TokenQuotaService
 
+from backend.hukom_bot.orchistrator.user_orchistrator import UserOrchistrator
+from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchistrator
 from backend.hukom_bot.orchistrator.case_analysis_orchistrator import (
     CaseAnalysisOrchistrator,
 )
-from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchistrator
 
 from backend.hukom_bot.exception.app_exception import UnauthorizedException
 
@@ -285,6 +286,13 @@ def get_document_service(
 # ============================================================================
 
 
+def get_user_orchistrator(
+    db: Database = Depends(get_db),
+    user_service: UserService = Depends(get_user_service),
+) -> UserOrchistrator:
+    return UserOrchistrator(db=db, user_service=user_service)
+
+
 def get_document_orchestrator(
     chunk_service: ChunkService = Depends(get_chunk_service),
     document_service: DocumentService = Depends(get_document_service),
@@ -302,12 +310,12 @@ def get_document_orchestrator(
 def get_case_analysis_orchestrator(
     db: Database = Depends(get_db),
     case_analysis_service: CaseAnalysisService = Depends(get_case_analysis_service),
-    token_quota_service: TokenQuotaService = Depends(get_token_quota_service)
+    token_quota_service: TokenQuotaService = Depends(get_token_quota_service),
 ) -> CaseAnalysisOrchistrator:
     return CaseAnalysisOrchistrator(
         db=db,
         case_analysis_service=case_analysis_service,
-        token_quota_service=token_quota_service
+        token_quota_service=token_quota_service,
     )
 
 
