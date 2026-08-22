@@ -36,7 +36,9 @@ async def get_daily_token_usage(
     service: Annotated[TokenQuotaService, Depends(get_token_quota_service)],
     _=Depends(rate_limit(limit=60, window=60)),
 ):
-    return await service.retrieve_usage(user.id)
+    result = await service.retrieve_usage(user.id)
+
+    return SuccessResponse(message="User token usage retrive successfully", data=result)
 
 
 @user_api_router.patch("/{user_id}")
