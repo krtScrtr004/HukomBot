@@ -1,7 +1,10 @@
 import logging
 from uuid import UUID
+from datetime import datetime
 from fastapi import Request
 from fastapi.responses import RedirectResponse
+
+from backend.hukom_bot.service.redirect_service import redirect_service
 
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.enum.user_role import UserRole
@@ -10,9 +13,10 @@ from backend.hukom_bot.enum.oauth_provider import OAuthProvider
 from backend.hukom_bot.model.user_model import User
 
 from backend.hukom_bot.schema.user_schema import UserCreate
-from backend.hukom_bot.schema.auth_schema import AuthUser
+from backend.hukom_bot.schema.auth_schema import AuthUser, JWTPayload, RevokedToken
 
 from backend.hukom_bot.service.jwt_service import JWTService
+from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.exception.app_exception import UnauthorizedException
 
@@ -21,15 +25,32 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(
-        self, db: Database, user_service: UserService, jwt_service: JWTService
+        self,
+        db: Database,
+        user_service: UserService,
+        revoked_token_service: RevokedTokenService,
+        jwt_service: JWTService,
     ):
         self._db = db
         self._user_service = user_service
+        self._revoked_token_service = revoked_token_service
         self._jwt_service = jwt_service
 
-    async def authenticate(self, request_id: UUID, token: str):
+    async def authenticate(self, request_id: UUID, token: str) -> User:
         decoded = self._jwt_service.verify(token)
-        provider_id = decoded.get("provider_id")
+        payload = JWTPayload.model_validate(decoded)
+
+        # Check if the token has been revoked
+        jti = payload.jti
+        is_revoked = await self._revoked_token_service.is_revoked(jti)
+        if is_revoked:
+            raise UnauthorizedException(
+                message="You are not authorized to perform this action",
+                code="REVOKED_TOKEN",
+                details=[f"Token with jti: {jti} has been revoked"],
+            )
+
+        provider_id = payload.provider_id
         if not decoded or not provider_id:
             raise UnauthorizedException(
                 message="You are not authorized to perform this action",
@@ -74,26 +95,55 @@ class AuthService:
                 await conn.rollback()
                 raise
 
-    async def redirect_authorized(self, request: Request) -> RedirectResponse | None:
+    def redirect_authorized(self, request: Request, token: str) -> RedirectResponse | None:
         try:
-            token = request.cookies.get("token")
-            request_id = request.state.request_id
+            if not token:
+                raise UnauthorizedException("Token not found")
 
-            if not token or not request_id:
-                return None
-
-            user = await self.authenticate(request_id, token)
-            if not user:
-                return None
-
-            redirect = RedirectResponse("http://127.0.0.1:8000/docs", status_code=303)
-            redirect.set_cookie(key="token", value=token, httponly=True)
-            return redirect
-
-        except Exception:
-            request.session.clear()
-            redirect = RedirectResponse(
-                url=str(request.url_for("login_page")), status_code=303
+            url = redirect_service.get_redirect_url("workspace")
+            redirect = RedirectResponse(url=url)
+            # Set jwt on cookie
+            redirect.set_cookie(
+                key="token",
+                value=token,
+                httponly=True,
+                secure=True,  # REQUIRED when samesite="none" — cookie won't be sent otherwise
+                samesite="none",  # REQUIRED for cross-domain — "lax" (the default) blocks this
+                domain=None,
             )
-            redirect.delete_cookie(key="token", path="/", httponly=True)
+            
             return redirect
+        except Exception:
+            return self.redirect_unauthorized(request)
+
+    def redirect_unauthorized(
+        self, request: Request, error_code: str = "INTERNAL_SERVER_ERROR"
+    ) -> RedirectResponse:
+        request.session.clear()
+        url = redirect_service.get_redirect_url(
+            "login", payload={"error_code": error_code}
+        )
+        redirect = RedirectResponse(url=url)
+        redirect.delete_cookie(key="token", path="/", httponly=True)
+        return redirect
+
+    async def logout(self, request: Request) -> RedirectResponse:
+        # Rovoke the token
+        token = request.cookies.get("token")
+        if token:
+            decoded = self._jwt_service.verify(token)
+            payload = JWTPayload.model_validate(decoded)
+            jti = payload.jti
+            expiration_time = payload.exp
+            await self._revoked_token_service.add_revoked_token(
+                RevokedToken(
+                    jti=jti, expires_at=datetime.fromtimestamp(expiration_time)
+                )
+            )
+
+        request.session.clear()
+        redirect = RedirectResponse(
+            url=redirect_service.get_redirect_url("login"), status_code=303
+        )
+        redirect.delete_cookie(key="token", path="/", httponly=True)
+        return redirect

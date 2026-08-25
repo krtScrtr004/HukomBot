@@ -9,4 +9,6 @@ class ChatException(AppException):
         code: str = "CHAT_PIPELINE_FAILED",
         details: list[str] = [],
     ):
-        super().__init__(message, status_code, code, details)
+        super().__init__(
+            messsage=message, status_code=status_code, code=code, details=details
+        )

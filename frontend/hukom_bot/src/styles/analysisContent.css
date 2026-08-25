@@ -1,0 +1,176 @@
+/* ---------------------------------------------------------------
+   Analysis Answer Styling – scoped to #analysis-answer
+   --------------------------------------------------------------- */
+
+/* Base container – ensure the content fills its parent and inherits the prose styles */
+#analysis-answer {
+	background: var(--color-surface-elevated);
+	border-radius: var(--radius-md);
+	padding: 1.5rem;
+	box-shadow: var(--shadow-md);
+	color: var(--color-text-primary);
+	line-height: var(--leading-relaxed);
+	font-family: var(--font-sans);
+	border: 1px solid var(--color-border-muted);
+	transition:
+		background 0.3s ease,
+		color 0.3s ease,
+		border-color 0.3s ease;
+}
+
+/* Headings – use a harmonic HSL palette with subtle gradient */
+#analysis-answer h2 {
+	font-size: var(--text-lg);
+	font-weight: 700;
+	margin-top: 1.5rem;
+	margin-bottom: 0.75rem;
+	background-clip: text;
+	transition: background 0.4s ease;
+}
+
+#analysis-answer h3 {
+	font-size: var(--text-base);
+	font-weight: 600;
+	margin-top: 1.2rem;
+	margin-bottom: 0.6rem;
+	color: var(--color-secondary);
+}
+
+#analysis-answer h4 {
+	font-size: var(--text-base);
+	font-weight: 600;
+	margin-top: 1rem;
+	margin-bottom: 0.5rem;
+	color: var(--color-text-primary);
+}
+
+/* Paragraphs – comfortable reading line‑height and subtle fade‑in */
+#analysis-answer p {
+	margin: 0.8rem 0;
+	font-size: var(--text-sm);
+	color: inherit;
+	opacity: 0.95;
+	transition: opacity 0.3s ease;
+}
+
+#analysis-answer p:hover {
+	opacity: 1;
+}
+
+/* Lists – custom bullet styling */
+#analysis-answer ul {
+	list-style: none;
+	margin-left: 1.2rem;
+	padding-left: 0;
+}
+
+#analysis-answer ul li {
+	position: relative;
+	margin-bottom: 0.5rem;
+	padding-left: 1.2rem;
+}
+
+#analysis-answer ul li::before {
+	content: '•';
+	position: absolute;
+	left: 0;
+	color: var(--color-primary);
+	font-weight: 600;
+}
+
+#analysis-answer ol {
+	margin-left: 1.5rem;
+	padding-left: 0;
+}
+
+#analysis-answer ol li {
+	margin-bottom: 0.5rem;
+}
+
+/* Horizontal rule – elegant thin line */
+#analysis-answer hr {
+	border: none;
+	height: 1px;
+	background: linear-gradient(
+		to right,
+		transparent,
+		var(--color-border-muted),
+		transparent
+	);
+	margin: 1.5rem 0;
+}
+
+/* Blockquote – highlighted with left border */
+#analysis-answer blockquote {
+	border-left: 4px solid var(--color-accent);
+	padding-left: 1rem;
+	margin: 1rem 0;
+	color: var(--color-text-secondary);
+	font-style: italic;
+}
+
+/* Code blocks – keep the styling you already set in the component but add a sleek background */
+#analysis-answer pre {
+	background: var(--color-surface-muted);
+	border: 1px solid var(--color-border-muted);
+	border-radius: var(--radius-sm);
+	padding: 0.8rem;
+	overflow-x: auto;
+}
+
+#analysis-answer code {
+	background: var(--color-hover);
+	padding: 0.1rem 0.3rem;
+	border-radius: var(--radius-xs);
+	font-family: var(--font-mono);
+	color: var(--color-text-primary);
+}
+
+/* Tables – modern minimal look */
+#analysis-answer table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 1rem 0;
+	background: var(--color-surface);
+}
+
+#analysis-answer th,
+#analysis-answer td {
+	border: 1px solid var(--color-border-muted);
+	padding: 0.6rem 0.8rem;
+	text-align: left;
+}
+
+#analysis-answer th {
+	background: var(--color-surface-muted);
+	font-weight: 600;
+}
+
+/* Responsive tweaks – ensure readability on small screens */
+@media (max-width: 600px) {
+	#analysis-answer {
+		padding: 1rem;
+	}
+	#analysis-answer h2 {
+		font-size: 1.5rem;
+	}
+	#analysis-answer h3 {
+		font-size: 1.3rem;
+	}
+}
+
+/* Animation – fade‑in on load for a polished feel */
+#analysis-answer {
+	animation: fadeIn 0.45s ease-out forwards;
+	opacity: 0;
+}
+
+html[data-theme='dark'] #analysis-answer {
+	box-shadow: var(--shadow-lg);
+}
+
+@keyframes fadeIn {
+	to {
+		opacity: 1;
+	}
+}

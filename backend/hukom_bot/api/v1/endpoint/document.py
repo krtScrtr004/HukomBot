@@ -16,6 +16,7 @@ from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchist
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
+    rate_limit,
     get_document_service,
     get_document_orchestrator,
 )
@@ -29,6 +30,7 @@ async def upload_document(
     document_type: Annotated[LegalDocumentType, Form(...)],
     user: Annotated[User, Depends(verify_user)],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    _=Depends(rate_limit(limit=5, window=60))
 ):
     result = await orchistrator.create_pending(
         user_id=user.id, file=file, document_type=document_type
@@ -44,6 +46,7 @@ async def approve_document(
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[DocumentService, Depends(get_document_service)],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    _=Depends(rate_limit(limit=10, window=60))
 ):
     result = await orchistrator.approve_document_upload(document_id, payload)
     document = result.data["document"]
@@ -59,6 +62,7 @@ async def get_document_upload_status(
     document_id: UUID,
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[DocumentService, Depends(get_document_service)],
+    _=Depends(rate_limit(limit=60, window=60))
 ):
     status = await service.get_upload_status(document_id)
     return SuccessResponse(

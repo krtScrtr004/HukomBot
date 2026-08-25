@@ -2,12 +2,17 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from backend.hukom_bot.schema.mixin import PaginatableMixin
+from backend.hukom_bot.schema.mixin import PaginatableMixin, SearchableMixin
 from backend.hukom_bot.enum.case_analysis_answer_format import CaseAnalysisAnswerFormat
 
 
 class CaseAnalysisGetBySessionId(PaginatableMixin):
     case_analysis_session_id: UUID
+    user_id: UUID | None = Field(default=None)
+
+
+class CaseAnalysisGetManyBySessionId(PaginatableMixin):
+    case_analysis_session_ids: list[UUID]
     user_id: UUID | None = Field(default=None)
 
 
@@ -40,6 +45,12 @@ class CaseAnalysisSessionCreate(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
+class CaseAnalysisSessionPreviewSearch(SearchableMixin, PaginatableMixin):
+    user_id: UUID
+
+    # Add methods here
+
+
 class CaseAnalysisSessionPreviewResponse(BaseModel):
     case_analysis_session_id: UUID
     latest_version_id: UUID
@@ -54,7 +65,7 @@ class CaseAnalysisSessionPreviewResponse(BaseModel):
 
 class CaseFactCreate(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    session_id: UUID
+    case_analysis_session_id: UUID
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
@@ -63,15 +74,23 @@ class CaseFactCreate(BaseModel):
 # Case Fact Version ==========================================
 
 
-class CaseFactVersionCreate(BaseModel):
+class CaseFactVersionCreateBase(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    case_fact_id: UUID
     version_number: int = Field(default=1)
     fact: str
     is_deleted: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.now)
 
+
+class CaseFactVersionCreate(CaseFactVersionCreateBase):
+    id: UUID = Field(default_factory=uuid4)
+    case_fact_id: UUID
+
     model_config = {"arbitrary_types_allowed": True}
+    
+    
+class CaseFactVersionCreateUpdate(CaseFactVersionCreateBase):
+    previous_id: UUID
 
 
 class CaseFactVersionUpdate(BaseModel):
@@ -83,12 +102,8 @@ class CaseFactVersionUpdate(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-class CaseFactVersionGetManyBySessionIds(PaginatableMixin):
-    case_analysis_session_ids: list[UUID]
-    user_id: UUID | None = Field(default=None)
-
-
 class CaseFactVersionResponse(BaseModel):
+    id: UUID
     case_fact_id: UUID
     case_fact_version_id: UUID
     version_number: int

@@ -1,17 +1,19 @@
 import { useTheme } from '@/contexts/ThemeContext';
 
-export default function ThemeToggle() {
+interface ThemeToggleProps {
+	className?: string;
+}
+
+export default function ThemeToggle({ className }: ThemeToggleProps) {
 	const { theme, toggleTheme } = useTheme();
 
 	return (
 		<>
 			<button
-				className="w-10 h-10 absolute top-5 right-5 rounded-full bg-background border border-primary flex items-center justify-center text-text-primary cursor-pointer transition-colors hover:bg-primary hover:text-background"
+				className={`w-10 h-10 flex items-center justify-center text-text-primary cursor-pointer transition-colors  ${className}`}
 				onClick={toggleTheme}
 			>
-				<i
-					className={theme === 'light' ? 'bi bi-moon' : 'bi bi-sun'}
-				></i>
+				<i className={theme === 'light' ? 'bi bi-moon' : 'bi bi-sun'} />
 			</button>
 		</>
 	);

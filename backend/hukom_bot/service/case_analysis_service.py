@@ -9,13 +9,14 @@ from backend.hukom_bot.model.chunk_model import Chunk
 from backend.hukom_bot.model.case_analysis_model import *
 from backend.hukom_bot.schema.chunk_schema import ChunkSearchKeyword, ChunkSearchVector
 from backend.hukom_bot.schema.case_analysis_schema import *
+from backend.hukom_bot.schema.chatbot_schema import LLMResponse
 from backend.hukom_bot.service.chatbot_service import ChatbotService
 from backend.hukom_bot.service.chunk_service import ChunkService
 from backend.hukom_bot.service.embedding_service import EmbeddingService
 from backend.hukom_bot.service.reranker_service import RerankerService
 from backend.hukom_bot.repository.case_fact_repository import CaseFactRepository
 from backend.hukom_bot.repository.case_analysis_session_repository import (
-    CaseAnalysisSessionRepository
+    CaseAnalysisSessionRepository,
 )
 from backend.hukom_bot.repository.case_fact_version_repository import (
     CaseFactVersionRepository,
@@ -29,7 +30,9 @@ from backend.hukom_bot.repository.case_analysis_version_repository import (
 from backend.hukom_bot.repository.case_analysis_version_fact_repository import (
     CaseAnalysisVersionFactRepository,
 )
-from backend.hukom_bot.util.case_analysis_version_caster import CaseAnalysisVersionCaster
+from backend.hukom_bot.util.case_analysis_version_caster import (
+    CaseAnalysisVersionCaster,
+)
 from backend.hukom_bot.exception.app_exception import NotFoundException
 from backend.hukom_bot.exception.chat_exception import ChatException
 
@@ -143,7 +146,7 @@ class CaseAnalysisService:
 
     async def create_updated_fact_versions(
         self,
-        case_fact_versions: list[CaseFactVersionCreate],
+        case_fact_versions: list[CaseFactVersionCreateUpdate],
         connection: AsyncConnection = None,
     ):
         return await self._case_fact_version_repo.create_updated_many(
@@ -157,6 +160,9 @@ class CaseAnalysisService:
         connection: AsyncConnection = None,
     ):
         await self._case_fact_version_repo.update_many(fact_versions, connection)
+
+    async def delete_session(self, id: UUID, connection: AsyncConnection = None):
+        await self._case_analysis_session_repo.delete(id=id, connection=connection)
 
     async def delete_case_facts(
         self, ids: list[UUID], connection: AsyncConnection = None
@@ -175,19 +181,17 @@ class CaseAnalysisService:
             param=param, connection=connection
         )
 
+    async def get_latest_analysis_version_by_session_ids(
+        self, param: CaseAnalysisGetManyBySessionId, connection: AsyncConnection = None
+    ):
+        return await self._case_analysis_version_repo.get_latest_by_many_session_id(
+            param=param, connection=connection
+        )
+
     async def get_latest_fact_version_by_session_id(
         self, param: CaseAnalysisGetBySessionId, connection: AsyncConnection = None
     ):
         return await self._case_fact_version_repo.get_latest_by_session_id(
-            param=param, connection=connection
-        )
-
-    async def get_latest_fact_version_by_session_ids(
-        self,
-        param: CaseFactVersionGetManyBySessionIds,
-        connection: AsyncConnection = None,
-    ):
-        return await self._case_fact_version_repo.get_latest_by_session_ids(
             param=param, connection=connection
         )
 
@@ -206,10 +210,14 @@ class CaseAnalysisService:
         return await self._case_analysis_version_repo.get_latest_by_user_id(
             param=param, connection=connection
         )
-        
-    async def delete_session(self, id: UUID, connection: AsyncConnection = None):
-        await self._case_analysis_session_repo.delete(
-            id=id, connection=connection
+
+    async def search_session(
+        self,
+        param: CaseAnalysisSessionPreviewSearch,
+        connection: AsyncConnection = None,
+    ) -> list[CaseAnalysisSession]:
+        return await self._case_analysis_session_repo.search(
+            param=param, connection=connection
         )
 
     # Others ====================
@@ -225,29 +233,73 @@ class CaseAnalysisService:
 
     async def get_latest_session_analyses_preview(self, param: CaseAnalysisGetByUserId):
         async with self._db.connection() as conn:
+            # Retrieve all user sessions
             sessions = await self._case_analysis_session_repo.get_by_user_id(
                 param=CaseAnalysisGetByUserId(user_id=param.user_id),
                 connection=conn,
             )
-                        
+            if not sessions:
+                return []
+
+            # Retrieve te latest versions of each user sessions
             latest_analysis_version_sessions = (
-                await self.get_latest_analysis_version_by_user_id(param=param, connection=conn)
+                await self.get_latest_analysis_version_by_user_id(
+                    param=param, connection=conn
+                )
             )
 
-            # TODO: Optimize this
+            # Build a lookup map of sessions by id
+            sessions_map = {s.id: s for s in sessions}
+
             merged = []
             for av in latest_analysis_version_sessions:
-                session_id = av.case_analysis_session_id
-                for ss in sessions:
-                    id = ss.id
-                    if session_id == id:
-                        merged.append(
-                            CaseAnalysisVersionCaster.base_to_session_preview_response(
-                                case_analysis_version=av,
-                                session_created_at=ss.created_at,
-                                session_updated_at=ss.updated_at
-                            )
+                ss = sessions_map.get(av.case_analysis_session_id)
+                if ss is not None:
+                    merged.append(
+                        CaseAnalysisVersionCaster.base_to_session_preview_response(
+                            case_analysis_version=av,
+                            session_created_at=ss.created_at,
+                            session_updated_at=ss.updated_at,
                         )
+                    )
+
+            return merged
+
+    async def search_latest_session_analyses_preview(
+        self, param: CaseAnalysisSessionPreviewSearch
+    ):
+        async with self._db.connection() as conn:
+            # Retrieve sessions based on search query
+            sessions = await self.search_session(param=param, connection=conn)
+            if not sessions:
+                return []
+
+            # Retrieve latest analysis of each sessions
+            latest_analysis_versions = (
+                await self.get_latest_analysis_version_by_session_ids(
+                    CaseAnalysisGetManyBySessionId(
+                        user_id=param.user_id,
+                        case_analysis_session_ids=[session.id for session in sessions],
+                        limit=len(sessions),
+                    ),
+                    connection=conn,
+                )
+            )
+
+            # Build a lookup map of sessions by id
+            sessions_map = {s.id: s for s in sessions}
+
+            merged = []
+            for av in latest_analysis_versions:
+                ss = sessions_map.get(av.case_analysis_session_id)
+                if ss is not None:
+                    merged.append(
+                        CaseAnalysisVersionCaster.base_to_session_preview_response(
+                            case_analysis_version=av,
+                            session_created_at=ss.created_at,
+                            session_updated_at=ss.updated_at,
+                        )
+                    )
 
             return merged
 
@@ -281,6 +333,7 @@ class CaseAnalysisService:
 
         case_facts = [
             CaseFactVersionResponse(
+                id=cfv.id,
                 case_fact_id=cfv.case_fact_id,
                 case_fact_version_id=case_analysis_version.id,
                 version_number=cfv.version_number,
@@ -298,7 +351,7 @@ class CaseAnalysisService:
         case_analysis_session_id: UUID,
         case_facts: list[str],
         answer_format: CaseAnalysisAnswerFormat = CaseAnalysisAnswerFormat.PLAINTEXT,
-    ) -> CaseAnalysisGeneratedAnswer:
+    ) -> LLMResponse[CaseAnalysisGeneratedAnswer]:
         logger.info(
             "Attempting to extract legal issues for case analysis with session id: %s",
             case_analysis_session_id,
@@ -306,7 +359,7 @@ class CaseAnalysisService:
 
         # Extract legal issues from case facts
         legal_issues = await self._chatbot_service.extract_issues(case_facts)
-        if not legal_issues:
+        if not legal_issues.data:
             raise ChatException(
                 code="LLM_SERVICE_ERROR",
                 message="Cannot extract legal issues from provided case facts",
@@ -318,25 +371,27 @@ class CaseAnalysisService:
         )
 
         # Generate queries from legal issues
-        generated_queries = await self._chatbot_service.generate_queries(legal_issues)
-        if not generated_queries:
+        generated_queries = await self._chatbot_service.generate_queries(
+            legal_issues.data
+        )
+        if not generated_queries.data:
             raise ChatException(
                 code="LLM_SERVICE_ERROR",
                 message="Cannot generate queries for legal issues extracted",
             )
 
         # Vector Search
-        vector_results = await self._retrieve_from_vector_search(generated_queries)
+        vector_results = await self._retrieve_from_vector_search(generated_queries.data)
         logger.info(
-            "Fetched %i chunks from vector search for sesssion with id: %s",
+            "Retrieved %i chunks from vector search for sesssion with id: %s",
             len(vector_results),
             case_analysis_session_id,
         )
 
         # Keyword Search
-        keyword_result = await self._retrieve_from_keyword_search(generated_queries)
+        keyword_result = await self._retrieve_from_keyword_search(generated_queries.data)
         logger.info(
-            "Fetched %i chunks from keyword search for sesssion with id: %s",
+            "Retrieved %i chunks from keyword search for sesssion with id: %s",
             len(keyword_result),
             case_analysis_session_id,
         )
@@ -360,7 +415,14 @@ class CaseAnalysisService:
             answer_format=answer_format,
         )
 
-        return final_answer
+        return LLMResponse(
+            total_tokens=(
+                legal_issues.total_tokens
+                + generated_queries.total_tokens
+                + final_answer.total_tokens
+            ),
+            data=final_answer.data,
+        )
 
     def create_case_fact_version_for_update(self, updated_case_facts: dict[UUID, str]):
         case_fact_for_update = []
@@ -368,8 +430,8 @@ class CaseAnalysisService:
             fact = updated_case_facts[id]
             if id is not None and fact is not None:
                 case_fact_for_update.append(
-                    CaseFactVersionCreate(
-                        case_fact_id=id,
+                    CaseFactVersionCreateUpdate(
+                        previous_id=id,
                         fact=fact,
                         is_deleted=False,
                     )

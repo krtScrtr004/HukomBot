@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from psycopg import errors
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from backend.hukom_bot.core.settings import settings
@@ -18,12 +19,19 @@ from backend.hukom_bot.api.v1.endpoint.document import document_api_router
 from backend.hukom_bot.middleware.timer import TimerMiddleware
 from backend.hukom_bot.middleware.request_identifier import RequestIdentifierMiddleware
 
-from backend.hukom_bot.schema.response_schema import ErrorResponse, ErrorPayload, ErrorDetail
+from backend.hukom_bot.schema.response_schema import (
+    ErrorResponse,
+    ErrorPayload,
+    ErrorDetail,
+)
 
 from backend.hukom_bot.exception.app_exception import *
 from backend.hukom_bot.exception.chat_exception import ChatException
 from backend.hukom_bot.exception.chunk_exception import ChunkFileException
-from backend.hukom_bot.exception.document_exception import InvalidDocumentTypeException
+from backend.hukom_bot.exception.file_exception import (
+    InvalidFileTypeException,
+    FileSizeTooLargeException,
+)
 from backend.hukom_bot.exception.oauth_exception import (
     OAuthException,
     GoogleEmailNotVerifiedException,
@@ -72,6 +80,15 @@ app.add_middleware(TimerMiddleware)
 
 app.add_middleware(RequestIdentifierMiddleware)
 
+origins = [settings.BASE_PAGE_URL]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Helper DB/Custom Mappers ============================================
 
@@ -96,9 +113,13 @@ async def handle_custom_exception(request: Request, exc: Exception):
     logger.exception(getattr(exc, "message", str(exc)))
 
     # Fallbacks in case code or status_code are omitted on custom classes
+    headers = getattr(exc, "headers", None)
     code = getattr(exc, "code", "APPLICATION_ERROR")
     status_code = getattr(exc, "status_code", 400)
     message = getattr(exc, "message", "An application rule was violated.")
+
+    if isinstance(headers, dict):
+        headers = {k: str(v) for k, v in headers.items()}
 
     error_details = [ErrorDetail(issue=iss) for iss in getattr(exc, "details", [])]
 
@@ -106,6 +127,7 @@ async def handle_custom_exception(request: Request, exc: Exception):
         error=ErrorPayload(code=code, message=message, details=error_details)
     )
     return JSONResponse(
+        headers=headers,
         status_code=status_code,
         content=response_payload.model_dump(),
     )
@@ -336,11 +358,13 @@ custom_exceptions = [
     AppException,
     ChatException,
     ChunkFileException,
+    FileSizeTooLargeException,
     ForbiddenException,
     GoogleEmailNotVerifiedException,
-    InvalidDocumentTypeException,
+    InvalidFileTypeException,
     NotFoundException,
     OAuthException,
+    RateLimitException,
     UnauthorizedException,
 ]
 for custom_exec in custom_exceptions:

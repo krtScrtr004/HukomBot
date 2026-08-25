@@ -1,9 +1,14 @@
 import logging
 
+from redis.asyncio import Redis
 from fastapi import FastAPI, Request, Depends
 from contextlib import asynccontextmanager
 
+import backend.hukom_bot.core.redis as rd
+
 from backend.hukom_bot.database.database import Database
+
+from backend.hukom_bot.middleware.rate_limiter import RateLimiter
 
 from backend.hukom_bot.repository.case_analysis_session_repository import (
     CaseAnalysisSessionRepository,
@@ -20,7 +25,12 @@ from backend.hukom_bot.repository.case_fact_version_repository import (
 )
 from backend.hukom_bot.repository.chunk_repository import ChunkRepository
 from backend.hukom_bot.repository.document_repository import DocumentRepository
+from backend.hukom_bot.repository.revoked_token_repository import RevokedTokenRepository
 from backend.hukom_bot.repository.user_repository import UserRepository
+
+from backend.hukom_bot.schema.auth_schema import JWTPayload
+
+from backend.hukom_bot.middleware.token_quota import TokenQuota
 
 from backend.hukom_bot.service.auth_service import AuthService
 from backend.hukom_bot.service.case_analysis_service import CaseAnalysisService
@@ -33,12 +43,20 @@ from backend.hukom_bot.service.google_service import GoogleService
 from backend.hukom_bot.service.llm_service import LLMService
 from backend.hukom_bot.service.reranker_service import RerankerService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
+from backend.hukom_bot.service.jwt_service import JWTService
+from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
+from backend.hukom_bot.service.token_quota_service import TokenQuotaService
 
-from backend.hukom_bot.orchistrator.case_analysis_orchistrator import CaseAnalysisOrchistrator
+from backend.hukom_bot.orchistrator.user_orchistrator import UserOrchistrator
 from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchistrator
+from backend.hukom_bot.orchistrator.case_analysis_orchistrator import (
+    CaseAnalysisOrchistrator,
+)
 
 from backend.hukom_bot.exception.app_exception import UnauthorizedException
+
+from backend.hukom_bot.util.utility import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +71,9 @@ async def lifespan(app: FastAPI):
     app.state.db = Database()
     logging.info("Database initialized successfully")
 
+    app.state.redis = rd.get_redis()
+    logging.info("Redis initialized successfully")
+
     app.state.embedding_service = EmbeddingService.initialize()
     logging.info("Embedding model loaded successfully")
 
@@ -60,12 +81,22 @@ async def lifespan(app: FastAPI):
     logging.info("Reranker model loaded successfully")
 
     await app.state.db.open()
+
     yield
+
     await app.state.db.close()
+    logger.info("Database connection shutdown successfully")
+
+    await rd.close_redis()
+    logger.info("Redis connection shutdow successfully")
 
 
 def get_db(request: Request) -> Database:
     return request.app.state.db
+
+
+def get_redis(request: Request) -> Redis:
+    return request.app.state.redis
 
 
 # ============================================================================
@@ -147,6 +178,12 @@ def get_user_repository(db: Database = Depends(get_db)) -> UserRepository:
     return UserRepository(db=db)
 
 
+def get_revoked_token_repository(
+    db: Database = Depends(get_db),
+) -> RevokedTokenRepository:
+    return RevokedTokenRepository(db=db)
+
+
 # ============================================================================
 # Services (Business Logic)
 # ============================================================================
@@ -167,6 +204,12 @@ def get_chatbot_service(
     )
 
 
+def get_revoked_token_service(
+    revoked_token_repo: RevokedTokenRepository = Depends(get_revoked_token_repository),
+) -> RevokedTokenService:
+    return RevokedTokenService(revoked_token_repo=revoked_token_repo)
+
+
 def get_user_service(
     db: Database = Depends(get_db),
     user_repo: UserRepository = Depends(get_user_repository),
@@ -174,12 +217,22 @@ def get_user_service(
     return UserService(db=db, user_repo=user_repo)
 
 
+def get_token_quota_service(redis: Redis = Depends(get_redis)) -> TokenQuotaService:
+    return TokenQuotaService(redis=redis)
+
+
 def get_auth_service(
     db: Database = Depends(get_db),
     user_service: UserRepository = Depends(get_user_service),
+    revoked_token_service: RevokedTokenService = Depends(get_revoked_token_service),
     jwt_service: JWTService = Depends(get_jwt_service),
 ) -> AuthService:
-    return AuthService(db=db, user_service=user_service, jwt_service=jwt_service)
+    return AuthService(
+        db=db,
+        user_service=user_service,
+        revoked_token_service=revoked_token_service,
+        jwt_service=jwt_service,
+    )
 
 
 def get_case_analysis_service(
@@ -233,6 +286,13 @@ def get_document_service(
 # ============================================================================
 
 
+def get_user_orchistrator(
+    db: Database = Depends(get_db),
+    user_service: UserService = Depends(get_user_service),
+) -> UserOrchistrator:
+    return UserOrchistrator(db=db, user_service=user_service)
+
+
 def get_document_orchestrator(
     chunk_service: ChunkService = Depends(get_chunk_service),
     document_service: DocumentService = Depends(get_document_service),
@@ -250,15 +310,17 @@ def get_document_orchestrator(
 def get_case_analysis_orchestrator(
     db: Database = Depends(get_db),
     case_analysis_service: CaseAnalysisService = Depends(get_case_analysis_service),
+    token_quota_service: TokenQuotaService = Depends(get_token_quota_service),
 ) -> CaseAnalysisOrchistrator:
     return CaseAnalysisOrchistrator(
         db=db,
         case_analysis_service=case_analysis_service,
+        token_quota_service=token_quota_service,
     )
 
 
 # ============================================================================
-# Authorization
+# Authorization / Authentication Dependencies
 # ============================================================================
 
 
@@ -266,13 +328,52 @@ async def verify_user(
     request: Request,
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    request_id = request.state.request_id
+    try:
+        request_id = request.state.request_id
 
-    token = request.cookies.get("token")
-    if token is None:
-        raise UnauthorizedException()
+        token = request.cookies.get("token")
+        if not token:
+            raise UnauthorizedException()
 
-    # Check if valid token
-    user = await auth_service.authenticate(request_id, token)
+        # Check if valid token
+        user = await auth_service.authenticate(request_id, token)
+        return user
+    except:
+        auth_service.redirect_unauthorized(request=request, error_code="UNAUTHORIZED")
 
-    return user
+
+def rate_limit(limit: int = 10, window: int = 360):
+    async def dependency(request: Request):
+        token = request.cookies.get("token")
+
+        # If the user is authenticated, use their provider_id as the key; otherwise, use their IP address
+        if token:
+            try:
+                jwt_service = JWTService()
+                decoded = jwt_service.verify(token)
+                payload = JWTPayload.model_validate(decoded)
+                if payload.provider_id:
+                    key = f"user:{payload.provider_id}"
+                else:
+                    raise ValueError("Missing provider_id")
+            except Exception:
+                ip = get_client_ip(request)
+                key = f"user:{ip}" if ip else "user:unknown"
+        else:
+            ip = get_client_ip(request)
+            key = f"user:{ip}" if ip else "user:unknown"
+
+        redis = request.app.state.redis
+        rate_limiter = RateLimiter(redis=redis, limit=limit, window=window)
+        await rate_limiter(key=key)
+
+    return dependency
+
+
+# ============================================================================
+# Others
+# ============================================================================
+
+
+def get_ip(request: Request) -> str:
+    return get_client_ip(request=request)

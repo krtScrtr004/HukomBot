@@ -4,3 +4,6 @@ from pydantic import BaseModel, Field
 class PaginatableMixin(BaseModel):
     limit: int = Field(default=10, gt=0, lt=100)
     offset: int = Field(default=0, ge=0)
+
+class SearchableMixin(BaseModel):
+    query: str | None = Field(default=None, min_length=1, max_length=100)

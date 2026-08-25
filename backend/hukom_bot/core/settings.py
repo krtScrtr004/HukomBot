@@ -9,10 +9,17 @@ class Settings(BaseSettings):
         "case_sensitive": True,
         "extra": "ignore",
     }
+    
+    BASE_PAGE_URL: str
+    BASE_API_URL: str
+    
+    # -- Redis --
+    REDIS_HOST: str
+    REDIS_PORT: int
 
     # -- Database --
     DB_HOST: str
-    DB_PORT: str
+    DB_PORT: int
     DB_NAME: str
     DB_USER: str
     DB_PASSWORD: str
@@ -55,6 +62,13 @@ class Settings(BaseSettings):
     RERANKER_MODEL: str
     RERANKER_DEVICE_CPU: str
     RERANKER_DEVICE_GPU: str
+    
+    TOKEN_QUOTA_DAILY: int
+    TOKEN_QUOTA_WINDOW: int
+
+    CLOUDINARY_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_SECRET: str
 
 
 settings = Settings()

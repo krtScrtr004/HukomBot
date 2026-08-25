@@ -19,3 +19,5 @@ google-auth
 pyjwt
 itsdangerous
 pydantic[email]
+redis[hiredis]
+cloudinary

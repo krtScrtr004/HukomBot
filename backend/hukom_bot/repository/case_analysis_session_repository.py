@@ -6,9 +6,12 @@ from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.case_analysis_model import CaseAnalysisSession
 from backend.hukom_bot.schema.case_analysis_schema import (
     CaseAnalysisSessionCreate,
-    CaseAnalysisGetByUserId
+    CaseAnalysisGetByUserId,
+    CaseAnalysisSessionPreviewSearch,
 )
-from backend.hukom_bot.util.case_analysis_session_caster import CaseAnalysisSessionCaster
+from backend.hukom_bot.util.case_analysis_session_caster import (
+    CaseAnalysisSessionCaster,
+)
 
 
 class CaseAnalysisSessionRepository:
@@ -88,6 +91,67 @@ class CaseAnalysisSessionRepository:
 
         return sessions
 
+    async def search(
+        self,
+        param: CaseAnalysisSessionPreviewSearch,
+        connection: AsyncConnection = None,
+    ):
+        if connection is not None:
+            return await self._search_implement(conn=connection, param=param)
+
+        async with self._database.connection() as conn:
+            try:
+                result = await self._search_implement(conn=conn, param=param)
+                await conn.commit()
+                return result
+            except errors.OperationalError as ex:
+                await conn.rollback()
+                raise
+
+    async def _search_implement(
+        self, conn: AsyncConnection, param: CaseAnalysisSessionPreviewSearch
+    ):
+        async with conn.cursor() as cur:
+            user_query = ""
+            if param.user_id:
+                user_query = " cas.user_id = %(user_id)s AND "
+            
+            await cur.execute(
+                f"""
+                WITH query AS (
+                    SELECT plainto_tsquery('english', %(query)s) AS q
+                )
+                SELECT DISTINCT ON (cas.id)
+                    cas.*,
+                    ts_rank(cav.search_vector, query.q) AS rank
+                FROM case_analysis_sessions cas
+                JOIN case_analysis_versions cav
+                    ON cav.case_analysis_session_id = cas.id
+                CROSS JOIN query
+                WHERE {user_query} 
+                cav.search_vector @@ query.q
+                OR EXISTS (
+                    SELECT 1
+                    FROM case_facts cf
+                    JOIN case_fact_versions cfv ON cfv.case_fact_id = cf.id
+                    WHERE cf.case_analysis_session_id = cas.id
+                        AND cfv.fact ILIKE '%%' || %(query)s || '%%'
+                )
+                ORDER BY cas.id, rank DESC
+                LIMIT %(limit)s
+                OFFSET %(offset)s
+                """,
+                param.model_dump(),
+            )
+
+            rows = await cur.fetchall()
+
+            sessions = []
+            for row in rows:
+                sessions.append(CaseAnalysisSession.model_validate(row))
+
+            return sessions
+
     async def is_existing_by_id(
         self, id: UUID, connection: AsyncConnection = None
     ) -> bool:
@@ -118,9 +182,7 @@ class CaseAnalysisSessionRepository:
             row = await cur.fetchone()
         return row is not None
 
-    async def delete(
-        self, id: UUID, connection: AsyncConnection = None
-    ):
+    async def delete(self, id: UUID, connection: AsyncConnection = None):
         if connection is not None:
             await self._delete_implement(connection, id)
         else:
@@ -132,14 +194,12 @@ class CaseAnalysisSessionRepository:
                     await conn.rollback()
                     raise
 
-    async def _delete_implement(
-        self, conn: AsyncConnection, id: UUID
-    ): 
+    async def _delete_implement(self, conn: AsyncConnection, id: UUID):
         async with conn.cursor() as cur:
             await cur.execute(
                 """
                 DELETE FROM case_analysis_sessions
                 WHERE id = %s 
                 """,
-                (id,)
+                (id,),
             )

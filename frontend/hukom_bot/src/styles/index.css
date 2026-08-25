@@ -164,6 +164,7 @@
 	--header-height: 4rem;
 	--sidebar-width: 18rem;
 	--sidebar-width-collapsed: 5rem;
+	--version-panel-width: 16rem;
 
 	--input-height: 2.75rem;
 	--button-height: 2.75rem;
@@ -175,6 +176,57 @@
 	--blur-sm: 4px;
 	--blur-md: 8px;
 	--blur-lg: 16px;
+}
+
+@keyframes toastEnter {
+	from {
+		opacity: 0;
+		transform: translateX(100%);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes toastExit {
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateX(100%);
+	}
+}
+
+.toast-enter {
+	animation: toastEnter var(--duration-normal) var(--ease-standard) forwards;
+}
+
+.toast-exit {
+	animation: toastExit var(--duration-normal) var(--ease-standard) forwards;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+.fade-in {
+	animation: fadeIn 0.2s ease-out;
+}
+
+/* Version item hover effect */
+.version-item {
+	transition: transform var(--duration-fast);
+}
+.version-item:hover {
+	transform: scale(1.02);
 }
 
 html[data-theme='dark'] {
@@ -221,4 +273,8 @@ html[data-theme='dark'] {
 	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
 	--shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.36);
 	--shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+button {
+	cursor: pointer;
 }

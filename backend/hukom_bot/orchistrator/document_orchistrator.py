@@ -14,7 +14,7 @@ from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.service.embedding_service import EmbeddingService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
 from backend.hukom_bot.exception.app_exception import NotFoundException
-from backend.hukom_bot.exception.document_exception import InvalidDocumentTypeException
+from backend.hukom_bot.exception.file_exception import InvalidFileTypeException
 from backend.hukom_bot.util.document_caster import DocumentCaster
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class DocumentOrchistrator:
 
         # Check if valid file type
         if not self._document_service.is_valid_file_type(contents):
-            raise InvalidDocumentTypeException(
+            raise InvalidFileTypeException(
                 message="File type not allowed",
                 details=[
                     f"Only {', '.join(type.removeprefix("application/") for type in DocumentService.ALLOWED_FILE_TYPES)} are allowed"

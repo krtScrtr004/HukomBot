@@ -70,7 +70,7 @@ class CaseFactVersionRepository:
 
     async def create_updated_many(
         self,
-        case_fact_versions: list[CaseFactVersionCreate],
+        case_fact_versions: list[CaseFactVersionCreateUpdate],
         connection: AsyncConnection = None,
     ) -> list[CaseFactVersion]:
         if not case_fact_versions:
@@ -95,30 +95,41 @@ class CaseFactVersionRepository:
     async def _create_updated_many_implement(
         self,
         conn: AsyncConnection,
-        case_fact_versions: list[CaseFactVersionCreate],
+        case_fact_versions: list[CaseFactVersionCreateUpdate],
     ) -> list[CaseFactVersion]:
         rows = []
 
         async with conn.cursor() as cur, conn.transaction():
             fact_ids = sorted(
-                {fv.case_fact_id for fv in case_fact_versions},
+                {fv.previous_id for fv in case_fact_versions},
                 key=str,
             )
             # Lock rows for update
             await cur.execute(
                 """
-                SELECT id
-                FROM case_facts
-                WHERE id = ANY(%(case_fact_ids)s)
-                ORDER BY id
+                SELECT cf.id
+                FROM case_facts cf
+                JOIN case_fact_versions cfv
+                    ON cfv.case_fact_id = cf.id
+                WHERE cfv.id = ANY(%(ids)s)
+                ORDER BY cf.id
                 FOR UPDATE
                 """,
-                {"case_fact_ids": fact_ids},
+                {"ids": fact_ids},
             )
 
             for fact_version in case_fact_versions:
                 await cur.execute(
                     """
+                    WITH case_fact_version AS(
+                        SELECT * FROM case_fact_versions
+                        WHERE id = %(previous_id)s
+                    ),
+                    new_version AS (
+                        SELECT COALESCE(MAX(version_number), 0) + 1 AS version_number
+                        FROM case_fact_versions
+                        WHERE id = %(previous_id)s
+                    )
                     INSERT INTO case_fact_versions (
                         id,
                         case_fact_id,
@@ -127,18 +138,14 @@ class CaseFactVersionRepository:
                         is_deleted,
                         created_at
                     )
-                    VALUES (
+                    SELECT
                         %(id)s,
-                        %(case_fact_id)s,
-                        (
-                            SELECT COALESCE(MAX(version_number), 0) + 1
-                            FROM case_fact_versions
-                            WHERE case_fact_id = %(case_fact_id)s
-                        ),
+                        cfv.case_fact_id,
+                        nv.version_number,
                         %(fact)s,
                         %(is_deleted)s,
                         %(created_at)s
-                    )
+                    FROM case_fact_version cfv, new_version nv
                     RETURNING
                         id,
                         case_fact_id,
@@ -258,7 +265,6 @@ class CaseFactVersionRepository:
                     ON cfv.id = cavf.case_fact_version_id
                 WHERE {session_id_query}
                     cav.version_number = %(version_number)s
-                    AND cfv.is_deleted = FALSE
                 ORDER BY cfv.created_at
                 LIMIT %(limit)s
                 OFFSET %(offset)s

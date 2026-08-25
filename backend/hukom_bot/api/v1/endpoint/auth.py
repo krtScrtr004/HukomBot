@@ -5,7 +5,6 @@ import secrets
 import logging
 from typing import Annotated
 from fastapi import APIRouter, Request, Query, Depends
-from fastapi.responses import RedirectResponse
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.schema.auth_schema import JWTPayload
@@ -16,18 +15,36 @@ from backend.hukom_bot.util.user_caster import UserCaster
 from backend.hukom_bot.exception.oauth_exception import OAuthException
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
+    rate_limit,
     get_auth_service,
     get_jwt_service,
     get_google_service,
 )
+from backend.hukom_bot.exception.app_exception import RateLimitException
 
 auth_api_router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
 
+async def rate_limit_handler(
+    request: Request,
+    limit: int,
+    window: int,
+    auth_service: AuthService,
+):
+    try:
+        await rate_limit(limit=limit, window=window)(request)
+    except RateLimitException:
+        return auth_service.redirect_unauthorized(request, "RATE_LIMIT_EXCEEDED")
+
+
 @auth_api_router.get("/me")
-async def get_authenticated_user(user: Annotated[User, Depends(verify_user)]):
+async def get_authenticated_user(
+    request: Request,
+    user: Annotated[User, Depends(verify_user)],
+    _=Depends(rate_limit(limit=60, window=60)),
+):
     return SuccessResponse(
         success=True,
         message="User fetched successfully",
@@ -36,10 +53,17 @@ async def get_authenticated_user(user: Annotated[User, Depends(verify_user)]):
 
 
 @auth_api_router.get("/google/login")
-def google_login(
+async def google_login(
     request: Request,
     service: Annotated[GoogleService, Depends(get_google_service)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
+    rate_limit_response = await rate_limit_handler(
+        request=request, limit=10, window=60, auth_service=auth_service
+    )
+    if rate_limit_response:
+        return rate_limit_response
+
     state = secrets.token_urlsafe(32)
     code_verifier = secrets.token_urlsafe(64)
     digest = hashlib.sha256(code_verifier.encode()).digest()
@@ -64,6 +88,12 @@ async def google_login_callback(
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
     google_service: Annotated[GoogleService, Depends(get_google_service)],
 ):
+    rate_limit_response = await rate_limit_handler(
+        request=request, limit=10, window=60, auth_service=auth_service
+    )
+    if rate_limit_response:
+        return rate_limit_response
+
     try:
         session_state = request.session.get("oauth_state")
         if not session_state or session_state != state:
@@ -89,12 +119,7 @@ async def google_login_callback(
 
         token = jwt_service.encode(payload=JWTPayload(provider_id=user.provider_id))
 
-        # TODO: Update the redirect url here
-        redirect = RedirectResponse("http://127.0.0.1:8000/docs")
-        # Set jwt on cookie
-        redirect.set_cookie(key="token", value=token, httponly=True)
-
-        return redirect
+        return auth_service.redirect_authorized(request, token)
     except Exception as ex:
         logger.exception(str(ex))
 
@@ -113,13 +138,25 @@ async def google_login_callback(
         elif isinstance(ex, OAuthException):
             error_code = ex.code
 
-        return RedirectResponse(
-            url=request.url_for("login_page").include_query_params(
-                error_code=error_code
-            ),
-            status_code=303,
+        return auth_service.redirect_unauthorized(
+            request=request, error_code=error_code
         )
     finally:
         request.session.pop("oauth_state", "")
         request.session.pop("oauth_code_verfier", "")
         request.session.pop("oauth_nonce", "")
+
+
+@auth_api_router.get("/logout")
+async def logout(
+    request: Request,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    _: Annotated[User, Depends(verify_user)],
+):
+    rate_limit_response = await rate_limit_handler(
+        request=request, limit=20, window=60, auth_service=auth_service
+    )
+    if rate_limit_response:
+        return rate_limit_response
+
+    return await auth_service.logout(request)
