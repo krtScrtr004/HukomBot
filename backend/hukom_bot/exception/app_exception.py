@@ -32,7 +32,7 @@ class ForbiddenException(AppException):
         code: str = "FORBIDDEN",
         details: list[str] = [],
     ):
-        super().__init__(message=message, status_coed=403, code=code, details=details)
+        super().__init__(message=message, status_code=403, code=code, details=details)
 
 
 class NotFoundException(AppException):
@@ -59,16 +59,4 @@ class RateLimitException(AppException):
             code=code,
             headers=headers,
             details=details,
-        )
-
-class InvalidFileTypeException(AppException):
-    def __init__(
-        self,
-        message: str = "Invalid file type",
-        status_code: int = 422,
-        code: str = "INVALID_FILE_TYPE",
-        details: list[str] = [],
-    ):
-        super().__init__(
-            message=message, status_code=status_code, code=code, details=details
         )
