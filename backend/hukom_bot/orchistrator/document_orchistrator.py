@@ -3,6 +3,7 @@ from uuid import UUID
 from pathlib import Path
 from fastapi import UploadFile
 
+from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
 from backend.hukom_bot.model.document_model import Document
@@ -13,7 +14,10 @@ from backend.hukom_bot.service.chunk_service import ChunkService
 from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.service.embedding_service import EmbeddingService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
-from backend.hukom_bot.exception.app_exception import NotFoundException
+from backend.hukom_bot.exception.app_exception import (
+    NotFoundException,
+    ForbiddenException,
+)
 from backend.hukom_bot.exception.file_exception import InvalidFileTypeException
 from backend.hukom_bot.util.document_caster import DocumentCaster
 
@@ -23,11 +27,13 @@ logger = logging.getLogger(__name__)
 class DocumentOrchistrator:
     def __init__(
         self,
+        db: Database,
         chunk_service: ChunkService,
         document_service: DocumentService,
         embedding_service: EmbeddingService,
         file_storage_service: FileStorageService,
     ):
+        self._db = db
         self._chunk_service = chunk_service
         self._document_service = document_service
         self._embedding_service = embedding_service
@@ -77,7 +83,7 @@ class DocumentOrchistrator:
                     document_type=document_type,
                     file_type=metadata.suffix,
                     digest=metadata.digest,
-                    uploader_id=user_id
+                    uploader_id=user_id,
                 )
             )  # Create document instance
 
@@ -97,6 +103,83 @@ class DocumentOrchistrator:
                 f"{metadata.upload_file_name}.{metadata.suffix.lstrip(".")}"
             )
             raise
+
+    async def update_pipeline(self, document: DocumentUpdate):
+        updated_status = document.upload_status
+
+        if updated_status is not None and updated_status == UploadStatus.ONGOING:
+            raise ForbiddenException(
+                message="Invalid action request",
+                code="INCORRECT_ENDPOINT",
+                details=[
+                    "Please use PATCH /documents/<id>/approve endpoint to approve a document upload"
+                ],
+            )
+
+        async with self._db.connection() as conn:
+            try:
+                existing_document = await self._document_service.get_by_id(
+                    id=document.id, connection=conn
+                )
+                if not existing_document:
+                    raise NotFoundException(message="Document not found")
+
+                current_status = existing_document.upload_status
+                if updated_status is not None and current_status is not None:
+                    if (
+                        current_status == UploadStatus.COMPLETED
+                        and updated_status == UploadStatus.FAILED
+                    ):
+                        raise ForbiddenException(
+                            message="You are not allowed to mark a document's upload status to Failed if it is already Completed",
+                        )
+
+                    # Prohibit upload status from being reverted to earlier states
+                    updated_level = updated_status.get_level()
+                    current_level = current_status.get_level()
+                    if updated_level < current_level:
+                        raise ForbiddenException(
+                            message="You are not allowed to revert the upload status of a document to a previous state",
+                            details=[
+                                f"{current_status.display_name()} cannot be reverted to {updated_status.display_name()}"
+                            ],
+                        )
+
+                update_schema = self._create_update_schema(
+                    existing_document=existing_document, update_document=document
+                )
+                if update_schema:
+                    await self._document_service.update(
+                        document=update_schema, connection=conn
+                    )
+
+                await conn.commit()
+            except:
+                await conn.rollback()
+
+                logger.exception(
+                    f"An error occred while updating document's info with id: {document.id}"
+                )
+
+                raise
+
+    # FIXME:
+    def _create_update_schema(
+        self, existing_document: Document, update_document: DocumentUpdate
+    ) -> DocumentUpdate | None:
+        to_return = DocumentUpdate(id=existing_document.id)
+
+        has_changed = False
+
+        # Note: new values cannot be not nullable as editable fields are all required for document entity
+        update_data = update_document.model_dump(exclude_unset=True, exclude_none=True)
+        for field, value in update_data.items():
+            if field in existing_document.model_fields:
+                if value is not None and value != getattr(existing_document, field):
+                    setattr(to_return, field, value)
+                    has_changed = True
+
+        return to_return if has_changed == True else None
 
     async def approve_document_upload(
         self,
