@@ -33,3 +33,15 @@ class DocumentCaster:
             file_type=document.suffix,
             digest=document.digest,
         )
+        
+    @staticmethod
+    def update_payload_to_update(id: UUID, document: DocumentUpdatePayload) -> DocumentUpdate:
+        return DocumentUpdate(
+            id=id,
+            original_file_name=document.original_file_name,
+            upload_file_name=None,
+            file_type=None,
+            document_type=document.document_type,
+            upload_status=document.upload_status,
+            upload_error=None
+        )
