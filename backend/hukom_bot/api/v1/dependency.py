@@ -294,12 +294,14 @@ def get_user_orchistrator(
 
 
 def get_document_orchestrator(
+    db: Database = Depends(get_db),
     chunk_service: ChunkService = Depends(get_chunk_service),
     document_service: DocumentService = Depends(get_document_service),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     file_storage_service: FileStorageService = Depends(get_file_storage_service),
 ) -> DocumentOrchistrator:
     return DocumentOrchistrator(
+        db=db,
         chunk_service=chunk_service,
         document_service=document_service,
         embedding_service=embedding_service,
