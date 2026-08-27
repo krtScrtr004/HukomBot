@@ -141,7 +141,8 @@ All API endpoints use the `/api/v1` base path.
 | `GET` | `/api/v1/users/me/usage` | Yes | 60 req/min | Get daily token quota usage |
 | `PATCH` | `/api/v1/users/{user_id}` | Yes | 10 req/min | Update user profile |
 | `POST` | `/api/v1/documents/` | Yes | 5 req/min | Upload a document |
-| `POST` | `/api/v1/documents/{id}/approve` | Yes | 10 req/min | Approve a document |
+| `PATCH` | `/api/v1/documents/{id}` | Yes | 10 req/min | Update document info (name, type, status) |
+| `PATCH` | `/api/v1/documents/{id}/approve` | Yes | 10 req/min | Approve a document |
 | `GET` | `/api/v1/documents/{id}/upload-status` | Yes | 60 req/min | Get document upload status |
 | `POST` | `/api/v1/case-analyses/` | Yes | 5 req/min | Run case analysis |
 | `GET` | `/api/v1/case-analyses/` | Yes | 60 req/min | List the user's case analysis sessions |
@@ -268,6 +269,14 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
   - Database transactions
   - Transaction rollback
 - Added `get_user_orchistrator` dependency injection.
+- Added:
+  ```http
+  PATCH /api/v1/documents/{document_id}
+  ```
+  for updating document metadata (original file name, document type, upload status) through `DocumentUpdatePayload`.
+- Added `DocumentOrchistrator.update_pipeline()` with:
+  - Status transition validation (no reverting to prior states, no FAILED after COMPLETED)
+  - Forbidden `ONGOING` status transitions (must use the approve endpoint instead)
 
 ---
 
@@ -354,6 +363,28 @@ is now wrapped in a `SuccessResponse` envelope containing:
 - Updated `Header` to accept `onSettingsClick`.
 - Moved user name display from `Header` to the `SessionExplorer` footer.
 - Updated the `Workspace` page to manage `settingsModalOpen` state and connect the settings modal.
+
+### Document API
+
+The approve document endpoint was changed from:
+
+```http
+POST /documents/{document_id}/approve
+```
+
+to:
+
+```http
+PATCH /documents/{document_id}/approve
+```
+
+A new endpoint was also added:
+
+```http
+PATCH /documents/{document_id}
+```
+
+for updating document metadata.
 
 ---
 

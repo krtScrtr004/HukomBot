@@ -15,7 +15,7 @@ class DocumentCreate(BaseModel):
     original_file_name: str = Field(min_length=1, max_length=300)
     upload_file_name: UUID = Field(default_factory=uuid4)
     document_type: LegalDocumentType
-    file_type: str | None = Field(default=None, min_length=1, max_length=20)
+    file_type: str = Field(min_length=1, max_length=20)
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
     upload_error: str | None = Field(default=None, max_length=500)
     digest: bytes
@@ -25,16 +25,23 @@ class DocumentCreate(BaseModel):
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
-class DocumentUpdate(BaseModel):
-    id: UUID
+class DocumentUpdateBase(BaseModel):
     original_file_name: str | None = Field(default=None, min_length=1, max_length=300)
-    upload_file_name: UUID | None = Field(default=None)
     document_type: LegalDocumentType | None = Field(default=None)
-    file_type: str | None = Field(default=None, min_length=1, max_length=20)
     upload_status: UploadStatus | None = Field(default=None)
-    upload_error: str | None = Field(default=None, max_length=500)
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
+
+
+class DocumentUpdate(DocumentUpdateBase):
+    id: UUID
+    upload_file_name: UUID | None = Field(default=None)
+    file_type: str | None = Field(default=None, min_length=1, max_length=20)
+    upload_error: str | None = Field(default=None, max_length=500)
+
+
+class DocumentUpdatePayload(DocumentUpdateBase):
+    pass
 
 
 class DocumentSearch(PaginatableMixin):

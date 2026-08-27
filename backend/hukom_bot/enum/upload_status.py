@@ -15,4 +15,15 @@ class UploadStatus(StrEnum):
             case UploadStatus.COMPLETED:
                 return "Completed"
             case UploadStatus.FAILED:
-                return "Failed"                
+                return "Failed"    
+            
+    def get_level(self) -> int:
+        match self:
+            case UploadStatus.PENDING:
+                return 0
+            case UploadStatus.ONGOING:
+                return 1
+            case UploadStatus.COMPLETED:
+                return 2
+            case UploadStatus.FAILED:
+                return 3    
