@@ -46,6 +46,24 @@ async def upload_document(
     return SuccessResponse(message=result.message, data=result.data)
 
 
+@document_api_router.patch("/{document_id}")
+async def update_document(
+    document_id: Annotated[UUID, Path()],
+    payload: Annotated[DocumentUpdatePayload, Body()],
+    user: Annotated[User, Depends(verify_user)],
+    orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    _=Depends(rate_limit(limit=10, window=60))
+):
+    await orchistrator.update_pipeline(
+        document=DocumentCaster.update_payload_to_update(
+            id=document_id, document=payload
+        )
+    )
+    return SuccessResponse(
+        message="Document info updated successfully", data={"id": document_id}
+    )
+
+
 @document_api_router.patch("/{document_id}/approve")
 async def approve_document(
     document_id: Annotated[UUID, Path()],
@@ -63,24 +81,6 @@ async def approve_document(
     background_tasks.add_task(orchistrator.process_document_pdf_upload, document, file)
 
     return SuccessResponse(message=result.message, data=result.data["response"])
-
-
-@document_api_router.patch("/{document_id}/")
-async def update_document(
-    document_id: Annotated[UUID, Path()],
-    payload: Annotated[DocumentUpdatePayload, Body()],
-    # user: Annotated[User, Depends(verify_user)],
-    orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
-    # _=Depends(rate_limit(limit=10, window=60))
-):
-    await orchistrator.update_pipeline(
-        document=DocumentCaster.update_payload_to_update(
-            id=document_id, document=payload
-        )
-    )
-    return SuccessResponse(
-        message="Document info updated successfully", data={"id": document_id}
-    )
 
 
 @document_api_router.get("/{document_id}/upload-status")

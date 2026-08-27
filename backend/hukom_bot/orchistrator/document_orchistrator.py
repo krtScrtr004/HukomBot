@@ -126,6 +126,8 @@ class DocumentOrchistrator:
 
                 current_status = existing_document.upload_status
                 if updated_status is not None and current_status is not None:
+                    # Edge case: since Failed status has higher level than completed, 
+                    # check if user tries to update the status to Failed state
                     if (
                         current_status == UploadStatus.COMPLETED
                         and updated_status == UploadStatus.FAILED
@@ -163,7 +165,6 @@ class DocumentOrchistrator:
 
                 raise
 
-    # FIXME:
     def _create_update_schema(
         self, existing_document: Document, update_document: DocumentUpdate
     ) -> DocumentUpdate | None:
