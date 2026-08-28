@@ -10,6 +10,8 @@ from backend.hukom_bot.database.database import Database
 
 from backend.hukom_bot.middleware.rate_limiter import RateLimiter
 
+from backend.hukom_bot.enum.user_role import UserRole
+
 from backend.hukom_bot.repository.case_analysis_session_repository import (
     CaseAnalysisSessionRepository,
 )
@@ -335,7 +337,7 @@ async def verify_user(
 
         token = request.cookies.get("token")
         if not token:
-            raise UnauthorizedException()
+            raise UnauthorizedException
 
         # Check if valid token
         user = await auth_service.authenticate(request_id, token)
@@ -345,13 +347,14 @@ async def verify_user(
 
 
 def rate_limit(limit: int = 10, window: int = 360):
-    async def dependency(request: Request):
+    async def dependency(
+        request: Request, jwt_service: JWTService = Depends(get_jwt_service)
+    ):
         token = request.cookies.get("token")
 
         # If the user is authenticated, use their provider_id as the key; otherwise, use their IP address
         if token:
             try:
-                jwt_service = JWTService()
                 decoded = jwt_service.verify(token)
                 payload = JWTPayload.model_validate(decoded)
                 if payload.provider_id:
@@ -368,6 +371,27 @@ def rate_limit(limit: int = 10, window: int = 360):
         redis = request.app.state.redis
         rate_limiter = RateLimiter(redis=redis, limit=limit, window=window)
         await rate_limiter(key=key)
+
+    return dependency
+
+
+def require_role(*allowed_roles: UserRole):
+    def dependency(
+        request: Request, jwt_service: JWTService = Depends(get_jwt_service)
+    ):
+        try:
+            token = request.cookies.get("token")
+            if not token:
+                raise
+            
+            decoded = jwt_service.verify(token)
+            payload = JWTPayload.model_validate(decoded)
+            if payload.role not in allowed_roles:
+                raise UnauthorizedException(
+                    message="You do not have permission to perform this action"
+                )
+        except Exception:
+            raise UnauthorizedException
 
     return dependency
 
