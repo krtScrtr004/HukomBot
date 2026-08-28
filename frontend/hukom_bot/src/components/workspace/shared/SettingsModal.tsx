@@ -3,7 +3,7 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { updateUserProfile, getUserTokenUsage } from '@/services/userService';
 import { ApiError } from '@/services/apiClient';
 import { useToast } from '@/contexts/ToastProvider';
-import type { UserRole, UserTokenUsageResponse } from '@/types/workspace';
+import type { UserRole, UserTokenUsageResponse } from '@/types/user';
 
 interface SettingsModalProps {
 	open: boolean;

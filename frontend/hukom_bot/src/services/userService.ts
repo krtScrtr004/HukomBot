@@ -1,5 +1,5 @@
 import { apiFetch } from '@/services/apiClient';
-import type { UserTokenUsageResponse } from '@/types/workspace';
+import type { UserTokenUsageResponse } from '@/types/user';
 
 /**
  * Updates the profile of the user.
