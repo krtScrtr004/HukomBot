@@ -4,7 +4,7 @@ import hashlib
 import secrets
 import logging
 from typing import Annotated
-from fastapi import APIRouter, Request, Query, Depends
+from fastapi import APIRouter, Request, Response, Query, Depends
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.schema.auth_schema import JWTPayload
@@ -150,6 +150,7 @@ async def google_login_callback(
 @auth_api_router.get("/logout")
 async def logout(
     request: Request,
+    response: Response,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
     _: Annotated[User, Depends(verify_user)],
 ):
@@ -159,4 +160,7 @@ async def logout(
     if rate_limit_response:
         return rate_limit_response
 
-    return await auth_service.logout(request)
+    url = await auth_service.logout(request, response)
+    return SuccessResponse(
+        message="You are logged out successfully", data=url
+    )

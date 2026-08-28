@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 from datetime import datetime
-from fastapi import Request
+from fastapi import Request, Response
 from fastapi.responses import RedirectResponse
 
 from backend.hukom_bot.service.redirect_service import redirect_service
@@ -127,7 +127,7 @@ class AuthService:
         redirect.delete_cookie(key="token", path="/", httponly=True)
         return redirect
 
-    async def logout(self, request: Request) -> RedirectResponse:
+    async def logout(self, request: Request, response: Response) -> str:
         # Rovoke the token
         token = request.cookies.get("token")
         if token:
@@ -141,9 +141,16 @@ class AuthService:
                 )
             )
 
+        # Clear session variables
         request.session.clear()
-        redirect = RedirectResponse(
-            url=redirect_service.get_redirect_url("login"), status_code=303
+        
+        # Clear cookies
+        response.delete_cookie(
+            key="token",
+            path="/",
+            httponly=True,
+            secure=True,      # Keep “True” in production; set to False only for local dev
+            samesite="none",
         )
-        redirect.delete_cookie(key="token", path="/", httponly=True)
-        return redirect
+        
+        return redirect_service.get_redirect_url("login")
