@@ -12,7 +12,8 @@ import {
 } from 'react';
 import { useNavigate, useBlocker } from 'react-router-dom';
 import { ApiError, isAuthError, isNotFoundError } from '@/services/apiClient';
-import { getCurrentUser } from '@/services/authService';
+import { useAuth } from '@/contexts/AuthContext';
+import { getCurrentUser } from '@/services/authService'
 import {
 	deleteSession as deleteSessionApi,
 	getVersion,
@@ -20,14 +21,14 @@ import {
 	listVersions,
 	runCaseAnalysis,
 } from '@/services/caseAnalysisService';
+import type { UserResponse } from '@/types/user';
 import type {
 	CaseAnalysisPipelineCaseFactsPayload,
 	CaseAnalysisSessionPreviewResponse,
 	CaseAnalysisVersionPreviewResponse,
 	CaseAnalysisVersionResponse,
 	EditableCaseFact,
-	PendingChangesCounts,
-	UserResponse,
+	PendingChangesCounts
 } from '@/types/workspace';
 import {
 	CASE_FACT_MAX_COUNT,
@@ -439,6 +440,7 @@ const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
  */
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
 	const [state, dispatch] = useReducer(workspaceReducer, initialState);
+	const { user: authUser, loading: authLoading } = useAuth();
 
 	const navigate = useNavigate();
 	const { showToast } = useToast();
@@ -686,36 +688,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
 	// Initialize the workspace context by fetching the current user and the list of sessions
 	const initialize = useCallback(async () => {
-		dispatch({ type: 'SET_LOADING', key: 'initializing', value: true });
-
-		try {
-			// Fetch the current user information from the API and update the state
-			const user = await getCurrentUser();
-
-			dispatch({ type: 'SET_USER', user });
-
-			// Fetch the list of sessions from the API and select the first session if available
+		// Sync auth context state to workspace
+		dispatch({ type: 'SET_LOADING', key: 'auth', value: authLoading });
+		if (authUser) {
+			dispatch({ type: 'SET_USER', user: authUser });
+		}
+		// After auth is resolved, fetch sessions
+		if (!authLoading) {
 			const sessions = await fetchSessions(0, null, false);
 			if (sessions.length > 0) {
 				await selectSessionInternal(
 					sessions[0].case_analysis_session_id,
 				);
 			}
-		} catch (error) {
-			if (isAuthError(error)) {
-				handleAuthError();
-			} else {
-				handleApiError(error, 'initializing workspace');
-			}
-		} finally {
-			dispatch({ type: 'SET_LOADING', key: 'auth', value: false });
-			dispatch({
-				type: 'SET_LOADING',
-				key: 'initializing',
-				value: false,
-			});
 		}
-	}, [fetchSessions, handleApiError, handleAuthError, selectSessionInternal]);
+	}, [authUser, authLoading, fetchSessions, selectSessionInternal]);
 
 	// Use effect to initialize the workspace context when the component mounts
 	useEffect(() => {

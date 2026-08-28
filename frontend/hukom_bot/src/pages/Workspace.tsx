@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { WorkspaceProvider, useWorkspace } from '@/contexts/WorkspaceContext';
-import { getLogoutUrl } from '@/services/authService';
+import { logout } from '@/services/authService';
 import WorkspaceLayout from '@/layouts/WorkspaceLayout';
 import Header from '@/components/workspace/Header';
 import SessionExplorer from '@/components/workspace/SessionExplorer/SessionExplorer';
@@ -86,9 +86,7 @@ function WorkspacePage() {
 						onToggleVersionPanel={() =>
 							setVersionPanelOpen((v) => !v)
 						}
-						onSignOut={() => {
-							window.location.href = getLogoutUrl();
-						}}
+						onSignOut={logout}
 						onUploadClick={() => setUploadDocumentModalOpen(true)}
 						onSettingsClick={() => setSettingsModalOpen(true)}
 					/>
@@ -96,9 +94,7 @@ function WorkspacePage() {
 				sidebar={
 					<SessionExplorer
 						onSettingsClick={() => setSettingsModalOpen(true)}
-						onSignOut={() => {
-							window.location.href = getLogoutUrl();
-						}}
+						onSignOut={logout}
 					/>
 				}
 				workspace={<AnalysisWorkspaceContent />}
