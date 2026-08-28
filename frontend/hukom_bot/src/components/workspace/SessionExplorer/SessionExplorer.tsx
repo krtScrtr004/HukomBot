@@ -138,18 +138,25 @@ export default function SessionExplorer({
 					/>
 				) : (
 					<>
-						{state.sessions.map((session) => (
-							<SessionListItem
-								key={session.case_analysis_session_id}
-								session={session}
-								isSelected={
-									session.case_analysis_session_id ===
-									state.selectedSessionId
-								}
-								onSelect={(id) => void selectSession(id)}
-								onDelete={requestDeleteSession}
-							/>
-						))}
+						{state.sessions
+							.sort(
+								// Render sessions with the most recent updates first
+								(a, b) =>
+									new Date(b.updated_at).getTime() -
+									new Date(a.updated_at).getTime(),
+							)
+							.map((session) => (
+								<SessionListItem
+									key={session.case_analysis_session_id}
+									session={session}
+									isSelected={
+										session.case_analysis_session_id ===
+										state.selectedSessionId
+									}
+									onSelect={(id) => void selectSession(id)}
+									onDelete={requestDeleteSession}
+								/>
+							))}
 
 						{state.sessionsPagination.hasMore && (
 							<div className="py-4 flex justify-center">
