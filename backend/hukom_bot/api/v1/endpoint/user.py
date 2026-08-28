@@ -13,6 +13,7 @@ from backend.hukom_bot.api.v1.dependency import (
     rate_limit,
     get_token_quota_service,
     get_user_orchistrator,
+    require_role
 )
 
 user_api_router = APIRouter()
@@ -34,7 +35,8 @@ async def get_me(
 async def get_daily_token_usage(
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[TokenQuotaService, Depends(get_token_quota_service)],
-    _=Depends(rate_limit(limit=60, window=60)),
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.STANDARD, UserRole.CONTRIBUTOR))
 ):
     result = await service.retrieve_usage(user.id)
 

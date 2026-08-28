@@ -11,12 +11,11 @@ from fastapi import (
     File,
 )
 from backend.hukom_bot.model.user_model import User
+from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
-from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.schema.document_schema import (
     DocumentUpdatePayload,
     ApproveDocumentUploadPayload,
-    DocumentUpdateBase,
 )
 from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchistrator
@@ -27,6 +26,7 @@ from backend.hukom_bot.api.v1.dependency import (
     rate_limit,
     get_document_service,
     get_document_orchestrator,
+    require_role
 )
 
 document_api_router = APIRouter()
@@ -52,7 +52,9 @@ async def update_document(
     payload: Annotated[DocumentUpdatePayload, Body()],
     user: Annotated[User, Depends(verify_user)],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
-    _=Depends(rate_limit(limit=10, window=60))
+    _rl=Depends(rate_limit(limit=10, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN))
+
 ):
     await orchistrator.update_pipeline(
         document=DocumentCaster.update_payload_to_update(
@@ -72,7 +74,8 @@ async def approve_document(
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[DocumentService, Depends(get_document_service)],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
-    _=Depends(rate_limit(limit=10, window=60)),
+    _rl=Depends(rate_limit(limit=10, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN))
 ):
     result = await orchistrator.approve_document_upload(document_id, payload)
     document = result.data["document"]

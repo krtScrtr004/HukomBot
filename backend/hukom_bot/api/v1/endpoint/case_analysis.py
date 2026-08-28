@@ -2,6 +2,7 @@ from uuid import UUID
 from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Header, Query, Body
 from backend.hukom_bot.model.user_model import User
+from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.schema.case_analysis_schema import CaseAnalysisGetByVersionNumber
 from backend.hukom_bot.service.case_analysis_service import CaseAnalysisService
 from backend.hukom_bot.orchistrator.case_analysis_orchistrator import CaseAnalysisOrchistrator
@@ -13,13 +14,13 @@ from backend.hukom_bot.schema.chatbot_schema import (
 )
 from backend.hukom_bot.schema.mixin import PaginatableMixin
 from backend.hukom_bot.schema.http_schema import QueryParams
-
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
     rate_limit,
     get_case_analysis_service,
     get_case_analysis_orchestrator,
+    require_role
 )
 
 
@@ -37,7 +38,8 @@ async def run_case_analysis_pipeline(
     orchistrator: Annotated[
         CaseAnalysisOrchistrator, Depends(get_case_analysis_orchestrator)
     ],
-    _=Depends(rate_limit(limit=5, window=60))
+    _rl=Depends(rate_limit(limit=5, window=60)),
+    _rr=Depends(require_role(UserRole.STANDARD, UserRole.CONTRIBUTOR))
 ):
     answer_format = header.answer_format
     result = await orchistrator.run_pipeline(
@@ -51,7 +53,8 @@ async def get_user_case_analyses(
     params: Annotated[QueryParams, Query()],
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
-    _=Depends(rate_limit(limit=60, window=60))
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.STANDARD, UserRole.CONTRIBUTOR))
 ):
     result = None
     
@@ -80,7 +83,8 @@ async def get_case_analysis_versions(
     params: Annotated[PaginatableMixin, Query()],
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
-    _=Depends(rate_limit(limit=60, window=60))
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.STANDARD, UserRole.CONTRIBUTOR))
 ):
     results = await service.get_analysis_versions_by_session_id(
         CaseAnalysisGetBySessionId(
@@ -105,7 +109,8 @@ async def get_case_analysis_version(
     version_number: Annotated[int, Path(ge=1)],
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
-    _=Depends(rate_limit(limit=60, window=60))
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.STANDARD, UserRole.CONTRIBUTOR))
 ):
     result = await service.get_by_version(
         CaseAnalysisGetByVersionNumber(
@@ -128,7 +133,8 @@ async def delete_case_analysis(
     case_analysis_session_id: UUID,
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
-    _=Depends(rate_limit(limit=10, window=60))
+    _rl=Depends(rate_limit(limit=10, window=60)),
+    _rr=Depends(require_role(UserRole.STANDARD, UserRole.CONTRIBUTOR))
 ):
     await service.delete_session(id=case_analysis_session_id)
     return SuccessResponse(
