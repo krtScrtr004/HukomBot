@@ -131,24 +131,24 @@ Then configure the required environment variables.
 
 All API endpoints use the `/api/v1` base path.
 
-| Method | Path | Auth | Rate Limit | Description |
-|---|---|---|---|---|
-| `GET` | `/api/v1/auth/me` | Yes | 60 req/min | Get current user profile |
-| `GET` | `/api/v1/auth/google/login` | No | 10 req/min | Initiate Google OAuth |
-| `GET` | `/api/v1/auth/google/login/callback` | No | 10 req/min | Handle Google OAuth callback |
-| `GET` | `/api/v1/auth/logout` | Yes | 20 req/min | Log out the current user |
-| `GET` | `/api/v1/users/me` | Yes | 60 req/min | Get current user profile |
-| `GET` | `/api/v1/users/me/usage` | Yes | 60 req/min | Get daily token quota usage |
-| `PATCH` | `/api/v1/users/{user_id}` | Yes | 10 req/min | Update user profile |
-| `POST` | `/api/v1/documents/` | Yes | 5 req/min | Upload a document |
-| `PATCH` | `/api/v1/documents/{id}` | Yes | 10 req/min | Update document info (name, type, status) |
-| `PATCH` | `/api/v1/documents/{id}/approve` | Yes | 10 req/min | Approve a document |
-| `GET` | `/api/v1/documents/{id}/upload-status` | Yes | 60 req/min | Get document upload status |
-| `POST` | `/api/v1/case-analyses/` | Yes | 5 req/min | Run case analysis |
-| `GET` | `/api/v1/case-analyses/` | Yes | 60 req/min | List the user's case analysis sessions |
-| `GET` | `/api/v1/case-analyses/{id}/versions` | Yes | 60 req/min | List versions of a case analysis session |
-| `GET` | `/api/v1/case-analyses/{id}/versions/{v}` | Yes | 60 req/min | Get a specific case analysis version |
-| `DELETE` | `/api/v1/case-analyses/{id}` | Yes | 10 req/min | Delete a case analysis session |
+| Method | Path | Auth | Roles | Rate Limit | Description |
+|--------|------|------|-------|------------|-------------|
+| `GET` | `/api/v1/auth/me` | Yes | Any | 60 req/min | Get current user profile |
+| `GET` | `/api/v1/auth/google/login` | No | — | 10 req/min | Initiate Google OAuth |
+| `GET` | `/api/v1/auth/google/login/callback` | No | — | 10 req/min | Handle Google OAuth callback |
+| `GET` | `/api/v1/auth/logout` | Yes | Any | 20 req/min | Log out the current user |
+| `GET` | `/api/v1/users/me` | Yes | Any | 60 req/min | Get current user profile |
+| `GET` | `/api/v1/users/me/usage` | Yes | `standard`, `contributor` | 60 req/min | Get daily token quota usage |
+| `PATCH` | `/api/v1/users/{user_id}` | Yes | Any (admin for `role` field) | 10 req/min | Update user profile |
+| `POST` | `/api/v1/documents/` | Yes | Any | 5 req/min | Upload a document |
+| `PATCH` | `/api/v1/documents/{id}` | Yes | `admin` | 10 req/min | Update document metadata |
+| `PATCH` | `/api/v1/documents/{id}/approve` | Yes | `admin` | 10 req/min | Approve a document |
+| `GET` | `/api/v1/documents/{id}/upload-status` | Yes | Any | 60 req/min | Get document upload status |
+| `POST` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 5 req/min | Run case analysis |
+| `GET` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 60 req/min | List the user's case analysis sessions |
+| `GET` | `/api/v1/case-analyses/{id}/versions` | Yes | `standard`, `contributor` | 60 req/min | List versions of a case analysis session |
+| `GET` | `/api/v1/case-analyses/{id}/versions/{v}` | Yes | `standard`, `contributor` | 60 req/min | Get a specific case analysis version |
+| `DELETE` | `/api/v1/case-analyses/{id}` | Yes | `standard`, `contributor` | 10 req/min | Delete a case analysis session |
 
 ---
 
@@ -277,8 +277,16 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Added `DocumentOrchistrator.update_pipeline()` with:
   - Status transition validation (no reverting to prior states, no FAILED after COMPLETED)
   - Forbidden `ONGOING` status transitions (must use the approve endpoint instead)
-
----
+- Added Role-Based Access Control (RBAC):
+  - Added `role` field to `JWTPayload`
+  - Added `require_role` dependency injection function
+  - Added `UserRole` enum (`standard`, `contributor`, `admin`)
+- Added role guards on endpoints:
+  - `standard`, `contributor` required: `GET /users/me/usage`, all `case-analyses` endpoints
+  - `admin` required: `PATCH /documents/{id}`, `PATCH /documents/{id}/approve`
+- Added `AuthContext` (`AuthContext.tsx`) for frontend auth state management.
+- Added `RequireAuth` wrapper in `App.tsx` for protected route rendering.
+- Added `user.ts` type definitions for frontend.
 
 ## Changed
 
@@ -303,6 +311,11 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Migrated the frontend from the legacy Python/HTML page structure to a modern React component architecture.
 - Updated theme toggle icon styling.
 - Applied theme handling globally.
+- Created `AuthContext` as the single source of truth for authentication state on the frontend, replacing inline auth checks in `WorkspaceContext`.
+- Updated `App.tsx` with a `RequireAuth` wrapper that gates `/workspace` behind `standard` or `contributor` roles.
+- Separated user-related types (`UserRole`, `UserResponse`, `UserTokenUsageResponse`) into `frontend/hukom_bot/src/types/user.ts`.
+- Updated logout handling to use the async `logout()` service function directly instead of `getLogoutUrl()` + `window.location.href`.
+- Updated `SessionExplorer` session list to render sorted by `updated_at` descending (most recent first).
 
 ### User API
 
@@ -348,6 +361,10 @@ is now wrapped in a `SuccessResponse` envelope containing:
 ### User Response
 
 - Updated `UserCaster` to include `profile_picture` when converting to `UserResponse`.
+- Added `role` claim to `JWTPayload` and included it in the JWT emitted at login.
+- Added `require_role` dependency that validates the `role` claim against allowed roles.
+- Added role guards to all case analysis endpoints, document update/approve endpoints, and the user token usage endpoint.
+- Updated `rate_limit` dependency to use injected `JWTService` instead of instantiating it inline.
 
 ### Dependency Injection
 
@@ -410,6 +427,8 @@ frontend/
   - `Form`
   - `File`
   - `UploadFile`
+- Removed `getLogoutUrl()` from frontend `authService.ts`.
+- Replaced it with an async `logout()` that calls the API and redirects on completion.
 
 ### Header User Display
 
