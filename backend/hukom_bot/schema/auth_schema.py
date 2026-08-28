@@ -2,8 +2,8 @@ import time
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field, EmailStr, AliasChoices
-
 from backend.hukom_bot.core.settings import settings
+from backend.hukom_bot.enum.user_role import UserRole
 
 
 class AuthUser(BaseModel):
@@ -29,6 +29,7 @@ class TokenQuotaUsage(BaseModel):
 class JWTPayload(BaseModel):
     jti: UUID = Field(default_factory=uuid4)
     provider_id: str
+    role: UserRole
     iss: str = Field(default=settings.JWT_ISS)
     aud: str = Field(default=settings.JWT_AUD)
     iat: int = Field(default_factory=lambda: int(time.time()))

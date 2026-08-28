@@ -117,7 +117,9 @@ async def google_login_callback(
 
         user = await auth_service.authenticate_user(google_user)
 
-        token = jwt_service.encode(payload=JWTPayload(provider_id=user.provider_id))
+        token = jwt_service.encode(
+            payload=JWTPayload(provider_id=user.provider_id, role=user.role)
+        )
 
         return auth_service.redirect_authorized(request, token)
     except Exception as ex:
@@ -161,6 +163,4 @@ async def logout(
         return rate_limit_response
 
     url = await auth_service.logout(request, response)
-    return SuccessResponse(
-        message="You are logged out successfully", data=url
-    )
+    return SuccessResponse(message="You are logged out successfully", data=url)
