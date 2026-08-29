@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime
 from backend.hukom_bot.model.user_model import User
-from backend.hukom_bot.schema.user_schema import UserCreate, UserUpdateBase, UserUpdate, UserResponse
+from backend.hukom_bot.schema.user_schema import *
 
 
 class UserCaster:
@@ -43,4 +43,13 @@ class UserCaster:
             email=user.email,
             role=user.role,
             profile_picture=user.profile_picture
+        )
+        
+    @staticmethod
+    def search_to_all(user: UserSearch) -> UserGetAll:
+        return UserGetAll(
+            column=user.column,
+            order=user.order,
+            limit=user.limit,
+            offset=user.offset
         )

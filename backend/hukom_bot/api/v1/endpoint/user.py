@@ -22,7 +22,7 @@ user_api_router = APIRouter()
 
 
 @user_api_router.get("/")
-async def get_all(
+async def get_users(
     query: Annotated[UserSearch, Query()],
     service: Annotated[UserService, Depends(get_user_service)],
     _us: Annotated[User, Depends(verify_user)],
@@ -32,7 +32,7 @@ async def get_all(
     result = (
         await service.search(param=query)
         if query.query
-        else await service.all(param=query)
+        else await service.all(param=UserCaster.search_to_all(query))
     )
 
     return SuccessResponse(
