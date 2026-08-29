@@ -53,6 +53,13 @@ class DocumentSearch(PaginatableMixin, OrderableMixin):
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
+class DocumentGetAll(PaginatableMixin, OrderableMixin):
+    upload_status: UploadStatus | None = Field(default=None)
+    column: list[str] = Field(default_factory=lambda: ["original_file_name"])
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
 class DocumentMetadata(BaseModel):
     file_path: Path
     original_file_name: str
