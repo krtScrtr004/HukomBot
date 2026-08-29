@@ -1,10 +1,11 @@
 from uuid import UUID
 from typing import Annotated
-from fastapi import APIRouter, Depends, Path, Form, File, UploadFile
+from fastapi import APIRouter, Depends, Path, Query, Form, File, UploadFile
 from backend.hukom_bot.model.user_model import User
-from backend.hukom_bot.schema.user_schema import UserUpdateBase
+from backend.hukom_bot.schema.user_schema import UserUpdateBase, UserGetAll
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.schema.response_schema import SuccessResponse
+from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.service.token_quota_service import TokenQuotaService
 from backend.hukom_bot.orchistrator.user_orchistrator import UserOrchistrator
 from backend.hukom_bot.util.user_caster import UserCaster
@@ -12,11 +13,28 @@ from backend.hukom_bot.api.v1.dependency import (
     verify_user,
     rate_limit,
     get_token_quota_service,
+    get_user_service,
     get_user_orchistrator,
-    require_role
+    require_role,
 )
 
 user_api_router = APIRouter()
+
+
+@user_api_router.get("/")
+async def get_all(
+    query: Annotated[UserGetAll, Query()],
+    service: Annotated[UserService, Depends(get_user_service)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
+):
+    result = await service.all(param=query)
+
+    return SuccessResponse(
+        message="User fetched successfully",
+        data=[UserCaster.base_to_response(u) for u in result],
+    )
 
 
 @user_api_router.get("/me")
@@ -25,7 +43,6 @@ async def get_me(
     _=Depends(rate_limit(limit=60, window=60)),
 ):
     return SuccessResponse(
-        success=True,
         message="User fetched successfully",
         data=UserCaster.base_to_response(user),
     )
@@ -36,7 +53,7 @@ async def get_daily_token_usage(
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[TokenQuotaService, Depends(get_token_quota_service)],
     _rl=Depends(rate_limit(limit=60, window=60)),
-    _rr=Depends(require_role(UserRole.STANDARD, UserRole.CONTRIBUTOR))
+    _rr=Depends(require_role(UserRole.STANDARD, UserRole.CONTRIBUTOR)),
 ):
     result = await service.retrieve_usage(user.id)
 
