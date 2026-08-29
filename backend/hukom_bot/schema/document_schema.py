@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, model_validator
-
+from backend.hukom_bot.schema.user_schema import UserResponse
 from backend.hukom_bot.schema.mixin import PaginatableMixin, OrderableMixin
 from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
@@ -45,9 +45,11 @@ class DocumentUpdatePayload(DocumentUpdateBase):
 
 
 class DocumentSearch(PaginatableMixin, OrderableMixin):
-    query: str|None = Field(default=None, min_length=3, max_length=256)        
-    column: list[str] = Field(default_factory=lambda: ["original_file_name"])    
-    
+    query: str | None = Field(default=None, min_length=3, max_length=256)
+    upload_status: UploadStatus | None = Field(default=None)
+
+    column: list[str] = Field(default_factory=lambda: ["original_file_name"])
+
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
@@ -70,6 +72,20 @@ class ApproveDocumentUploadPayload(BaseModel):
 
 
 # API Response ======================================================
+
+
+class DocumentResponse(BaseModel):
+    id: UUID
+    original_file_name: str
+    upload_file_name: UUID
+    document_type: LegalDocumentType
+    file_type: str
+    upload_status: UploadStatus
+    upload_error: str | None
+    uploader: UserResponse
+    created_at: datetime
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class DocumentUploadResponse(BaseModel):
