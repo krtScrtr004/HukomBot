@@ -14,6 +14,7 @@ from backend.hukom_bot.service.chunk_service import ChunkService
 from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.service.embedding_service import EmbeddingService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
+from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.exception.app_exception import (
     NotFoundException,
     ForbiddenException,
@@ -32,12 +33,14 @@ class DocumentOrchistrator:
         document_service: DocumentService,
         embedding_service: EmbeddingService,
         file_storage_service: FileStorageService,
+        user_service: UserService
     ):
         self._db = db
         self._chunk_service = chunk_service
         self._document_service = document_service
         self._embedding_service = embedding_service
         self._file_storage_service = file_storage_service
+        self._user_service = user_service
 
     async def create_pending(
         self, user_id: UUID, file: UploadFile, document_type: LegalDocumentType
