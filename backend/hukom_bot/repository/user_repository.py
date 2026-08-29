@@ -201,45 +201,41 @@ class UserRepository:
         return User.model_validate(row) if row is not None else None
 
     async def search(
-        self, user: UserSearch, connection: AsyncConnection = None
+        self, param: UserSearch, connection: AsyncConnection = None
     ) -> list[User]:
         if connection is not None:
-            return await self._search_implement(connection, user)
+            return await self._search_implement(conn=connection, param=param)
 
         async with self._database.connection() as conn:
             try:
-                result = await self._search_implement(conn, user)
+                result = await self._search_implement(conn=conn, param=param)
                 await conn.commit()
                 return result
             except errors.OperationalError as ex:
                 await conn.rollback()
                 raise
 
-    async def _search_implement(self, conn: AsyncConnection, user: UserSearch):
-        search_comps = [
-            user.first_name,
-            user.last_name,
-            user.email,
-            user.provider.value,
-        ]
-        terms = " ".join([item for item in search_comps if item])
+    async def _search_implement(self, conn: AsyncConnection, param: UserSearch):
+        column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
 
         async with conn.cursor() as cur:
             await cur.execute(
-                """
-                WITH query AS (
-                    SELECT plainto_tsquery('english',  %s) AS q
-                )
-                SELECT 
-                    u.*,
-                    ts_rank(u.search_vector, q.q) AS rank
-                FROM users u, query q
-                WHERE u.search_vector @@ q.q
-                ORDER BY rank DESC
-                LIMIT %s
-                OFFSET %s
+                f"""
+                SELECT * FROM (
+                    WITH query AS (
+                        SELECT plainto_tsquery('english',  %(query)s) AS q
+                    )
+                    SELECT 
+                        u.*,
+                        ts_rank(u.search_vector, q.q) AS rank
+                    FROM users u, query q
+                    WHERE u.search_vector @@ q.q
+                    ORDER BY rank DESC                    
+                ) ORDER BY {column_order}
+                LIMIT %(limit)s
+                OFFSET %(offset)s
                 """,
-                (terms, user.limit, user.offset),
+                param.model_dump(),
             )
 
             rows = await cur.fetchall()

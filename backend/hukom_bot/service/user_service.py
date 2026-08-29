@@ -1,7 +1,7 @@
 from uuid import UUID
 from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
-from backend.hukom_bot.schema.user_schema import UserCreate, UserUpdate, UserGetAll
+from backend.hukom_bot.schema.user_schema import UserCreate, UserUpdate, UserSearch, UserGetAll
 from backend.hukom_bot.repository.user_repository import UserRepository
 from backend.hukom_bot.util.file_utilities import is_valid_file_type
 
@@ -29,6 +29,13 @@ class UserService:
     ):
         return await self._user_repo.get_by_provider_id(
             provider_id=provider_id, connection=connection
+        )
+        
+    async def search(
+        self, param: UserSearch, connection: AsyncConnection = None
+    ):
+        return await self._user_repo.search(
+            param=param, connection=connection
         )
 
     async def all(self, param: UserGetAll, connection: AsyncConnection = None):
