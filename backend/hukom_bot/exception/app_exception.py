@@ -22,7 +22,7 @@ class UnauthorizedException(AppException):
         code: str = "UNAUTHORIZED",
         details: list[str] = [],
     ):
-        super().__init__(message=message, statuc_code=401, code=code, details=details)
+        super().__init__(message=message, status_code=401, code=code, details=details)
 
 
 class ForbiddenException(AppException):
