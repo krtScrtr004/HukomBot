@@ -4,6 +4,7 @@ from fastapi import (
     APIRouter,
     UploadFile,
     Path,
+    Query,
     Form,
     Body,
     Depends,
@@ -14,6 +15,7 @@ from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
 from backend.hukom_bot.schema.document_schema import (
+    DocumentSearch,
     DocumentUpdatePayload,
     ApproveDocumentUploadPayload,
 )
@@ -26,7 +28,7 @@ from backend.hukom_bot.api.v1.dependency import (
     rate_limit,
     get_document_service,
     get_document_orchestrator,
-    require_role
+    require_role,
 )
 
 document_api_router = APIRouter()
@@ -53,8 +55,7 @@ async def update_document(
     user: Annotated[User, Depends(verify_user)],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
     _rl=Depends(rate_limit(limit=10, window=60)),
-    _rr=Depends(require_role(UserRole.ADMIN))
-
+    _rr=Depends(require_role(UserRole.ADMIN)),
 ):
     await orchistrator.update_pipeline(
         document=DocumentCaster.update_payload_to_update(
@@ -71,11 +72,11 @@ async def approve_document(
     document_id: Annotated[UUID, Path()],
     payload: Annotated[ApproveDocumentUploadPayload, Body()],
     background_tasks: BackgroundTasks,
-    user: Annotated[User, Depends(verify_user)],
     service: Annotated[DocumentService, Depends(get_document_service)],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    _us: Annotated[User, Depends(verify_user)],
     _rl=Depends(rate_limit(limit=10, window=60)),
-    _rr=Depends(require_role(UserRole.ADMIN))
+    _rr=Depends(require_role(UserRole.ADMIN)),
 ):
     result = await orchistrator.approve_document_upload(document_id, payload)
     document = result.data["document"]
@@ -86,14 +87,29 @@ async def approve_document(
     return SuccessResponse(message=result.message, data=result.data["response"])
 
 
+@document_api_router.get("/")
+async def get_documents(
+    query: Annotated[DocumentSearch, Query()],
+    orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
+):
+    result = await orchistrator.search_pipeline(param=query)
+
+    return SuccessResponse(message="Documents retrieved successfully", data=result)
+
+
 @document_api_router.get("/{document_id}/upload-status")
 async def get_document_upload_status(
     document_id: UUID,
-    user: Annotated[User, Depends(verify_user)],
     service: Annotated[DocumentService, Depends(get_document_service)],
-    _=Depends(rate_limit(limit=60, window=60)),
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
 ):
     status = await service.get_upload_status(document_id)
+    
     return SuccessResponse(
         message=f"Document upload status is {status.value}", data=status
     )
