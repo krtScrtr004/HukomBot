@@ -261,6 +261,11 @@ class DocumentRepository:
                 raise
 
     async def _search_implement(self, conn: AsyncConnection, param: DocumentSearch):
+        upload_status = (
+            "AND d.upload_status = %(upload_status)s"
+            if param.upload_status is not None
+            else ""
+        )
         column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
 
         async with conn.cursor() as cur:
@@ -271,10 +276,11 @@ class DocumentRepository:
                         SELECT plainto_tsquery('english',  %(query)s) AS q
                     )
                     SELECT 
-                        u.*,
+                        d.*,
                         ts_rank(d.search_vector, q.q) AS rank
                     FROM documents d, query q
                     WHERE d.search_vector @@ q.q
+                    {upload_status}
                     ORDER BY rank DESC                    
                 ) ORDER BY {column_order}
                 LIMIT %(limit)s
@@ -312,10 +318,17 @@ class DocumentRepository:
         column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
 
         async with conn.cursor() as cur:
+            upload_status = (
+                "WHERE upload_status = %(upload_status)s"
+                if param.upload_status is not None
+                else ""
+            )
+
             await cur.execute(
                 f"""
                 SELECT * 
                 FROM documents
+                {upload_status}
                 ORDER BY {column_order}
                 LIMIT %(limit)s
                 OFFSET %(offset)s
