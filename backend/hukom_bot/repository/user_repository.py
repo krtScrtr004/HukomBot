@@ -3,7 +3,12 @@ from psycopg import errors
 from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.user_model import User
-from backend.hukom_bot.schema.user_schema import UserCreate, UserSearch, UserUpdate
+from backend.hukom_bot.schema.user_schema import (
+    UserCreate,
+    UserSearch,
+    UserUpdate,
+    UserGetAll,
+)
 from backend.hukom_bot.util.user_caster import UserCaster
 
 
@@ -125,9 +130,7 @@ class UserRepository:
 
         return query, values
 
-    async def get_by_id(
-        self, id: UUID, connection: AsyncConnection = None
-    ):
+    async def get_by_id(self, id: UUID, connection: AsyncConnection = None):
         if not id:
             return None
 
@@ -237,6 +240,46 @@ class UserRepository:
                 OFFSET %s
                 """,
                 (terms, user.limit, user.offset),
+            )
+
+            rows = await cur.fetchall()
+
+        users = []
+        for row in rows:
+            users.append(User.model_validate(row))
+
+        return users
+
+    async def all(
+        self, param: UserGetAll, connection: AsyncConnection = None
+    ) -> list[User]:
+        if connection is not None:
+            return await self._all_implement(connection, param)
+
+        async with self._database.connection() as conn:
+            try:
+                result = await self._all_implement(conn, param)
+                await conn.commit()
+                return result
+            except errors.OperationalError as ex:
+                await conn.rollback()
+                raise
+
+    async def _all_implement(
+        self, conn: AsyncConnection, param: UserGetAll
+    ) -> list[User]:
+        column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
+
+        async with conn.cursor() as cur:
+            await cur.execute(
+                f"""
+                SELECT * 
+                FROM users
+                ORDER BY {column_order}
+                LIMIT %(limit)s
+                OFFSET %(offset)s
+                """,
+                param.model_dump(),
             )
 
             rows = await cur.fetchall()

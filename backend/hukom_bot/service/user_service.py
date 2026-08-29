@@ -1,6 +1,6 @@
 from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
-from backend.hukom_bot.schema.user_schema import UserCreate, UserUpdate
+from backend.hukom_bot.schema.user_schema import UserCreate, UserUpdate, UserGetAll
 from backend.hukom_bot.repository.user_repository import UserRepository
 from backend.hukom_bot.util.file_utilities import is_valid_file_type
 
@@ -19,19 +19,20 @@ class UserService:
 
     async def update(self, user: UserUpdate, connection: AsyncConnection = None):
         await self._user_repo.update(user=user, connection=connection)
-        
-    async def get_by_id(
-        self, id: str, connection: AsyncConnection = None
-    ):
-        return await self._user_repo.get_by_id(
-            id=id, connection=connection
-        )
+
+    async def get_by_id(self, id: str, connection: AsyncConnection = None):
+        return await self._user_repo.get_by_id(id=id, connection=connection)
 
     async def get_by_provider_id(
         self, provider_id: str, connection: AsyncConnection = None
     ):
         return await self._user_repo.get_by_provider_id(
             provider_id=provider_id, connection=connection
+        )
+
+    async def all(self, param: UserGetAll, connection: AsyncConnection = None):
+        return await self._user_repo.all(
+            param=param, connection=connection
         )
 
     # Others ===============================
