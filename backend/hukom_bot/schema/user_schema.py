@@ -1,10 +1,10 @@
 from __future__ import annotations
 from uuid import UUID, uuid4
-from pydantic import BaseModel, model_validator, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from backend.hukom_bot.model.user_model import UserBase
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.enum.oauth_provider import OAuthProvider
-from backend.hukom_bot.schema.mixin import PaginatableMixin
+from backend.hukom_bot.schema.mixin import PaginatableMixin, OrderableMixin
 
 
 class UserCreate(UserBase):
@@ -41,6 +41,10 @@ class UserSearch(PaginatableMixin):
             )
         return self
 
+
+class UserGetAll(PaginatableMixin, OrderableMixin):
+    column: list[str] = Field(default_factory=lambda: ["last_name", "first_name"])
+    
 
 class UserResponse(BaseModel):
     id: UUID
