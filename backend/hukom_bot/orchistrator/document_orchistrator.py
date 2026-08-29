@@ -8,6 +8,7 @@ from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
 from backend.hukom_bot.model.document_model import Document
 from backend.hukom_bot.schema.document_schema import *
+from backend.hukom_bot.schema.user_schema import UserGetByManyId
 from backend.hukom_bot.schema.chunk_schema import ChunkCreate
 from backend.hukom_bot.schema.orchistrator_schema import OrchistratorResult
 from backend.hukom_bot.service.chunk_service import ChunkService
@@ -33,7 +34,7 @@ class DocumentOrchistrator:
         document_service: DocumentService,
         embedding_service: EmbeddingService,
         file_storage_service: FileStorageService,
-        user_service: UserService
+        user_service: UserService,
     ):
         self._db = db
         self._chunk_service = chunk_service
@@ -129,7 +130,7 @@ class DocumentOrchistrator:
 
                 current_status = existing_document.upload_status
                 if updated_status is not None and current_status is not None:
-                    # Edge case: since Failed status has higher level than completed, 
+                    # Edge case: since Failed status has higher level than completed,
                     # check if user tries to update the status to Failed state
                     if (
                         current_status == UploadStatus.COMPLETED
@@ -306,3 +307,29 @@ class DocumentOrchistrator:
             )
 
             logger.exception(str(ex))
+
+    async def search_pipeline(self, param: DocumentSearch):
+        async with self._db.connection() as conn:
+            documents = (
+                await self._document_service.search(param=param, connection=conn)
+                if param.query
+                else await self._document_service.all(
+                    DocumentCaster.search_to_all(document=param), connection=conn
+                )
+            )
+            if not documents:
+                return []
+            
+            user_ids = [d.uploader_id for d in documents]
+            uploaders = await self._user_service.get_by_ids(
+                param=UserGetByManyId(ids=user_ids), connection=conn
+            )
+            uploader_map = {u.id: u for u in uploaders} if uploaders else {}
+
+            await conn.commit()
+
+            return [
+                DocumentCaster.base_to_response(document, uploader_map.get(document.uploader_id))
+                for document in documents
+            ]
+            
