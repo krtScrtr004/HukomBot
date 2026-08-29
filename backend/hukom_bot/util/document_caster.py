@@ -1,5 +1,7 @@
 from backend.hukom_bot.model.document_model import Document
+from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.document_schema import *
+from backend.hukom_bot.util.user_caster import UserCaster
 
 class DocumentCaster:
     @staticmethod
@@ -44,4 +46,28 @@ class DocumentCaster:
             document_type=document.document_type,
             upload_status=document.upload_status,
             upload_error=None
+        )
+        
+    @staticmethod
+    def base_to_response(document: Document, uploader: User | None = None) -> DocumentResponse:
+        return DocumentResponse(
+            id=document.id,
+            original_file_name=document.original_file_name,
+            upload_file_name=document.upload_file_name,
+            document_type=document.document_type,
+            file_type=document.file_type,
+            upload_status=document.upload_status,
+            upload_error=document.upload_error,
+            uploader=UserCaster.base_to_response(uploader) if uploader else None,
+            created_at=document.created_at
+        )
+
+    @staticmethod
+    def search_to_all(document: DocumentSearch) -> DocumentGetAll:
+        return DocumentGetAll(
+            upload_status=document.upload_status,
+            column=document.column,
+            order=document.order,
+            limit=document.limit,
+            offset=document.offset
         )
