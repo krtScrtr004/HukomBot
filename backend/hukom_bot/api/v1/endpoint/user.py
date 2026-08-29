@@ -43,7 +43,7 @@ async def get_me(
     _=Depends(rate_limit(limit=60, window=60)),
 ):
     return SuccessResponse(
-        message="User fetched successfully",
+        message="User retrieved successfully",
         data=UserCaster.base_to_response(user),
     )
 
@@ -57,7 +57,9 @@ async def get_daily_token_usage(
 ):
     result = await service.retrieve_usage(user.id)
 
-    return SuccessResponse(message="User token usage retrive successfully", data=result)
+    return SuccessResponse(
+        message="User token usage retrieved successfully", data=result
+    )
 
 
 @user_api_router.patch("/{user_id}")
@@ -85,4 +87,20 @@ async def update_user_info(
 
     return SuccessResponse(
         message="User info successfully updated", data={"id": user_id}
+    )
+
+
+@user_api_router.delete("/{user_id}")
+async def delete_user(
+    user_id: Annotated[UUID, Path()],
+    service: Annotated[UserService, Depends(get_user_service)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
+):
+    await service.delete(id=user_id)
+
+    return SuccessResponse(
+        message="User account deleted successfully",
+        data={"id": user_id},
     )
