@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Form, File, UploadFile
 from backend.hukom_bot.model.user_model import User
-from backend.hukom_bot.schema.user_schema import UserUpdateBase, UserGetAll
+from backend.hukom_bot.schema.user_schema import UserUpdateBase, UserSearch, UserGetAll
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.service.user_service import UserService
@@ -23,13 +23,17 @@ user_api_router = APIRouter()
 
 @user_api_router.get("/")
 async def get_all(
-    query: Annotated[UserGetAll, Query()],
+    query: Annotated[UserSearch, Query()],
     service: Annotated[UserService, Depends(get_user_service)],
     _us: Annotated[User, Depends(verify_user)],
     _rl=Depends(rate_limit(limit=60, window=60)),
-    _rr=Depends(require_role(UserRole.ADMIN)),
+    _rr=Depends(require_role(UserRole.ADMIN))
 ):
-    result = await service.all(param=query)
+    result = (
+        await service.search(param=query)
+        if query.query
+        else await service.all(param=query)
+    )
 
     return SuccessResponse(
         message="User fetched successfully",
