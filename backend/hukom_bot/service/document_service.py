@@ -5,7 +5,6 @@ from pathlib import Path
 from uuid import UUID, uuid4
 from psycopg import AsyncConnection
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
-from backend.hukom_bot.model.document_model import Document
 from backend.hukom_bot.schema.document_schema import *
 from backend.hukom_bot.repository.document_repository import DocumentRepository
 from backend.hukom_bot.service.embedding_service import EmbeddingService
@@ -46,6 +45,9 @@ class DocumentService:
 
     async def get_by_digest(self, digest: bytes, connection: AsyncConnection = None):
         return await self._document_repo.get_by_digest(digest, connection)
+
+    async def search(self, param: DocumentSearch, connection: AsyncConnection = None):
+        return await self._document_repo.search(param=param, connection=connection)
 
     # Others =======
 

@@ -5,7 +5,7 @@ from psycopg import AsyncConnection
 from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.document_model import Document
-from backend.hukom_bot.schema.document_schema import DocumentCreate, DocumentUpdate
+from backend.hukom_bot.schema.document_schema import DocumentCreate, DocumentUpdate, DocumentSearch
 from backend.hukom_bot.util.document_caster import DocumentCaster
 
 
@@ -239,6 +239,52 @@ class DocumentRepository:
             if row is not None and row["upload_status"] is not None
             else None
         )
+
+    async def search(
+            self, param: DocumentSearch, connection: AsyncConnection = None
+        ) -> list[Document]:
+            if connection is not None:
+                return await self._search_implement(conn=connection, param=param)
+    
+            async with self._database.connection() as conn:
+                try:
+                    result = await self._search_implement(conn=conn, param=param)
+                    await conn.commit()
+                    return result
+                except errors.OperationalError as ex:
+                    await conn.rollback()
+                    raise
+    
+    async def _search_implement(self, conn: AsyncConnection, param: DocumentSearch):
+        column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
+
+        async with conn.cursor() as cur:
+            await cur.execute(
+                f"""
+                SELECT * FROM (
+                    WITH query AS (
+                        SELECT plainto_tsquery('english',  %(query)s) AS q
+                    )
+                    SELECT 
+                        u.*,
+                        ts_rank(d.search_vector, q.q) AS rank
+                    FROM documents d, query q
+                    WHERE d.search_vector @@ q.q
+                    ORDER BY rank DESC                    
+                ) ORDER BY {column_order}
+                LIMIT %(limit)s
+                OFFSET %(offset)s
+                """,
+                param.model_dump(),
+            )
+
+            rows = await cur.fetchall()
+
+        documents = []
+        for row in rows:
+            documents.append(Document.model_validate(row))
+    
+            return documents
 
     async def delete_many(self, ids: list[UUID], connection: AsyncConnection = None):
         if not ids:
