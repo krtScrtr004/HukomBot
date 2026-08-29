@@ -5,7 +5,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, model_validator
 
-from backend.hukom_bot.schema.mixin import PaginatableMixin
+from backend.hukom_bot.schema.mixin import PaginatableMixin, OrderableMixin
 from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
 
@@ -44,18 +44,11 @@ class DocumentUpdatePayload(DocumentUpdateBase):
     pass
 
 
-class DocumentSearch(PaginatableMixin):
-    original_file_name: str | None = Field(default=None, min_length=1, max_length=300)
-    document_type: LegalDocumentType
-    file_type: str | None = Field(default=None, min_length=1, max_length=20)
-
+class DocumentSearch(PaginatableMixin, OrderableMixin):
+    query: str|None = Field(default=None, min_length=3, max_length=256)        
+    column: list[str] = Field(default_factory=lambda: ["original_file_name"])    
+    
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
-
-    @model_validator(mode="after")
-    def at_least_one_required(self) -> DocumentSearch:
-        if self.original_file_name is None and self.file_type is None:
-            raise ValueError("At least one of 'title' or 'file_type' must be provided")
-        return self
 
 
 class DocumentMetadata(BaseModel):
