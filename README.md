@@ -137,9 +137,12 @@ All API endpoints use the `/api/v1` base path.
 | `GET` | `/api/v1/auth/google/login` | No | — | 10 req/min | Initiate Google OAuth |
 | `GET` | `/api/v1/auth/google/login/callback` | No | — | 10 req/min | Handle Google OAuth callback |
 | `GET` | `/api/v1/auth/logout` | Yes | Any | 20 req/min | Log out the current user |
+| `GET` | `/api/v1/users/` | Yes | `admin` | 60 req/min | List/search all users |
 | `GET` | `/api/v1/users/me` | Yes | Any | 60 req/min | Get current user profile |
 | `GET` | `/api/v1/users/me/usage` | Yes | `standard`, `contributor` | 60 req/min | Get daily token quota usage |
 | `PATCH` | `/api/v1/users/{user_id}` | Yes | Any (admin for `role` field) | 10 req/min | Update user profile |
+| `DELETE` | `/api/v1/users/{id}` | Yes | `admin` | 60 req/min | Delete a user account |
+| `GET` | `/api/v1/documents/` | Yes | `admin` | 60 req/min | List/search all documents |
 | `POST` | `/api/v1/documents/` | Yes | Any | 5 req/min | Upload a document |
 | `PATCH` | `/api/v1/documents/{id}` | Yes | `admin` | 10 req/min | Update document metadata |
 | `PATCH` | `/api/v1/documents/{id}/approve` | Yes | `admin` | 10 req/min | Approve a document |
@@ -283,10 +286,31 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
   - Added `UserRole` enum (`standard`, `contributor`, `admin`)
 - Added role guards on endpoints:
   - `standard`, `contributor` required: `GET /users/me/usage`, all `case-analyses` endpoints
-  - `admin` required: `PATCH /documents/{id}`, `PATCH /documents/{id}/approve`
+  - `admin` required: `PATCH /documents/{id}`, `PATCH /documents/{id}/approve`, `GET /documents/`
+- Added:
+  ```http
+  GET /api/v1/users/
+  ```
+  for listing/searching all users (admin only).
+- Added:
+  ```http
+  DELETE /api/v1/users/{user_id}
+  ```
+  for deleting user accounts (admin only).
+- Added:
+  ```http
+  GET /api/v1/documents/
+  ```
+  for listing/searching documents (admin only).
+- Added `role` field to the JWT payload emitted at login.
 - Added `AuthContext` (`AuthContext.tsx`) for frontend auth state management.
 - Added `RequireAuth` wrapper in `App.tsx` for protected route rendering.
 - Added `user.ts` type definitions for frontend.
+- Added `UserSearch` schema with query-based search and `OrderableMixin` for sortable columns.
+- Added `DocumentSearch` schema with query-based search and `OrderableMixin`.
+- Added `DocumentResponse` schema with nested `UserResponse` for the uploader.
+- Added `UserGetAll` and `DocumentGetAll` schemas for non-search list endpoints.
+- Added `OrderableMixin` and `OrderEnum` (`ASC`/`DESC`) for sortable list responses.
 
 ## Changed
 
@@ -315,6 +339,7 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Updated `App.tsx` with a `RequireAuth` wrapper that gates `/workspace` behind `standard` or `contributor` roles.
 - Separated user-related types (`UserRole`, `UserResponse`, `UserTokenUsageResponse`) into `frontend/hukom_bot/src/types/user.ts`.
 - Updated logout handling to use the async `logout()` service function directly instead of `getLogoutUrl()` + `window.location.href`.
+- Updated `WorkspaceContext` to consume `AuthContext` instead of fetching the current user independently.
 - Updated `SessionExplorer` session list to render sorted by `updated_at` descending (most recent first).
 
 ### User API
@@ -365,6 +390,10 @@ is now wrapped in a `SuccessResponse` envelope containing:
 - Added `require_role` dependency that validates the `role` claim against allowed roles.
 - Added role guards to all case analysis endpoints, document update/approve endpoints, and the user token usage endpoint.
 - Updated `rate_limit` dependency to use injected `JWTService` instead of instantiating it inline.
+- `GET /users/me` success message changed from "User fetched successfully" to "User retrieved successfully".
+- `GET /users/me/usage` success message changed from "User token usage retrive successfully" to "User token usage retrieved successfully".
+- `UserSearch` schema restructured to use generic `query` field with `OrderableMixin` instead of separate `first_name`/`last_name`/`email`/`provider` fields.
+- `DocumentSearch` schema restructured to use generic `query` field with `OrderableMixin`.
 
 ### Dependency Injection
 
