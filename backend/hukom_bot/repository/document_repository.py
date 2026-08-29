@@ -5,7 +5,12 @@ from psycopg import AsyncConnection
 from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.document_model import Document
-from backend.hukom_bot.schema.document_schema import DocumentCreate, DocumentUpdate, DocumentSearch
+from backend.hukom_bot.schema.document_schema import (
+    DocumentCreate,
+    DocumentUpdate,
+    DocumentSearch,
+    DocumentGetAll,
+)
 from backend.hukom_bot.util.document_caster import DocumentCaster
 
 
@@ -241,20 +246,20 @@ class DocumentRepository:
         )
 
     async def search(
-            self, param: DocumentSearch, connection: AsyncConnection = None
-        ) -> list[Document]:
-            if connection is not None:
-                return await self._search_implement(conn=connection, param=param)
-    
-            async with self._database.connection() as conn:
-                try:
-                    result = await self._search_implement(conn=conn, param=param)
-                    await conn.commit()
-                    return result
-                except errors.OperationalError as ex:
-                    await conn.rollback()
-                    raise
-    
+        self, param: DocumentSearch, connection: AsyncConnection = None
+    ) -> list[Document]:
+        if connection is not None:
+            return await self._search_implement(conn=connection, param=param)
+
+        async with self._database.connection() as conn:
+            try:
+                result = await self._search_implement(conn=conn, param=param)
+                await conn.commit()
+                return result
+            except errors.OperationalError as ex:
+                await conn.rollback()
+                raise
+
     async def _search_implement(self, conn: AsyncConnection, param: DocumentSearch):
         column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
 
@@ -283,8 +288,48 @@ class DocumentRepository:
         documents = []
         for row in rows:
             documents.append(Document.model_validate(row))
-    
+
             return documents
+
+    async def all(
+        self, param: DocumentGetAll, connection: AsyncConnection = None
+    ) -> list[Document]:
+        if connection is not None:
+            return await self._all_implement(connection, param)
+
+        async with self._database.connection() as conn:
+            try:
+                result = await self._all_implement(conn, param)
+                await conn.commit()
+                return result
+            except errors.OperationalError as ex:
+                await conn.rollback()
+                raise
+
+    async def _all_implement(
+        self, conn: AsyncConnection, param: DocumentGetAll
+    ) -> list[DocumentGetAll]:
+        column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
+
+        async with conn.cursor() as cur:
+            await cur.execute(
+                f"""
+                SELECT * 
+                FROM documents
+                ORDER BY {column_order}
+                LIMIT %(limit)s
+                OFFSET %(offset)s
+                """,
+                param.model_dump(),
+            )
+
+            rows = await cur.fetchall()
+
+        documents = []
+        for row in rows:
+            documents.append(Document.model_validate(row))
+
+        return documents
 
     async def delete_many(self, ids: list[UUID], connection: AsyncConnection = None):
         if not ids:

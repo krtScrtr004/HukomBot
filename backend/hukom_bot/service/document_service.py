@@ -49,6 +49,9 @@ class DocumentService:
     async def search(self, param: DocumentSearch, connection: AsyncConnection = None):
         return await self._document_repo.search(param=param, connection=connection)
 
+    async def all(self, param: DocumentGetAll, connection: AsyncConnection = None):
+        return await self._document_repo.all(param=param, connection=connection)
+
     # Others =======
 
     def get_file_from_storage(self, upload_file_name, file_type):
