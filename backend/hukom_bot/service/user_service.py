@@ -1,3 +1,4 @@
+from uuid import UUID
 from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.schema.user_schema import UserCreate, UserUpdate, UserGetAll
@@ -31,9 +32,10 @@ class UserService:
         )
 
     async def all(self, param: UserGetAll, connection: AsyncConnection = None):
-        return await self._user_repo.all(
-            param=param, connection=connection
-        )
+        return await self._user_repo.all(param=param, connection=connection)
+
+    async def delete(self, id: UUID, connection: AsyncConnection = None):
+        await self._user_repo.delete(id=id, connection=connection)
 
     # Others ===============================
 

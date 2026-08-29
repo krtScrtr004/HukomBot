@@ -289,3 +289,26 @@ class UserRepository:
             users.append(User.model_validate(row))
 
         return users
+    
+    async def delete(self, id: UUID, connection: AsyncConnection = None):
+        if connection is not None:
+            await self._delete_implement(conn=connection, id=id)
+            return 
+        
+        async with self._database.connection() as conn:
+            try:
+                await self._delete_implement(conn=conn, id=id)
+                await conn.commit()
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
+            
+    async def _delete_implement(self, conn: AsyncConnection, id: UUID):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                DELETE FROM users
+                WHERE id = %s
+                """,
+                (id,)
+            )
