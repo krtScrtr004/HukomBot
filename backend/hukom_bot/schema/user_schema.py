@@ -32,6 +32,10 @@ class UserSearch(PaginatableMixin, OrderableMixin):
     model_config = {"arbitrary_types_allowed": True}
 
 
+class UserGetByManyId(PaginatableMixin):
+    ids: list[UUID]
+
+
 class UserGetAll(PaginatableMixin, OrderableMixin):
     column: list[str] = Field(default_factory=lambda: ["last_name", "first_name"])
     
