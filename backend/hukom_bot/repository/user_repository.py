@@ -3,12 +3,7 @@ from psycopg import errors
 from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.user_model import User
-from backend.hukom_bot.schema.user_schema import (
-    UserCreate,
-    UserSearch,
-    UserUpdate,
-    UserGetAll,
-)
+from backend.hukom_bot.schema.user_schema import *
 from backend.hukom_bot.util.user_caster import UserCaster
 
 
@@ -164,6 +159,51 @@ class UserRepository:
 
         return User.model_validate(row) if row is not None else None
 
+    async def get_by_many_id(
+        self, param: UserGetByManyId, connection: AsyncConnection = None
+    ):
+        if not id:
+            return None
+
+        if connection is not None:
+            return await self._get_by_many_id_implement(conn=connection, param=param)
+
+        async with self._database.connection() as conn:
+            try:
+                result = await self._get_by_many_id_implement(conn=conn, param=param)
+                await conn.commit()
+                return result
+            except errors.OperationalError as ex:
+                await conn.rollback()
+                raise
+
+    async def _get_by_many_id_implement(
+        self, conn: AsyncConnection, param: UserGetByManyId
+    ) -> list[User]:
+        async with conn.cursor() as cur:
+            placeholders = ", ".join(f"%(id_{i})s" for i, _ in enumerate(param.ids))
+            params = {f"id_{i}": id for i, id in enumerate(param.ids)}
+            params["limit"] = param.limit
+            params["offset"] = param.offset
+
+            await cur.execute(
+                f"""
+                SELECT *
+                FROM users
+                WHERE id IN ({placeholders})
+                LIMIT %(limit)s
+                OFFSET %(offset)s
+                """,
+                params,
+            )
+
+            rows = await cur.fetchall()
+        users = []
+        for row in rows:
+            users.append(User.model_validate(row))
+
+        return users
+
     async def get_by_provider_id(
         self, provider_id: str, connection: AsyncConnection = None
     ):
@@ -285,12 +325,12 @@ class UserRepository:
             users.append(User.model_validate(row))
 
         return users
-    
+
     async def delete(self, id: UUID, connection: AsyncConnection = None):
         if connection is not None:
             await self._delete_implement(conn=connection, id=id)
-            return 
-        
+            return
+
         async with self._database.connection() as conn:
             try:
                 await self._delete_implement(conn=conn, id=id)
@@ -298,7 +338,7 @@ class UserRepository:
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
                 raise
-            
+
     async def _delete_implement(self, conn: AsyncConnection, id: UUID):
         async with conn.cursor() as cur:
             await cur.execute(
@@ -306,5 +346,5 @@ class UserRepository:
                 DELETE FROM users
                 WHERE id = %s
                 """,
-                (id,)
+                (id,),
             )

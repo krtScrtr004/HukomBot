@@ -1,7 +1,13 @@
 from uuid import UUID
 from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
-from backend.hukom_bot.schema.user_schema import UserCreate, UserUpdate, UserSearch, UserGetAll
+from backend.hukom_bot.schema.user_schema import (
+    UserCreate,
+    UserUpdate,
+    UserSearch,
+    UserGetByManyId,
+    UserGetAll,
+)
 from backend.hukom_bot.repository.user_repository import UserRepository
 from backend.hukom_bot.util.file_utilities import is_valid_file_type
 
@@ -24,19 +30,20 @@ class UserService:
     async def get_by_id(self, id: str, connection: AsyncConnection = None):
         return await self._user_repo.get_by_id(id=id, connection=connection)
 
+    async def get_by_ids(
+        self, param: UserGetByManyId, connection: AsyncConnection = None
+    ):
+        return await self._user_repo.get_by_many_id(param=param, connection=connection)
+
     async def get_by_provider_id(
         self, provider_id: str, connection: AsyncConnection = None
     ):
         return await self._user_repo.get_by_provider_id(
             provider_id=provider_id, connection=connection
         )
-        
-    async def search(
-        self, param: UserSearch, connection: AsyncConnection = None
-    ):
-        return await self._user_repo.search(
-            param=param, connection=connection
-        )
+
+    async def search(self, param: UserSearch, connection: AsyncConnection = None):
+        return await self._user_repo.search(param=param, connection=connection)
 
     async def all(self, param: UserGetAll, connection: AsyncConnection = None):
         return await self._user_repo.all(param=param, connection=connection)
