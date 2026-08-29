@@ -25,21 +25,11 @@ class UserUpdate(UserUpdateBase):
     profile_picture: str | None = Field(default=None)
 
 
-class UserSearch(PaginatableMixin):
-    first_name: str | None = Field(default=None, min_length=1, max_length=255)
-    last_name: str | None = Field(default=None, min_length=1, max_length=255)
-    email: EmailStr | None = Field(default=None)
-    provider: OAuthProvider | None = Field(default=None)
+class UserSearch(PaginatableMixin, OrderableMixin):
+    query: str|None = Field(default=None, min_length=3, max_length=256)        
+    column: list[str] = Field(default_factory=lambda: ["last_name", "first_name"])
 
     model_config = {"arbitrary_types_allowed": True}
-
-    @model_validator(mode="after")
-    def at_least_one_required(self) -> UserSearch:
-        if not any(self.first_name, self.last_name, self.email, self.provider):
-            raise ValueError(
-                "At least one of 'first_name', 'last_name', 'email', or 'provider' must be provided"
-            )
-        return self
 
 
 class UserGetAll(PaginatableMixin, OrderableMixin):
