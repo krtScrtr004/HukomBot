@@ -43,6 +43,20 @@ class DocumentOrchistrator:
         self._file_storage_service = file_storage_service
         self._user_service = user_service
 
+    async def get_by_id(self, id: UUID) -> DocumentResponse | None:
+        async with self._db.connection() as conn:
+            document = await self._document_service.get_by_id(id=id, connection=conn)
+            if not document:
+                return None
+
+            uploader = await self._user_service.get_by_id(
+                id=document.uploader_id, connection=conn
+            )
+
+        return DocumentCaster.base_to_response(
+            document=document, uploader=uploader
+        )
+
     async def create_pending(
         self, user_id: UUID, file: UploadFile, document_type: LegalDocumentType
     ) -> OrchistratorResult:
@@ -134,7 +148,7 @@ class DocumentOrchistrator:
                 if current_status == UploadStatus.REJECTED:
                     return
 
-                if updated_status is not None and current_status is not None:                    
+                if updated_status is not None and current_status is not None:
                     # Remove document file from server's file storage
                     if updated_status == UploadStatus.REJECTED:
                         try:

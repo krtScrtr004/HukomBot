@@ -22,6 +22,7 @@ from backend.hukom_bot.schema.document_schema import (
 from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchistrator
 from backend.hukom_bot.schema.response_schema import SuccessResponse
+from backend.hukom_bot.exception.app_exception import NotFoundException
 from backend.hukom_bot.util.document_caster import DocumentCaster
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
@@ -32,6 +33,52 @@ from backend.hukom_bot.api.v1.dependency import (
 )
 
 document_api_router = APIRouter()
+
+
+@document_api_router.get("/")
+async def get_documents(
+    query: Annotated[DocumentSearch, Query()],
+    orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
+):
+    result = await orchistrator.search_pipeline(param=query)
+
+    return SuccessResponse(message="Documents retrieved successfully", data=result)
+
+
+@document_api_router.get("/{document_id}")
+async def get_document_info(
+    document_id: UUID,
+    orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
+):
+    document = await orchistrator.get_by_id(id=document_id)
+    if not document:
+        raise NotFoundException(
+            message="Document not found",
+            details=[f"Document's info with an id: {document_id} is not found"],
+        )
+
+    return SuccessResponse(message=f"Document retrieved successfully", data=document)
+
+
+@document_api_router.get("/{document_id}/upload-status")
+async def get_document_upload_status(
+    document_id: UUID,
+    service: Annotated[DocumentService, Depends(get_document_service)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
+):
+    status = await service.get_upload_status(document_id)
+
+    return SuccessResponse(
+        message=f"Document upload status is {status.value}", data=status
+    )
 
 
 @document_api_router.post("/")
@@ -85,31 +132,3 @@ async def approve_document(
     background_tasks.add_task(orchistrator.process_document_pdf_upload, document, file)
 
     return SuccessResponse(message=result.message, data=result.data["response"])
-
-
-@document_api_router.get("/")
-async def get_documents(
-    query: Annotated[DocumentSearch, Query()],
-    orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
-    _us: Annotated[User, Depends(verify_user)],
-    _rl=Depends(rate_limit(limit=60, window=60)),
-    _rr=Depends(require_role(UserRole.ADMIN)),
-):
-    result = await orchistrator.search_pipeline(param=query)
-
-    return SuccessResponse(message="Documents retrieved successfully", data=result)
-
-
-@document_api_router.get("/{document_id}/upload-status")
-async def get_document_upload_status(
-    document_id: UUID,
-    service: Annotated[DocumentService, Depends(get_document_service)],
-    _us: Annotated[User, Depends(verify_user)],
-    _rl=Depends(rate_limit(limit=60, window=60)),
-    _rr=Depends(require_role(UserRole.ADMIN)),
-):
-    status = await service.get_upload_status(document_id)
-    
-    return SuccessResponse(
-        message=f"Document upload status is {status.value}", data=status
-    )
