@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from datetime import datetime
 from uuid import UUID, uuid4
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 from backend.hukom_bot.schema.user_schema import UserResponse
 from backend.hukom_bot.schema.mixin import PaginatableMixin, OrderableMixin
 from backend.hukom_bot.enum.upload_status import UploadStatus
@@ -33,6 +33,15 @@ class DocumentUpdateBase(BaseModel):
     rejection_message: str | None = Field(default=None, max_length=500)
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
+
+    @field_validator("rejection_message")
+    @classmethod
+    def check_rejection_message(cls, rej_mes: str | None) -> DocumentUpdateBase:
+        up_stat = cls.upload_status
+
+        if up_stat is not None and up_stat == UploadStatus.REJECTED and not rej_mes:
+            raise ValidationError("Field is required")
+        return rej_mes
 
 
 class DocumentUpdate(DocumentUpdateBase):
