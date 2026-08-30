@@ -72,7 +72,6 @@ async def get_document_upload_status(
     service: Annotated[DocumentService, Depends(get_document_service)],
     _us: Annotated[User, Depends(verify_user)],
     _rl=Depends(rate_limit(limit=60, window=60)),
-    _rr=Depends(require_role(UserRole.ADMIN)),
 ):
     status = await service.get_upload_status(document_id)
 
