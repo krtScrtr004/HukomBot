@@ -144,6 +144,7 @@ All API endpoints use the `/api/v1` base path.
 | `DELETE` | `/api/v1/users/{id}` | Yes | `admin` | 60 req/min | Delete a user account |
 | `GET` | `/api/v1/documents/` | Yes | `admin` | 60 req/min | List/search all documents |
 | `POST` | `/api/v1/documents/` | Yes | Any | 5 req/min | Upload a document |
+| `GET` | `/api/v1/documents/{id}` | Yes | `admin` | 60 req/min | Get document by ID |
 | `PATCH` | `/api/v1/documents/{id}` | Yes | `admin` | 10 req/min | Update document metadata |
 | `PATCH` | `/api/v1/documents/{id}/approve` | Yes | `admin` | 10 req/min | Approve a document |
 | `GET` | `/api/v1/documents/{id}/upload-status` | Yes | Any | 60 req/min | Get document upload status |
@@ -280,13 +281,14 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Added `DocumentOrchistrator.update_pipeline()` with:
   - Status transition validation (no reverting to prior states, no FAILED after COMPLETED)
   - Forbidden `ONGOING` status transitions (must use the approve endpoint instead)
+  - `REJECTED` status handling with file deletion and `rejection_message` enforcement
 - Added Role-Based Access Control (RBAC):
   - Added `role` field to `JWTPayload`
   - Added `require_role` dependency injection function
   - Added `UserRole` enum (`standard`, `contributor`, `admin`)
 - Added role guards on endpoints:
   - `standard`, `contributor` required: `GET /users/me/usage`, all `case-analyses` endpoints
-  - `admin` required: `PATCH /documents/{id}`, `PATCH /documents/{id}/approve`, `GET /documents/`
+  - `admin` required: `PATCH /documents/{id}`, `PATCH /documents/{id}/approve`, `GET /documents/`, `GET /documents/{id}`
 - Added:
   ```http
   GET /api/v1/users/
@@ -301,7 +303,12 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
   ```http
   GET /api/v1/documents/
   ```
-  for listing/searching documents (admin only).
+   for listing/searching documents (admin only).
+- Added:
+  ```http
+  GET /api/v1/documents/{document_id}
+  ```
+  for retrieving a single document by ID (admin only).
 - Added `role` field to the JWT payload emitted at login.
 - Added `AuthContext` (`AuthContext.tsx`) for frontend auth state management.
 - Added `RequireAuth` wrapper in `App.tsx` for protected route rendering.
@@ -311,6 +318,9 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Added `DocumentResponse` schema with nested `UserResponse` for the uploader.
 - Added `UserGetAll` and `DocumentGetAll` schemas for non-search list endpoints.
 - Added `OrderableMixin` and `OrderEnum` (`ASC`/`DESC`) for sortable list responses.
+- Added `rejection_message` field to `DocumentCreate`, `DocumentUpdateBase`, and `DocumentResponse` schemas.
+- Added `rejected` value to the `UploadStatus` enum with status level `-1` and state transition logic in `DocumentOrchistrator.update_pipeline()`.
+- Made `uploader` field optional (`UserResponse | None`) in `DocumentResponse` schema.
 
 ## Changed
 
@@ -388,12 +398,13 @@ is now wrapped in a `SuccessResponse` envelope containing:
 - Updated `UserCaster` to include `profile_picture` when converting to `UserResponse`.
 - Added `role` claim to `JWTPayload` and included it in the JWT emitted at login.
 - Added `require_role` dependency that validates the `role` claim against allowed roles.
-- Added role guards to all case analysis endpoints, document update/approve endpoints, and the user token usage endpoint.
+- Added role guards to all case analysis endpoints, document update/approve endpoints, user token usage endpoint, document listing, document retrieval by ID, and document upload-status endpoints.
 - Updated `rate_limit` dependency to use injected `JWTService` instead of instantiating it inline.
 - `GET /users/me` success message changed from "User fetched successfully" to "User retrieved successfully".
 - `GET /users/me/usage` success message changed from "User token usage retrive successfully" to "User token usage retrieved successfully".
 - `UserSearch` schema restructured to use generic `query` field with `OrderableMixin` instead of separate `first_name`/`last_name`/`email`/`provider` fields.
 - `DocumentSearch` schema restructured to use generic `query` field with `OrderableMixin`.
+- Added `model_validator` on `DocumentUpdateBase` to enforce: `rejection_message` required when `upload_status` is `rejected`, and `upload_status` required when `rejection_message` is provided.
 
 ### Dependency Injection
 
