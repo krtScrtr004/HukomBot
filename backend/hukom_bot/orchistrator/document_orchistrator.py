@@ -129,27 +129,37 @@ class DocumentOrchistrator:
                     raise NotFoundException(message="Document not found")
 
                 current_status = existing_document.upload_status
-                if updated_status is not None and current_status is not None:
-                    # Edge case: since Failed status has higher level than completed,
-                    # check if user tries to update the status to Failed state
-                    if (
-                        current_status == UploadStatus.COMPLETED
-                        and updated_status == UploadStatus.FAILED
-                    ):
-                        raise ForbiddenException(
-                            message="You are not allowed to mark a document's upload status to Failed if it is already Completed",
-                        )
 
-                    # Prohibit upload status from being reverted to earlier states
+                # Prevent rejected documents from being updated
+                if current_status == UploadStatus.REJECTED:
+                    return
+
+                if updated_status is not None and current_status is not None:                    
+                    # Remove document file from server's file storage
+                    if updated_status == UploadStatus.REJECTED:
+                        try:
+                            await self._file_storage_service.delete_from_pending(
+                                f"{existing_document.upload_file_name}.{existing_document.file_type.lstrip(".")}"
+                            )
+                        except:
+                            pass
+                    else:
+                        document.rejection_message = None
+
                     updated_level = updated_status.get_level()
                     current_level = current_status.get_level()
-                    if updated_level < current_level:
+                    # Prohibit upload status from being reverted to earlier states
+                    if updated_level > 0 and updated_level < current_level:
                         raise ForbiddenException(
                             message="You are not allowed to revert the upload status of a document to a previous state",
                             details=[
                                 f"{current_status.display_name()} cannot be reverted to {updated_status.display_name()}"
                             ],
                         )
+
+                    # Always set upload_error to None if upload_status is not FAILED
+                    if current_status != UploadStatus.FAILED:
+                        document.upload_error = None
 
                 update_schema = self._create_update_schema(
                     existing_document=existing_document, update_document=document
@@ -319,7 +329,7 @@ class DocumentOrchistrator:
             )
             if not documents:
                 return []
-            
+
             user_ids = [d.uploader_id for d in documents]
             uploaders = await self._user_service.get_by_ids(
                 param=UserGetByManyId(ids=user_ids), connection=conn
@@ -329,7 +339,8 @@ class DocumentOrchistrator:
             await conn.commit()
 
             return [
-                DocumentCaster.base_to_response(document, uploader_map.get(document.uploader_id))
+                DocumentCaster.base_to_response(
+                    document, uploader_map.get(document.uploader_id)
+                )
                 for document in documents
             ]
-            
