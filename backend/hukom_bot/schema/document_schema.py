@@ -115,7 +115,7 @@ class ApproveDocumentUploadPayload(BaseModel):
 
 class DocumentResponse(BaseModel):
     id: UUID
-    uploader: UserResponse
+    uploader: UserResponse | None
     original_file_name: str
     upload_file_name: UUID
     document_type: LegalDocumentType
