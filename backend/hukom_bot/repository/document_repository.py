@@ -128,6 +128,9 @@ class DocumentRepository:
         if document.upload_status:
             set_clauses.append("upload_status = %(upload_status)s")
             values["upload_status"] = document.upload_status
+        if document.rejection_message:
+            set_clauses.append("rejection_message = %(rejection_message)s")
+            values["rejection_message"] = document.rejection_message
 
             # Set upload_error to None if status is COMPLETED
             if document.upload_status == UploadStatus.COMPLETED:
