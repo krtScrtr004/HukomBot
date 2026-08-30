@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from datetime import datetime
 from uuid import UUID, uuid4
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+from pydantic import BaseModel, Field, model_validator, field_validator
 from backend.hukom_bot.schema.user_schema import UserResponse
 from backend.hukom_bot.schema.mixin import PaginatableMixin, OrderableMixin
 from backend.hukom_bot.enum.upload_status import UploadStatus
@@ -34,14 +34,35 @@ class DocumentUpdateBase(BaseModel):
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
-    @field_validator("rejection_message")
-    @classmethod
-    def check_rejection_message(cls, rej_mes: str | None) -> DocumentUpdateBase:
-        up_stat = cls.upload_status
 
-        if up_stat is not None and up_stat == UploadStatus.REJECTED and not rej_mes:
-            raise ValidationError("Field is required")
-        return rej_mes
+class DocumentUpdateBase(BaseModel):
+    original_file_name: str | None = Field(default=None, min_length=1, max_length=300)
+    document_type: LegalDocumentType | None = Field(default=None)
+    upload_status: UploadStatus | None = Field(default=None)
+    rejection_message: str | None = Field(default=None, max_length=500)
+
+    model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
+
+    @model_validator(mode="after")
+    def check_rejection_message(self) -> "DocumentUpdateBase":
+        rej_mes = (
+            self.rejection_message.lstrip()
+            if self.rejection_message and self.rejection_message.lstrip() != ""
+            else None
+        )
+        up_stat = self.upload_status
+
+        if rej_mes and up_stat is None:
+            raise ValueError(
+                "Upload status is required when rejection message is provided"
+            )
+
+        if not rej_mes and up_stat == UploadStatus.REJECTED:
+            raise ValueError(
+                "Rejection message is required when upload status is REJECTED"
+            )
+
+        return self
 
 
 class DocumentUpdate(DocumentUpdateBase):
@@ -94,14 +115,14 @@ class ApproveDocumentUploadPayload(BaseModel):
 
 class DocumentResponse(BaseModel):
     id: UUID
-    rejection_message: str | None
+    uploader: UserResponse
     original_file_name: str
     upload_file_name: UUID
     document_type: LegalDocumentType
     file_type: str
     upload_status: UploadStatus
     upload_error: str | None
-    uploader: UserResponse
+    rejection_message: str | None
     created_at: datetime
 
     model_config = {"arbitrary_types_allowed": True}
