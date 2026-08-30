@@ -15,14 +15,15 @@ class DocumentCaster:
     def create_to_base(document: DocumentCreate) -> Document:
         return Document(
             id=document.id,
+            uploader_id=document.uploader_id,
             original_file_name=document.original_file_name,
             upload_file_name=document.upload_file_name,
             document_type=document.document_type,
             file_type=document.file_type,
+            digest=document.digest,
             upload_status=document.upload_status,
             upload_error=document.upload_error,
-            digest=document.digest,
-            uploader_id=document.uploader_id,
+            rejection_message=document.rejection_message,
             created_at=document.created_at
         )
 
@@ -45,20 +46,22 @@ class DocumentCaster:
             file_type=None,
             document_type=document.document_type,
             upload_status=document.upload_status,
-            upload_error=None
+            upload_error=None,
+            rejection_message=document.rejection_message
         )
         
     @staticmethod
     def base_to_response(document: Document, uploader: User | None = None) -> DocumentResponse:
         return DocumentResponse(
             id=document.id,
+            uploader=UserCaster.base_to_response(uploader) if uploader else None,
             original_file_name=document.original_file_name,
             upload_file_name=document.upload_file_name,
             document_type=document.document_type,
             file_type=document.file_type,
             upload_status=document.upload_status,
             upload_error=document.upload_error,
-            uploader=UserCaster.base_to_response(uploader) if uploader else None,
+            rejection_message=document.rejection_message,
             created_at=document.created_at
         )
 

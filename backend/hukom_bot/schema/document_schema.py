@@ -12,14 +12,15 @@ from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
 
 class DocumentCreate(BaseModel):
     id: UUID = Field(default_factory=uuid4)
+    uploader_id: UUID
     original_file_name: str = Field(min_length=1, max_length=300)
     upload_file_name: UUID = Field(default_factory=uuid4)
     document_type: LegalDocumentType
     file_type: str = Field(min_length=1, max_length=20)
+    digest: bytes
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
     upload_error: str | None = Field(default=None, max_length=500)
-    digest: bytes
-    uploader_id: UUID
+    rejection_message: str | None = Field(default=None, max_length=500)
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
@@ -29,6 +30,7 @@ class DocumentUpdateBase(BaseModel):
     original_file_name: str | None = Field(default=None, min_length=1, max_length=300)
     document_type: LegalDocumentType | None = Field(default=None)
     upload_status: UploadStatus | None = Field(default=None)
+    rejection_message: str | None = Field(default=None, max_length=500)
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
@@ -83,6 +85,7 @@ class ApproveDocumentUploadPayload(BaseModel):
 
 class DocumentResponse(BaseModel):
     id: UUID
+    rejection_message: str | None
     original_file_name: str
     upload_file_name: UUID
     document_type: LegalDocumentType

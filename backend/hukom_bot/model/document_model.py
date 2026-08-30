@@ -9,14 +9,15 @@ from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
 
 class Document(BaseModel):
     id: UUID
+    uploader_id: UUID
     original_file_name: str
     upload_file_name: UUID = Field(default=uuid4())
     document_type: LegalDocumentType
     file_type: str
+    digest: bytes
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
     upload_error: str | None = Field(default=None)
-    digest: bytes
-    uploader_id: UUID
+    rejection_message: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.now)
 
     # Navigation Property
