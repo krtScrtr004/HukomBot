@@ -42,7 +42,7 @@ class NotFoundException(AppException):
         code: str = "NOT_FOUND",
         details: list[str] = [],
     ):
-        super().__init__(message=message, statuc_code=404, code=code, details=details)
+        super().__init__(message=message, status_code=404, code=code, details=details)
 
 
 class RateLimitException(AppException):
