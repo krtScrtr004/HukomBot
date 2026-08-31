@@ -11,6 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from backend.hukom_bot.core.settings import settings
 
+from backend.hukom_bot.api.v1.endpoint.admin import admin_api_router
 from backend.hukom_bot.api.v1.endpoint.auth import auth_api_router
 from backend.hukom_bot.api.v1.endpoint.user import user_api_router
 from backend.hukom_bot.api.v1.endpoint.case_analysis import case_analysis_api_router
@@ -47,6 +48,12 @@ app = FastAPI(lifespan=lifespan)
 
 
 # Routers ============================================================
+
+app.include_router(
+    router=admin_api_router,
+    prefix="/api/v1/admin",
+    tags=["Admin API"],
+)
 
 app.include_router(
     router=auth_api_router,
