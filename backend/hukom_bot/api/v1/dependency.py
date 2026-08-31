@@ -50,11 +50,12 @@ from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.service.token_quota_service import TokenQuotaService
 
-from backend.hukom_bot.orchistrator.user_orchistrator import UserOrchistrator
+from backend.hukom_bot.orchistrator.admin_orchistrator import AdminOrchistrator
 from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchistrator
 from backend.hukom_bot.orchistrator.case_analysis_orchistrator import (
     CaseAnalysisOrchistrator,
 )
+from backend.hukom_bot.orchistrator.user_orchistrator import UserOrchistrator
 
 from backend.hukom_bot.exception.app_exception import UnauthorizedException
 
@@ -295,13 +296,27 @@ def get_user_orchistrator(
     return UserOrchistrator(db=db, user_service=user_service)
 
 
+def get_admin_orchistrator(
+    db: Database = Depends(get_db),
+    chunk_service: ChunkService = Depends(get_chunk_service),
+    document_service: DocumentService = Depends(get_document_service),
+    user_service: UserService = Depends(get_user_service),
+) -> AdminOrchistrator:
+    return AdminOrchistrator(
+        db=db,
+        chunk_service=chunk_service,
+        document_service=document_service,
+        user_service=user_service,
+    )
+
+
 def get_document_orchestrator(
     db: Database = Depends(get_db),
     chunk_service: ChunkService = Depends(get_chunk_service),
     document_service: DocumentService = Depends(get_document_service),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     file_storage_service: FileStorageService = Depends(get_file_storage_service),
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ) -> DocumentOrchistrator:
     return DocumentOrchistrator(
         db=db,
@@ -309,7 +324,7 @@ def get_document_orchestrator(
         document_service=document_service,
         embedding_service=embedding_service,
         file_storage_service=file_storage_service,
-        user_service=user_service
+        user_service=user_service,
     )
 
 
@@ -385,7 +400,7 @@ def require_role(*allowed_roles: UserRole):
             token = request.cookies.get("token")
             if not token:
                 raise
-            
+
             decoded = jwt_service.verify(token)
             payload = JWTPayload.model_validate(decoded)
             if payload.role not in allowed_roles:
