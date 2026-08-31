@@ -12,6 +12,8 @@ class ChunkRepository:
     def __init__(self, db: Database):
         self._database = db
 
+    # CREATE ============================================================================
+
     async def create_many(
         self,
         chunks: list[ChunkCreate],
@@ -68,6 +70,8 @@ class ChunkRepository:
                 updated.append(ChunkCaster.create_to_base(chunks[i]))
 
         return updated
+
+    # READ =============================================================================
 
     async def search(
         self, chunk: ChunkSearchKeyword, connection: AsyncConnection = None
@@ -231,3 +235,19 @@ class ChunkRepository:
             chunks.append(chunk)
 
         return chunks
+
+    async def count_all(self, connection: AsyncConnection = None):
+        if connection is not None:
+            return await self._count_all_implement(conn=connection)
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_all_implement(conn=conn)
+        except errors.OperationalError:
+            raise
+
+    async def _count_all_implement(self, conn: AsyncConnection) -> int:
+        async with conn.cursor() as cur:
+            await cur.execute("""SELECT COUNT(id) FROM chunks""")
+
+            return await cur.fetchone()
