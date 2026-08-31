@@ -344,7 +344,9 @@ class UserRepository:
 
     async def _count_active_implement(self, conn: AsyncConnection) -> int:
         async with conn.cursor() as cur:
-            await cur.execute("""SELECT COUNT(id) FROM users u WHERE u.is_active = true""")
+            await cur.execute(
+                """SELECT COUNT(u.id) FROM users u WHERE u.is_active = true"""
+            )
 
             return await cur.fetchone()
 

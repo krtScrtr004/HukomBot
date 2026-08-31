@@ -18,6 +18,8 @@ class DocumentRepository:
     def __init__(self, db: Database):
         self._database = db
 
+    # CREATE ============================================================================
+
     async def create(
         self,
         document: DocumentCreate,
@@ -79,6 +81,8 @@ class DocumentRepository:
             )
 
         return DocumentCaster.create_to_base(document)
+
+    # UPDATE ============================================================================
 
     async def update(
         self,
@@ -147,6 +151,8 @@ class DocumentRepository:
         """
 
         return query, values
+
+    # READ ==============================================================================
 
     async def get_by_id(
         self, id: UUID, connection: AsyncConnection = None
@@ -346,6 +352,109 @@ class DocumentRepository:
             documents.append(Document.model_validate(row))
 
         return documents
+
+    async def count_all(self, connection: AsyncConnection = None):
+        if connection is not None:
+            return await self._count_all_implement(conn=connection)
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_all_implement(conn=conn)
+        except errors.OperationalError:
+            raise
+
+    async def _count_all_implement(self, conn: AsyncConnection) -> int:
+        async with conn.cursor() as cur:
+            await cur.execute("""SELECT COUNT(id) FROM documents""")
+
+            return await cur.fetchone()
+
+    async def count_pending(self, connection: AsyncConnection = None):
+        if connection is not None:
+            return await self._count_by_upload_status_implement(
+                conn=connection, upload_status=UploadStatus.PENDING
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_by_upload_status_implement(
+                    conn=conn, upload_status=UploadStatus.PENDING
+                )
+        except errors.OperationalError:
+            raise
+        
+    async def count_ongoing(self, connection: AsyncConnection = None):
+        if connection is not None:
+            return await self._count_by_upload_status_implement(
+                conn=connection, upload_status=UploadStatus.ONGOING
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_by_upload_status_implement(
+                    conn=conn, upload_status=UploadStatus.ONGOING
+                )
+        except errors.OperationalError:
+            raise
+        
+    async def count_completed(self, connection: AsyncConnection = None):
+        if connection is not None:
+            return await self._count_by_upload_status_implement(
+                conn=connection, upload_status=UploadStatus.COMPLETED
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_by_upload_status_implement(
+                    conn=conn, upload_status=UploadStatus.COMPLETED
+                )
+        except errors.OperationalError:
+            raise
+
+    async def count_failed(self, connection: AsyncConnection = None):
+        if connection is not None:
+            return await self._count_by_upload_status_implement(
+                conn=connection, upload_status=UploadStatus.FAILED
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_by_upload_status_implement(
+                    conn=conn, upload_status=UploadStatus.FAILED
+                )
+        except errors.OperationalError:
+            raise
+        
+    async def count_rejected(self, connection: AsyncConnection = None):
+        if connection is not None:
+            return await self._count_by_upload_status_implement(
+                conn=connection, upload_status=UploadStatus.REJECTED
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_by_upload_status_implement(
+                    conn=conn, upload_status=UploadStatus.REJECTED
+                )
+        except errors.OperationalError:
+            raise
+
+    async def _count_by_upload_status_implement(
+        self, conn: AsyncConnection, upload_status: UploadStatus
+    ) -> int:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT COUNT(d.id) 
+                FROM documents d
+                WHERE d.upload_status %s
+                """,
+                (upload_status.value),
+            )
+
+            return await cur.fetchone()
+
+    # DELETE ============================================================================
 
     async def delete_many(self, ids: list[UUID], connection: AsyncConnection = None):
         if not ids:
