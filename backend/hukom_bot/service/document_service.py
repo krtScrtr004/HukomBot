@@ -52,6 +52,24 @@ class DocumentService:
     async def all(self, param: DocumentGetAll, connection: AsyncConnection = None):
         return await self._document_repo.all(param=param, connection=connection)
 
+    async def count_all(self, connection: AsyncConnection = None):
+        return await self._document_repo.count_all(connection=connection)
+
+    async def count_pending(self, connection: AsyncConnection = None):
+        return await self._document_repo.count_pending(connection=connection)
+
+    async def count_ongoing(self, connection: AsyncConnection = None):
+        return await self._document_repo.count_ongoing(connection=connection)
+
+    async def count_completed(self, connection: AsyncConnection = None):
+        return await self._document_repo.count_completed(connection=connection)
+
+    async def count_failed(self, connection: AsyncConnection = None):
+        return await self._document_repo.count_failed(connection=connection)
+
+    async def count_rejected(self, connection: AsyncConnection = None):
+        return await self._document_repo.count_rejected(connection=connection)
+
     # Others =======
 
     def get_file_from_storage(self, upload_file_name, file_type):

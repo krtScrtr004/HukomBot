@@ -29,11 +29,14 @@ class ChunkService:
         self, chunk: ChunkSearchVector, connection: AsyncConnection = None
     ):
         return await self._chunk_repo.search_vector(chunk, connection)
-    
+
     async def search_keyword(
         self, chunk: ChunkSearchKeyword, connection: AsyncConnection = None
     ):
         return await self._chunk_repo.search(chunk, connection)
+
+    async def count_all(self, connection: AsyncConnection = None):
+        return await self._chunk_repo.count_all(connection=connection)
 
     # Others ======================
 

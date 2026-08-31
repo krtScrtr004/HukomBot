@@ -48,6 +48,9 @@ class UserService:
     async def all(self, param: UserGetAll, connection: AsyncConnection = None):
         return await self._user_repo.all(param=param, connection=connection)
 
+    async def count_active(self, connection: AsyncConnection = None):
+        return await self._user_repo.count_active(connection=connection)
+
     async def delete(self, id: UUID, connection: AsyncConnection = None):
         await self._user_repo.delete(id=id, connection=connection)
 
