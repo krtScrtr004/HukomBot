@@ -11,6 +11,8 @@ class UserRepository:
     def __init__(self, db: Database):
         self._database = db
 
+    # CREATE ============================================================================
+
     async def create(
         self,
         user: UserCreate,
@@ -71,6 +73,8 @@ class UserRepository:
             updated_at=user_updated_at,
         )
 
+    # UPDATE ============================================================================
+
     async def update(
         self,
         user: UserUpdate,
@@ -124,6 +128,8 @@ class UserRepository:
         """
 
         return query, values
+
+    # READ =============================================================================
 
     async def get_by_id(self, id: UUID, connection: AsyncConnection = None):
         if not id:
@@ -325,6 +331,24 @@ class UserRepository:
             users.append(User.model_validate(row))
 
         return users
+
+    async def count_active(self, connection: AsyncConnection = None):
+        if connection is not None:
+            return await self._count_active_implement(conn=connection)
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_active_implement(conn=conn)
+        except errors.OperationalError:
+            raise
+
+    async def _count_active_implement(self, conn: AsyncConnection) -> int:
+        async with conn.cursor() as cur:
+            await cur.execute("""SELECT COUNT(id) FROM users u WHERE u.is_active = true""")
+
+            return await cur.fetchone()
+
+    # DELETE ============================================================================
 
     async def delete(self, id: UUID, connection: AsyncConnection = None):
         if connection is not None:
