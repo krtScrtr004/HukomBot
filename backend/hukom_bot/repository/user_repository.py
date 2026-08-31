@@ -348,7 +348,8 @@ class UserRepository:
                 """SELECT COUNT(u.id) FROM users u WHERE u.is_active = true"""
             )
 
-            return await cur.fetchone()
+            row = await cur.fetchone()
+            return row["count"]
 
     # DELETE ============================================================================
 

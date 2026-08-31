@@ -367,7 +367,8 @@ class DocumentRepository:
         async with conn.cursor() as cur:
             await cur.execute("""SELECT COUNT(id) FROM documents""")
 
-            return await cur.fetchone()
+            row = await cur.fetchone()
+            return row["count"]
 
     async def count_pending(self, connection: AsyncConnection = None):
         if connection is not None:
@@ -447,12 +448,13 @@ class DocumentRepository:
                 """
                 SELECT COUNT(d.id) 
                 FROM documents d
-                WHERE d.upload_status %s
+                WHERE d.upload_status = %s
                 """,
-                (upload_status.value),
+                (upload_status.value,),
             )
 
-            return await cur.fetchone()
+            row = await cur.fetchone()
+            return row["count"]
 
     # DELETE ============================================================================
 

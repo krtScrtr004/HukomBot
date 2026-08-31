@@ -250,4 +250,5 @@ class ChunkRepository:
         async with conn.cursor() as cur:
             await cur.execute("""SELECT COUNT(id) FROM chunks""")
 
-            return await cur.fetchone()
+            row = await cur.fetchone()
+            return row["count"]
