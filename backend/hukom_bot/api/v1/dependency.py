@@ -46,6 +46,7 @@ from backend.hukom_bot.service.llm_service import LLMService
 from backend.hukom_bot.service.reranker_service import RerankerService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
 from backend.hukom_bot.service.jwt_service import JWTService
+from backend.hukom_bot.service.pubsub_service import PubsubService
 from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.service.token_quota_service import TokenQuotaService
@@ -98,10 +99,6 @@ def get_db(request: Request) -> Database:
     return request.app.state.db
 
 
-def get_redis(request: Request) -> Redis:
-    return request.app.state.redis
-
-
 # ============================================================================
 # Infrastructure Services (app-state singletons)
 # ============================================================================
@@ -113,6 +110,10 @@ def get_embedding_service(request: Request) -> EmbeddingService:
 
 def get_reranker_service(request: Request) -> RerankerService:
     return request.app.state.reranker_service.get_instance()
+
+
+def get_redis(request: Request) -> Redis:
+    return request.app.state.redis
 
 
 # ============================================================================
@@ -207,6 +208,22 @@ def get_chatbot_service(
     )
 
 
+def get_document_service(
+    document_repo: DocumentRepository = Depends(get_document_repository),
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
+    file_storage_service: FileStorageService = Depends(get_file_storage_service),
+) -> DocumentService:
+    return DocumentService(
+        document_repo=document_repo,
+        embedding_service=embedding_service,
+        file_storage_service=file_storage_service,
+    )
+
+
+def get_pubsub_service(redis: Redis = Depends(get_redis)) -> PubsubService:
+    return PubsubService(redis=redis)
+
+
 def get_revoked_token_service(
     revoked_token_repo: RevokedTokenRepository = Depends(get_revoked_token_repository),
 ) -> RevokedTokenService:
@@ -269,18 +286,6 @@ def get_case_analysis_service(
         chunk_service=chunk_service,
         embedding_service=embedding_service,
         reranker_service=reranker_service,
-    )
-
-
-def get_document_service(
-    document_repo: DocumentRepository = Depends(get_document_repository),
-    embedding_service: EmbeddingService = Depends(get_embedding_service),
-    file_storage_service: FileStorageService = Depends(get_file_storage_service),
-) -> DocumentService:
-    return DocumentService(
-        document_repo=document_repo,
-        embedding_service=embedding_service,
-        file_storage_service=file_storage_service,
     )
 
 
