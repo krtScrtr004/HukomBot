@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     # -- Redis --
     REDIS_HOST: str
     REDIS_PORT: int
+    
+    ADMIN_DASHBOARD_CH: str
 
     # -- Database --
     DB_HOST: str
