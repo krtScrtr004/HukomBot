@@ -17,6 +17,8 @@ from backend.hukom_bot.api.v1.endpoint.user import user_api_router
 from backend.hukom_bot.api.v1.endpoint.case_analysis import case_analysis_api_router
 from backend.hukom_bot.api.v1.endpoint.document import document_api_router
 
+from backend.hukom_bot.event.v1.admin import admin_sse_router
+
 from backend.hukom_bot.middleware.timer import TimerMiddleware
 from backend.hukom_bot.middleware.request_identifier import RequestIdentifierMiddleware
 
@@ -75,6 +77,12 @@ app.include_router(
 
 app.include_router(
     router=document_api_router, prefix="/api/v1/documents", tags=["Documents API"]
+)
+
+app.include_router(
+    router=admin_sse_router,
+    prefix="/events/v1/admin",
+    tags=["Admin SSE"]
 )
 
 
