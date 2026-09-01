@@ -11,6 +11,7 @@ from fastapi import (
     BackgroundTasks,
     File,
 )
+from backend.hukom_bot.core.settings import settings
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
@@ -20,6 +21,7 @@ from backend.hukom_bot.schema.document_schema import (
     ApproveDocumentUploadPayload,
 )
 from backend.hukom_bot.service.document_service import DocumentService
+from backend.hukom_bot.service.pubsub_service import PubsubService
 from backend.hukom_bot.orchistrator.document_orchistrator import DocumentOrchistrator
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.exception.app_exception import NotFoundException
@@ -27,9 +29,10 @@ from backend.hukom_bot.util.document_caster import DocumentCaster
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
     rate_limit,
+    require_role,
     get_document_service,
     get_document_orchestrator,
-    require_role,
+    get_pubsub_service,
 )
 
 document_api_router = APIRouter()
@@ -86,11 +89,17 @@ async def upload_document(
     document_type: Annotated[LegalDocumentType, Form(...)],
     user: Annotated[User, Depends(verify_user)],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    service: Annotated[PubsubService, Depends(get_pubsub_service)],
     _=Depends(rate_limit(limit=5, window=60)),
 ):
     result = await orchistrator.create_pending(
         user_id=user.id, file=file, document_type=document_type
     )
+
+    await service.publish(
+        channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+    )
+
     return SuccessResponse(message=result.message, data=result.data)
 
 
@@ -98,8 +107,9 @@ async def upload_document(
 async def update_document(
     document_id: Annotated[UUID, Path()],
     payload: Annotated[DocumentUpdatePayload, Body()],
-    user: Annotated[User, Depends(verify_user)],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    service: Annotated[PubsubService, Depends(get_pubsub_service)],
+    _us: Annotated[User, Depends(verify_user)],
     _rl=Depends(rate_limit(limit=10, window=60)),
     _rr=Depends(require_role(UserRole.ADMIN)),
 ):
@@ -108,6 +118,11 @@ async def update_document(
             id=document_id, document=payload
         )
     )
+
+    await service.publish(
+        channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+    )
+
     return SuccessResponse(
         message="Document info updated successfully", data={"id": document_id}
     )
@@ -118,16 +133,27 @@ async def approve_document(
     document_id: Annotated[UUID, Path()],
     payload: Annotated[ApproveDocumentUploadPayload, Body()],
     background_tasks: BackgroundTasks,
-    service: Annotated[DocumentService, Depends(get_document_service)],
-    orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
+    document_service: Annotated[DocumentService, Depends(get_document_service)],
+    document_orchistrator: Annotated[
+        DocumentOrchistrator, Depends(get_document_orchestrator)
+    ],
+    pubsub_service: Annotated[PubsubService, Depends(get_pubsub_service)],
     _us: Annotated[User, Depends(verify_user)],
     _rl=Depends(rate_limit(limit=10, window=60)),
     _rr=Depends(require_role(UserRole.ADMIN)),
 ):
-    result = await orchistrator.approve_document_upload(document_id, payload)
+    result = await document_orchistrator.approve_document_upload(document_id, payload)
     document = result.data["document"]
 
-    file = service.get_file_from_storage(document.upload_file_name, document.file_type)
-    background_tasks.add_task(orchistrator.process_document_pdf_upload, document, file)
+    file = document_service.get_file_from_storage(
+        document.upload_file_name, document.file_type
+    )
+    background_tasks.add_task(
+        document_orchistrator.process_document_pdf_upload, document, file
+    )
+
+    await pubsub_service.publish(
+        channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+    )
 
     return SuccessResponse(message=result.message, data=result.data["response"])

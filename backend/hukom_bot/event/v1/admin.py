@@ -42,7 +42,7 @@ async def admin_dashboard_event_stream(
 
             data = await orchistrator.get_dashboard_data()                        
             yield SuccessResponse(
-                message="Dashboard data retrieved successfully",
+                message=message.get("data") or "Dashboard data retrieved successfully",
                 data=data
             ).model_dump_json()
     finally:

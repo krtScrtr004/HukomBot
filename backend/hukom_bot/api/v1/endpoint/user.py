@@ -1,10 +1,12 @@
 from uuid import UUID
 from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Form, File, UploadFile
+from backend.hukom_bot.core.settings import settings
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.user_schema import UserUpdateBase, UserSearch, UserGetAll
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.schema.response_schema import SuccessResponse
+from backend.hukom_bot.service.pubsub_service import PubsubService
 from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.service.token_quota_service import TokenQuotaService
 from backend.hukom_bot.orchistrator.user_orchistrator import UserOrchistrator
@@ -12,10 +14,11 @@ from backend.hukom_bot.util.user_caster import UserCaster
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
     rate_limit,
+    require_role,
     get_token_quota_service,
     get_user_service,
     get_user_orchistrator,
-    require_role,
+    get_pubsub_service,
 )
 
 user_api_router = APIRouter()
@@ -27,7 +30,7 @@ async def get_users(
     service: Annotated[UserService, Depends(get_user_service)],
     _us: Annotated[User, Depends(verify_user)],
     _rl=Depends(rate_limit(limit=60, window=60)),
-    _rr=Depends(require_role(UserRole.ADMIN))
+    _rr=Depends(require_role(UserRole.ADMIN)),
 ):
     result = (
         await service.search(param=query)
@@ -76,6 +79,7 @@ async def update_user_info(
     profile_picture: Annotated[UploadFile | None, File()] = None,
     user: Annotated[User, Depends(verify_user)],
     orchistrator: Annotated[UserOrchistrator, Depends(get_user_orchistrator)],
+    service: Annotated[PubsubService, Depends(get_pubsub_service)],
     _=Depends(rate_limit(limit=10, window=60)),
 ):
     payload = UserUpdateBase(
@@ -89,6 +93,10 @@ async def update_user_info(
             me=user, user_id=user_id, user=payload, profile_picture=profile_picture
         )
 
+        await service.publish(
+            channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+        )
+
     return SuccessResponse(
         message="User info successfully updated", data={"id": user_id}
     )
@@ -97,12 +105,17 @@ async def update_user_info(
 @user_api_router.delete("/{user_id}")
 async def delete_user(
     user_id: Annotated[UUID, Path()],
-    service: Annotated[UserService, Depends(get_user_service)],
+    user_service: Annotated[UserService, Depends(get_user_service)],
+    pubsub_service: Annotated[PubsubService, Depends(get_pubsub_service)],
     _us: Annotated[User, Depends(verify_user)],
     _rl=Depends(rate_limit(limit=60, window=60)),
     _rr=Depends(require_role(UserRole.ADMIN)),
 ):
-    await service.delete(id=user_id)
+    await user_service.delete(id=user_id)
+
+    await pubsub_service.publish(
+        channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+    )
 
     return SuccessResponse(
         message="User account deleted successfully",

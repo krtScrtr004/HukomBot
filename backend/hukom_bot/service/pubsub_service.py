@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 from redis.asyncio import Redis
 
 
@@ -12,12 +13,12 @@ class PubsubService:
     async def subscribe(self, *channels):
         await self._pubsub.subscribe(channels)
 
-    async def publish(self, channel: str, data: any) -> int:
+    async def publish(self, channel: str, data: Any) -> int:
         return await self._redis.publish(channel=channel, message=json.dumps(data))
 
     async def get_message(
         self, ignore_subscribe_messages: bool = False, timeout: float | None = 0
-    ) -> str | None:
+    ) -> dict[str, Any] | None:
         return await self._pubsub.get_message(
             ignore_subscribe_messages=ignore_subscribe_messages, timeout=timeout
         )

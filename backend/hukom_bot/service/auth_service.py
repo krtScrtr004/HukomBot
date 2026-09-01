@@ -3,19 +3,16 @@ from uuid import UUID
 from datetime import datetime
 from fastapi import Request, Response
 from fastapi.responses import RedirectResponse
-
+from backend.hukom_bot.core.settings import settings
 from backend.hukom_bot.service.redirect_service import redirect_service
-
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.enum.oauth_provider import OAuthProvider
-
 from backend.hukom_bot.model.user_model import User
-
 from backend.hukom_bot.schema.user_schema import UserCreate
 from backend.hukom_bot.schema.auth_schema import AuthUser, JWTPayload, RevokedToken
-
 from backend.hukom_bot.service.jwt_service import JWTService
+from backend.hukom_bot.service.pubsub_service import PubsubService
 from backend.hukom_bot.service.revoked_token_service import RevokedTokenService
 from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.exception.app_exception import UnauthorizedException
@@ -27,14 +24,16 @@ class AuthService:
     def __init__(
         self,
         db: Database,
-        user_service: UserService,
-        revoked_token_service: RevokedTokenService,
         jwt_service: JWTService,
+        pubsub_service: PubsubService,
+        revoked_token_service: RevokedTokenService,
+        user_service: UserService,
     ):
         self._db = db
-        self._user_service = user_service
-        self._revoked_token_service = revoked_token_service
         self._jwt_service = jwt_service
+        self._pubsub_service = pubsub_service
+        self._revoked_token_service = revoked_token_service
+        self._user_service = user_service
 
     async def authenticate(self, request_id: UUID, token: str) -> User:
         decoded = self._jwt_service.verify(token)
@@ -63,7 +62,7 @@ class AuthService:
 
     async def authenticate_user(self, user: AuthUser) -> User:
         async with self._db.connection() as conn:
-            try:
+            try:                
                 app_user = await self._user_service.get_by_provider_id(
                     user.provider_id, conn
                 )
@@ -83,6 +82,11 @@ class AuthService:
                     )
 
                     await conn.commit()
+                    
+                    # Notify admin dashboard about users count
+                    await self._pubsub_service.publish(
+                        channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+                    )
 
                     logger.info(
                         "New account with provider id: %s has successgully connected to the app",

@@ -243,15 +243,17 @@ def get_token_quota_service(redis: Redis = Depends(get_redis)) -> TokenQuotaServ
 
 def get_auth_service(
     db: Database = Depends(get_db),
-    user_service: UserRepository = Depends(get_user_service),
-    revoked_token_service: RevokedTokenService = Depends(get_revoked_token_service),
     jwt_service: JWTService = Depends(get_jwt_service),
+    pubsub_service: PubsubService = Depends(get_pubsub_service),
+    revoked_token_service: RevokedTokenService = Depends(get_revoked_token_service),
+    user_service: UserRepository = Depends(get_user_service),
 ) -> AuthService:
     return AuthService(
         db=db,
-        user_service=user_service,
-        revoked_token_service=revoked_token_service,
         jwt_service=jwt_service,
+        pubsub_service=pubsub_service,
+        revoked_token_service=revoked_token_service,
+        user_service=user_service,
     )
 
 
