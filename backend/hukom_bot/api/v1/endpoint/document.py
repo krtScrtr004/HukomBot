@@ -42,9 +42,9 @@ document_api_router = APIRouter()
 async def get_documents(
     query: Annotated[DocumentSearch, Query()],
     orchistrator: Annotated[DocumentOrchistrator, Depends(get_document_orchestrator)],
-    # _us: Annotated[User, Depends(verify_user)],
-    # _rl=Depends(rate_limit(limit=60, window=60)),
-    # _rr=Depends(require_role(UserRole.ADMIN)),
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
 ):
     result = await orchistrator.search_pipeline(param=query)
 

@@ -267,6 +267,7 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
   - `ttl`
 - Added `profile_picture` to `UserResponse`.
 - Updated `UserCaster.base_to_response` to include `profile_picture`.
+- Added `created_at` field to `UserResponse` schema.
 - Added `UserOrchistrator` with `update_pipeline()` for:
   - Profile updates
   - File validation
@@ -337,6 +338,7 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Added `rejection_message` field to `DocumentCreate`, `DocumentUpdateBase`, and `DocumentResponse` schemas.
 - Added `rejected` value to the `UploadStatus` enum with status level `-1` and state transition logic in `DocumentOrchistrator.update_pipeline()`.
 - Made `uploader` field optional (`UserResponse | None`) in `DocumentResponse` schema.
+- Added `uploader_id` filter to `DocumentSearch` and `DocumentGetAll` schemas.
 
 ## Changed
 
