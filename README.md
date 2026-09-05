@@ -148,6 +148,8 @@ All API endpoints use the `/api/v1` base path.
 | `PATCH` | `/api/v1/documents/{id}` | Yes | `admin` | 10 req/min | Update document metadata |
 | `PATCH` | `/api/v1/documents/{id}/approve` | Yes | `admin` | 10 req/min | Approve a document |
 | `GET` | `/api/v1/documents/{id}/upload-status` | Yes | Any | 60 req/min | Get document upload status |
+| `GET` | `/api/v1/admin/dashboard` | Yes | `admin` | 60 req/min | Get admin dashboard data |
+| `GET` | `/events/v1/admin/dashboard` | Yes | `admin` | — | Stream admin dashboard updates (SSE) |
 | `POST` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 5 req/min | Run case analysis |
 | `GET` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 60 req/min | List the user's case analysis sessions |
 | `GET` | `/api/v1/case-analyses/{id}/versions` | Yes | `standard`, `contributor` | 60 req/min | List versions of a case analysis session |
@@ -308,7 +310,20 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
   ```http
   GET /api/v1/documents/{document_id}
   ```
-  for retrieving a single document by ID (admin only).
+   for retrieving a single document by ID (admin only).
+- Added:
+  ```http
+  GET /api/v1/admin/dashboard
+  ```
+   for retrieving admin dashboard data with aggregated counts (admin only).
+- Added:
+  ```http
+  GET /events/v1/admin/dashboard
+  ```
+  for streaming real-time admin dashboard updates via Server-Sent Events (SSE) (admin only).
+- Added `PubsubService` class wrapping Redis pub/sub for publish/subscribe messaging.
+- Added `ADMIN_DASHBOARD_CH` configuration variable for the Redis channel name.
+- Added publish (trigger) statements to document and user actions that update admin dashboard statistics.
 - Added `role` field to the JWT payload emitted at login.
 - Added `AuthContext` (`AuthContext.tsx`) for frontend auth state management.
 - Added `RequireAuth` wrapper in `App.tsx` for protected route rendering.
@@ -318,6 +333,7 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Added `DocumentResponse` schema with nested `UserResponse` for the uploader.
 - Added `UserGetAll` and `DocumentGetAll` schemas for non-search list endpoints.
 - Added `OrderableMixin` and `OrderEnum` (`ASC`/`DESC`) for sortable list responses.
+- Added `AdminDashboardData` schema with aggregated counts for active users, documents by status, and chunks.
 - Added `rejection_message` field to `DocumentCreate`, `DocumentUpdateBase`, and `DocumentResponse` schemas.
 - Added `rejected` value to the `UploadStatus` enum with status level `-1` and state transition logic in `DocumentOrchistrator.update_pipeline()`.
 - Made `uploader` field optional (`UserResponse | None`) in `DocumentResponse` schema.
@@ -398,7 +414,7 @@ is now wrapped in a `SuccessResponse` envelope containing:
 - Updated `UserCaster` to include `profile_picture` when converting to `UserResponse`.
 - Added `role` claim to `JWTPayload` and included it in the JWT emitted at login.
 - Added `require_role` dependency that validates the `role` claim against allowed roles.
-- Added role guards to all case analysis endpoints, document update/approve endpoints, user token usage endpoint, document listing, document retrieval by ID, and document upload-status endpoints.
+- Added role guards to all case analysis endpoints, document update/approve endpoints, user token usage endpoint, document listing, and document retrieval by ID endpoints.
 - Updated `rate_limit` dependency to use injected `JWTService` instead of instantiating it inline.
 - `GET /users/me` success message changed from "User fetched successfully" to "User retrieved successfully".
 - `GET /users/me/usage` success message changed from "User token usage retrive successfully" to "User token usage retrieved successfully".
