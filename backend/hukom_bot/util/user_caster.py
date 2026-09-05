@@ -42,7 +42,8 @@ class UserCaster:
             last_name=user.last_name,
             email=user.email,
             role=user.role,
-            profile_picture=user.profile_picture
+            profile_picture=user.profile_picture,
+            created_at=user.created_at
         )
         
     @staticmethod

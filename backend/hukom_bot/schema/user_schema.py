@@ -1,5 +1,6 @@
 from __future__ import annotations
 from uuid import UUID, uuid4
+from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from backend.hukom_bot.model.user_model import UserBase
 from backend.hukom_bot.enum.user_role import UserRole
@@ -47,3 +48,4 @@ class UserResponse(BaseModel):
     email: EmailStr
     role: UserRole
     profile_picture: str | None
+    created_at: datetime
