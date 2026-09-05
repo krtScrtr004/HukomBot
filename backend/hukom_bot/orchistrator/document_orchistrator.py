@@ -53,9 +53,7 @@ class DocumentOrchistrator:
                 id=document.uploader_id, connection=conn
             )
 
-        return DocumentCaster.base_to_response(
-            document=document, uploader=uploader
-        )
+        return DocumentCaster.base_to_response(document=document, uploader=uploader)
 
     async def create_pending(
         self, user_id: UUID, file: UploadFile, document_type: LegalDocumentType

@@ -68,6 +68,7 @@ class DocumentCaster:
     @staticmethod
     def search_to_all(document: DocumentSearch) -> DocumentGetAll:
         return DocumentGetAll(
+            uploader_id=document.uploader_id,
             upload_status=document.upload_status,
             column=document.column,
             order=document.order,

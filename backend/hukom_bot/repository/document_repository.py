@@ -270,7 +270,13 @@ class DocumentRepository:
                 raise
 
     async def _search_implement(self, conn: AsyncConnection, param: DocumentSearch):
-        upload_status = (
+        uploader_id_query = (
+            "AND d.uploader_id = %(uploader_id)s"
+            if param.uploader_id is not None
+            else ""
+        )
+        
+        upload_status_query = (
             "AND d.upload_status = %(upload_status)s"
             if param.upload_status is not None
             else ""
@@ -289,7 +295,7 @@ class DocumentRepository:
                         ts_rank(d.search_vector, q.q) AS rank
                     FROM documents d, query q
                     WHERE d.search_vector @@ q.q
-                    {upload_status}
+                    {uploader_id_query} {upload_status_query}
                     ORDER BY rank DESC                    
                 ) ORDER BY {column_order}
                 LIMIT %(limit)s
@@ -327,17 +333,19 @@ class DocumentRepository:
         column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
 
         async with conn.cursor() as cur:
-            upload_status = (
-                "WHERE upload_status = %(upload_status)s"
-                if param.upload_status is not None
-                else ""
-            )
+            conditions = []
+            if param.uploader_id is not None:
+                conditions.append("uploader_id = %(uploader_id)s")
+            if param.upload_status is not None:
+                conditions.append("upload_status = %(upload_status)s")
 
+            where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+            
             await cur.execute(
                 f"""
                 SELECT * 
                 FROM documents
-                {upload_status}
+                {where_clause}
                 ORDER BY {column_order}
                 LIMIT %(limit)s
                 OFFSET %(offset)s

@@ -78,6 +78,7 @@ class DocumentUpdatePayload(DocumentUpdateBase):
 
 class DocumentSearch(PaginatableMixin, OrderableMixin):
     query: str | None = Field(default=None, min_length=3, max_length=256)
+    uploader_id: UUID | None = Field(default=None)
     upload_status: UploadStatus | None = Field(default=None)
 
     column: list[str] = Field(default_factory=lambda: ["original_file_name"])
@@ -87,6 +88,7 @@ class DocumentSearch(PaginatableMixin, OrderableMixin):
 
 class DocumentGetAll(PaginatableMixin, OrderableMixin):
     upload_status: UploadStatus | None = Field(default=None)
+    uploader_id: UUID | None = Field(default=None)
     column: list[str] = Field(default_factory=lambda: ["original_file_name"])
 
     model_config = {"arbitrary_types_allowed": True}
