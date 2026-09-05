@@ -43,6 +43,7 @@ class UserCaster:
             email=user.email,
             role=user.role,
             profile_picture=user.profile_picture,
+            provider=user.provider,
             created_at=user.created_at
         )
         
