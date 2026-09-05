@@ -267,7 +267,8 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
   - `ttl`
 - Added `profile_picture` to `UserResponse`.
 - Updated `UserCaster.base_to_response` to include `profile_picture`.
-- Added `created_at` field to `UserResponse` schema.
+- Added `created_at` and  `provider`  (`OAuthProvider`) fields to `UserResponse` schema.
+- Added to `UserResponse` schema.
 - Added `UserOrchistrator` with `update_pipeline()` for:
   - Profile updates
   - File validation
