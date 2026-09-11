@@ -4,7 +4,12 @@ export type CaseAnalysisAnswerFormat = 'plaintext' | 'html' | 'markdown';
 
 /***********************************************/
 
-export type UploadStatus = 'pending' | 'ongoing' | 'completed' | 'failed';
+export type UploadStatus =
+	| 'pending'
+	| 'ongoing'
+	| 'completed'
+	| 'failed'
+	| 'rejected';
 
 export type LegalDocumentType =
 	// Contracts & Agreements

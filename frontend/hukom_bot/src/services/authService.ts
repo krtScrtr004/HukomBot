@@ -6,7 +6,7 @@ export async function getCurrentUser(): Promise<UserResponse> {
 }
 
 export function logout(): void {
-	apiFetch<string>('/api/v1/auth/logout').then(url => {
-		window.location.href = url;
-	})
+	apiFetch<string>('/api/v1/auth/logout').then(() => {
+		window.location.href = '/login';
+	});
 }

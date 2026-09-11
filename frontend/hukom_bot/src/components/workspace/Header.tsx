@@ -1,6 +1,8 @@
+import { NavLink } from 'react-router-dom';
 import Logo from '@/components/ui/Logo';
 import ThemeToggle from '@/components/ui/ThemeToggle';
-import type { UserRole } from '@/types/workspace';
+import type { UserRole } from '@/types/user';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface HeaderProps {
 	userName?: string;
@@ -13,14 +15,13 @@ interface HeaderProps {
 }
 
 export default function Header({
-	userName,
 	userRole,
 	onToggleSidebar,
 	onToggleVersionPanel,
-	onSignOut,
 	onUploadClick,
-	onSettingsClick,
 }: HeaderProps) {
+	const { user } = useAuth();
+
 	return (
 		<header
 			className="relative h-(--header-height) shrink-0 flex items-center justify-between gap-4 px-4 border-b border-border bg-surface"
@@ -56,6 +57,16 @@ export default function Header({
 						</span>
 						<span className="max-sm:hidden">Upload a Document</span>
 					</button>
+				) : null}
+
+				{user?.role === 'admin' ? (
+					<NavLink
+						to="/admin"
+						className="flex items-center gap-1 text-primary font-bold hover:opacity-90"
+					>
+						<i className="bi bi-speedometer2" aria-hidden="true" />
+						Admin
+					</NavLink>
 				) : null}
 
 				{/* Analysis version list toggle button */}

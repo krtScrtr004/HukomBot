@@ -62,7 +62,7 @@ class AuthService:
 
     async def authenticate_user(self, user: AuthUser) -> User:
         async with self._db.connection() as conn:
-            try:                
+            try:
                 app_user = await self._user_service.get_by_provider_id(
                     user.provider_id, conn
                 )
@@ -82,10 +82,11 @@ class AuthService:
                     )
 
                     await conn.commit()
-                    
+
                     # Notify admin dashboard about users count
                     await self._pubsub_service.publish(
-                        channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+                        channel=settings.ADMIN_DASHBOARD_CH,
+                        data="Admin dashboard data updated",
                     )
 
                     logger.info(
@@ -99,12 +100,16 @@ class AuthService:
                 await conn.rollback()
                 raise
 
-    def redirect_authorized(self, request: Request, token: str) -> RedirectResponse | None:
+    def redirect_authorized(
+        self, request: Request, token: str, user_role: UserRole
+    ) -> RedirectResponse | None:
         try:
             if not token:
                 raise UnauthorizedException("Token not found")
 
-            url = redirect_service.get_redirect_url("workspace")
+            url = redirect_service.get_redirect_url(
+                "admin" if user_role == UserRole.ADMIN else "workspace"
+            )
             redirect = RedirectResponse(url=url)
             # Set jwt on cookie
             redirect.set_cookie(
@@ -115,7 +120,7 @@ class AuthService:
                 samesite="none",  # REQUIRED for cross-domain — "lax" (the default) blocks this
                 domain=None,
             )
-            
+
             return redirect
         except Exception:
             return self.redirect_unauthorized(request)
@@ -147,14 +152,14 @@ class AuthService:
 
         # Clear session variables
         request.session.clear()
-        
+
         # Clear cookies
         response.delete_cookie(
             key="token",
             path="/",
             httponly=True,
-            secure=True,      # Keep “True” in production; set to False only for local dev
+            secure=True,  # Keep “True” in production; set to False only for local dev
             samesite="none",
         )
-        
+
         return redirect_service.get_redirect_url("login")

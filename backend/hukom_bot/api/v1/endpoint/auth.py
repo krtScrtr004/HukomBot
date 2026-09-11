@@ -121,7 +121,7 @@ async def google_login_callback(
             payload=JWTPayload(provider_id=user.provider_id, role=user.role)
         )
 
-        return auth_service.redirect_authorized(request, token)
+        return auth_service.redirect_authorized(request, token, user.role)
     except Exception as ex:
         logger.exception(str(ex))
 

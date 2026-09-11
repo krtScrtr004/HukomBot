@@ -170,7 +170,7 @@ export default function NewAnalysisModal({
 							<div className="flex items-center justify-between">
 								{/* Error */}
 								{errors[index] && (
-									<ErrorText text={errors[index]} />
+									<ErrorText error={errors[index]} />
 								)}
 
 								{/* Character counter */}

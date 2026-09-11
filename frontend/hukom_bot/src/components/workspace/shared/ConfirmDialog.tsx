@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 export interface ConfirmDialogProps {
 	open: boolean;
 	title: string;
-	message: string;
+	message: ReactNode;
 	confirmLabel?: string;
 	cancelLabel?: string;
 	variant?: 'danger' | 'default';
@@ -22,6 +23,8 @@ export default function ConfirmDialog({
 	onCancel,
 }: ConfirmDialogProps) {
 	const cancelRef = useRef<HTMLButtonElement>(null);
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useFocusTrap(dialogRef, open);
 
 	// Focus the cancel button when the dialog opens
 	useEffect(() => {
@@ -65,6 +68,7 @@ export default function ConfirmDialog({
 				aria-hidden="true"
 			/>
 			<div
+				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="confirm-dialog-title"
@@ -77,12 +81,12 @@ export default function ConfirmDialog({
 				>
 					{title}
 				</h2>
-				<p
+				<div
 					id="confirm-dialog-message"
 					className="text-sm text-text-secondary mb-6"
 				>
 					{message}
-				</p>
+				</div>
 				<div className="flex justify-end gap-3">
 					<button
 						ref={cancelRef}

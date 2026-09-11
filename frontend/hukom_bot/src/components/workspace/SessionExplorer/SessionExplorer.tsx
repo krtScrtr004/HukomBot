@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
-import { useToast } from '@/contexts/ToastProvider';
 import EmptyState from '@/components/workspace/shared/EmptyState';
 import LoadingSpinner from '@/components/workspace/shared/LoadingSpinner';
 import SessionListItem from '@/components/workspace/SessionExplorer/SessionListItem';

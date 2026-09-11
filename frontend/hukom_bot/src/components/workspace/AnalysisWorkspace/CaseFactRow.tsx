@@ -129,7 +129,7 @@ export default function CaseFactRow({
 			{!readOnly && (
 				<div className="flex items-center justify-between mt-1">
 					{/* Errors */}
-					{error && <ErrorText text={error} />}
+					{error && <ErrorText error={error} />}
 
 					{/* Character counter */}
 					<CharacterCounter
