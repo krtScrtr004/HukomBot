@@ -41,10 +41,7 @@ async def admin_dashboard_event_stream(
                 continue
 
             data = await orchistrator.get_dashboard_data()                        
-            yield SuccessResponse(
-                message=message.get("data") or "Dashboard data retrieved successfully",
-                data=data
-            ).model_dump_json()
+            yield f"data:{data}"
     finally:
         await service.unsubscribe(settings.ADMIN_DASHBOARD_CH)
         await service.close()
