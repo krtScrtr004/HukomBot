@@ -108,7 +108,7 @@ class AuthService:
                 raise UnauthorizedException("Token not found")
 
             url = redirect_service.get_redirect_url(
-                "admin" if user_role == UserRole.ADMIN else "workspace"
+                "admin/dashboard" if user_role == UserRole.ADMIN else "workspace"
             )
             redirect = RedirectResponse(url=url)
             # Set jwt on cookie
