@@ -12,7 +12,7 @@ import NewAnalysisModal from '@/components/workspace/AnalysisWorkspace/NewAnalys
 import EmptyState from '@/components/workspace/shared/EmptyState';
 import LoadingSpinner from '@/components/workspace/shared/LoadingSpinner';
 import ConfirmDialog from '@/components/workspace/shared/ConfirmDialog';
-import UploadDocumentModal from '@/components/workspace/shared/UploadDocumentModal';
+import UploadDocumentModal from '@/components/UploadDocumentModal';
 import SettingsModal from '@/components/workspace/shared/SettingsModal';
 
 function AnalysisWorkspaceContent() {

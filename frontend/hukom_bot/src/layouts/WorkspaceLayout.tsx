@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import Sidebar from '@/components/ui/Sidebar';
 
 interface WorkspaceLayoutProps {
 	header: ReactNode;
@@ -31,33 +32,15 @@ export default function WorkspaceLayout({
 
 			<div className="flex flex-1 min-h-0 relative">
 				{/* Desktop / tablet sidebar */}
-				<aside
-					className="hidden md:flex flex-col shrink-0 border-r border-border bg-sidebar w-[var(--sidebar-width)]"
-					aria-label="Session explorer"
+				<Sidebar
+					ariaLabel="Session explorer"
+					mobileOpen={sidebarOpen}
+					onMobileClose={onSidebarClose}
 				>
 					{sidebar}
-				</aside>
+				</Sidebar>
 
-				{/* Mobile sidebar drawer */}
-				{sidebarOpen && (
-					<>
-						<div
-							className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/40 md:hidden"
-							onClick={onSidebarClose}
-							aria-hidden="true"
-						/>
-						<aside
-							className="fixed inset-y-0 left-0 z-[var(--z-dialog)] w-[var(--sidebar-width)] flex flex-col border-r border-border bg-surface-overlay backdrop-blur-md md:hidden"
-							aria-label="Session explorer"
-							role="dialog"
-							aria-modal="true"
-						>
-							{sidebar}
-						</aside>
-					</>
-				)}
-
-				<main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+				<main className="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden">
 					{workspace}
 				</main>
 
