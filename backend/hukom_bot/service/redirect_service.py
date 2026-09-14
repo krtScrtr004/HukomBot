@@ -7,7 +7,7 @@ class RedirectService:
 
     def __init__(self):
         self.base_page_url = settings.BASE_PAGE_URL
-        self.base_api_url = settings.BASE_API_URL
+        self.base_api_url_v1 = settings.BASE_API_URL_V1
 
     @classmethod
     def initialize(cls) -> RedirectService:
@@ -32,7 +32,7 @@ class RedirectService:
             return f"{self.base_page_url}/{path}?{self._dict_to_query_string(payload)}"
         return f"{self.base_page_url}/{path}"
 
-    def get_api_url(self, path: str, payload: dict | None = None) -> str:
+    def get_api_url_v1(self, path: str, payload: dict | None = None) -> str:
         """
         Returns the full API URL based on the base API URL and the provided path.
         If a payload is provided, it will be converted to query parameters and appended to the URL
@@ -40,8 +40,8 @@ class RedirectService:
         path = self._remove_slashes(path)
 
         if payload:
-            return f"{self.base_api_url}/{path}?{self._dict_to_query_string(payload)}"
-        return f"{self.base_api_url}/{path}"
+            return f"{self.base_api_url_v1}/{path}?{self._dict_to_query_string(payload)}"
+        return f"{self.base_api_url_v1}/{path}"
 
     def _remove_slashes(self, url: str) -> str:
         """

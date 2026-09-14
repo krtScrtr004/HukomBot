@@ -35,6 +35,14 @@ class AuthService:
         self._revoked_token_service = revoked_token_service
         self._user_service = user_service
 
+    def _token_cookie_options(self) -> dict:
+        return {
+            "path": "/",
+            "httponly": True,
+            "secure": True if not settings.DEBUG else False,
+            "samesite": "lax",
+        }
+
     async def authenticate(self, request_id: UUID, token: str) -> User:
         decoded = self._jwt_service.verify(token)
         payload = JWTPayload.model_validate(decoded)
@@ -90,7 +98,7 @@ class AuthService:
                     )
 
                     logger.info(
-                        "New account with provider id: %s has successgully connected to the app",
+                        "New account with provider id: %s has successfully connected to the app",
                         user.provider_id,
                     )
 
@@ -108,21 +116,19 @@ class AuthService:
                 raise UnauthorizedException("Token not found")
 
             url = redirect_service.get_redirect_url(
-                "admin/dashboard" if user_role == UserRole.ADMIN else "workspace"
+                "admin" if user_role == UserRole.ADMIN else "workspace"
             )
             redirect = RedirectResponse(url=url)
-            # Set jwt on cookie
             redirect.set_cookie(
                 key="token",
                 value=token,
-                httponly=True,
-                secure=True,  # REQUIRED when samesite="none" — cookie won't be sent otherwise
-                samesite="none",  # REQUIRED for cross-domain — "lax" (the default) blocks this
-                domain=None,
+                **self._token_cookie_options(),
             )
 
             return redirect
-        except Exception:
+        except Exception as ex:
+            logger.exception(ex)
+            
             return self.redirect_unauthorized(request)
 
     def redirect_unauthorized(
@@ -133,11 +139,11 @@ class AuthService:
             "login", payload={"error_code": error_code}
         )
         redirect = RedirectResponse(url=url)
-        redirect.delete_cookie(key="token", path="/", httponly=True)
+        redirect.delete_cookie(key="token", **self._token_cookie_options())
         return redirect
 
     async def logout(self, request: Request, response: Response) -> str:
-        # Rovoke the token
+        # Revoke the token
         token = request.cookies.get("token")
         if token:
             decoded = self._jwt_service.verify(token)
@@ -154,12 +160,6 @@ class AuthService:
         request.session.clear()
 
         # Clear cookies
-        response.delete_cookie(
-            key="token",
-            path="/",
-            httponly=True,
-            secure=True,  # Keep “True” in production; set to False only for local dev
-            samesite="none",
-        )
+        response.delete_cookie(key="token", **self._token_cookie_options())
 
         return redirect_service.get_redirect_url("login")

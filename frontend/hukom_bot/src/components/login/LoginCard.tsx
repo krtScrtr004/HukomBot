@@ -1,7 +1,7 @@
-import googleLogo from '@/assets/icon/google.png';
-
 import Logo from '@/components/ui/Logo';
+import googleLogo from '@/assets/icon/google.png';
 import ProviderButton from '@/components/ui/ProviderButton';
+import { API_BASE_URL_V1 } from '@/services/apiClient';
 
 export default function LoginCard() {
 	return (
@@ -31,7 +31,7 @@ export default function LoginCard() {
 					<ProviderButton
 						id="google_login_button"
 						title="Google"
-						link="http://127.0.0.1:8000/api/v1/auth/google/login"
+						link={`${API_BASE_URL_V1}/auth/google/login`}
 						imgSrc={googleLogo}
 					/>
 				</section>

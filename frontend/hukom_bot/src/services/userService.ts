@@ -10,7 +10,7 @@ export async function updateUserProfile(
 	userId: string,
 	formData: FormData,
 ): Promise<{ id: string }> {
-	return apiFetch<{ id: string }>(`/api/v1/users/${userId}`, {
+	return apiFetch<{ id: string }>(`/users/${userId}`, {
 		method: 'PATCH',
 		body: formData,
 	});
@@ -20,5 +20,5 @@ export async function updateUserProfile(
  * Fetches the daily token usage of the current user.
  */
 export async function getUserTokenUsage(): Promise<UserTokenUsageResponse> {
-	return apiFetch<UserTokenUsageResponse>('/api/v1/users/me/usage');
+	return apiFetch<UserTokenUsageResponse>('/users/me/usage');
 }

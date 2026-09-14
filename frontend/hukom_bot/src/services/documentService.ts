@@ -14,7 +14,7 @@ function createFormData(params: UploadDocumentPayload): FormData {
 export async function uploadDocument(
     params: UploadDocumentPayload
 ): Promise<UploadDocumentResponse> {
-    return apiFetch<UploadDocumentResponse>('/api/v1/documents', {
+    return apiFetch<UploadDocumentResponse>('/documents', {
         method: 'POST',
         body: createFormData(params)
     });

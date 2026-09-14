@@ -1,17 +1,20 @@
-from pydantic import Field
+from pathlib import Path
 from pydantic_settings import BaseSettings
-
+from backend.hukom_bot.util.utility import get_project_root
 
 class Settings(BaseSettings):
     model_config = {
-        "env_file": ".env",
+        "env_file": get_project_root(3) / ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
         "extra": "ignore",
     }
     
+    DEBUG: bool
+    
     BASE_PAGE_URL: str
     BASE_API_URL: str
+    BASE_API_URL_V1: str
     
     # -- Redis --
     REDIS_HOST: str

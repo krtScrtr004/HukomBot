@@ -2,11 +2,11 @@ import { apiFetch } from '@/services/apiClient';
 import type { UserResponse } from '@/types/user';
 
 export async function getCurrentUser(): Promise<UserResponse> {
-	return apiFetch<UserResponse>('/api/v1/users/me');
+	return apiFetch<UserResponse>('/users/me');
 }
 
 export function logout(): void {
-	apiFetch<string>('/api/v1/auth/logout').then(() => {
+	apiFetch<string>('/auth/logout').then(() => {
 		window.location.href = '/login';
 	});
 }

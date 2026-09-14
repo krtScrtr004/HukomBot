@@ -1,7 +1,7 @@
 import { apiFetch } from '@/services/apiClient';
 import type { AdminUserListItem, AdminUsersQueryParams } from '@/types/admin';
 
-/** GET /api/v1/users/ (admin) with query params */
+/** GET /users/ (admin) with query params */
 export async function listUsers(
 	params: AdminUsersQueryParams,
 ): Promise<AdminUserListItem[]> {
@@ -13,6 +13,6 @@ export async function listUsers(
 	if (params.order) query.set('order', params.order);
 	const qs = query.toString();
 	return apiFetch<AdminUserListItem[]>(
-		`/api/v1/users/${qs ? `?${qs}` : ''}`,
+		`/users/${qs ? `?${qs}` : ''}`,
 	);
 }

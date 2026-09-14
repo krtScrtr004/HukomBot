@@ -30,7 +30,7 @@ export async function listSessions(
 		query: params.query?.trim(),
 	});
 	return apiFetch<CaseAnalysisSessionPreviewResponse[]>(
-		`/api/v1/case-analyses${query}`,
+		`/case-analyses${query}`,
 	);
 }
 
@@ -43,7 +43,7 @@ export async function listVersions(
 		offset: params.offset ?? 0,
 	});
 	return apiFetch<CaseAnalysisVersionPreviewResponse[]>(
-		`/api/v1/case-analyses/${sessionId}/versions${query}`,
+		`/case-analyses/${sessionId}/versions${query}`,
 	);
 }
 
@@ -52,7 +52,7 @@ export async function getVersion(
 	versionNumber: number,
 ): Promise<CaseAnalysisVersionDetailResponse> {
 	return apiFetch<CaseAnalysisVersionDetailResponse>(
-		`/api/v1/case-analyses/${sessionId}/versions/${versionNumber}`,
+		`/case-analyses/${sessionId}/versions/${versionNumber}`,
 	);
 }
 
@@ -60,7 +60,7 @@ export async function runCaseAnalysis(
 	payload: CaseAnalysisPipelineCaseFactsPayload,
 	answerFormat: CaseAnalysisAnswerFormat = 'html',
 ): Promise<CaseAnalysisCreateResponse> {
-	return apiFetch<CaseAnalysisCreateResponse>('/api/v1/case-analyses', {
+	return apiFetch<CaseAnalysisCreateResponse>('/case-analyses', {
 		method: 'POST',
 		body: payload,
 		headers: {
@@ -73,7 +73,7 @@ export async function deleteSession(
 	sessionId: string,
 ): Promise<{ case_analysis_session_id: string }> {
 	return apiFetch<{ case_analysis_session_id: string }>(
-		`/api/v1/case-analyses/${sessionId}`,
+		`/case-analyses/${sessionId}`,
 		{ method: 'DELETE' },
 	);
 }
