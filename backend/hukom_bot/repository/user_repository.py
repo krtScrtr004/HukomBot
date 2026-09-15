@@ -351,14 +351,14 @@ class UserRepository:
             raise
 
     async def _count_active_implement(
-        self, conn: AsyncConnection, date_range: DateRangeableMixin
+        self, conn: AsyncConnection, date_range: DateRangeableMixin | None
     ) -> int:
         async with conn.cursor() as cur:
             date_range_query = (
                 build_date_range_where_clause(
                     column_name="u.created_at", date_rangeable=date_range
                 )
-                if date_range
+                if date_range is not None
                 else ""
             )
 

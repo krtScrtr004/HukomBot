@@ -1,26 +1,27 @@
 from typing import Annotated
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Query
 from fastapi.responses import StreamingResponse
 from backend.hukom_bot.core.settings import settings
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.service.pubsub_service import PubsubService
 from backend.hukom_bot.orchistrator.admin_orchistrator import AdminOrchistrator
-from backend.hukom_bot.schema.response_schema import SuccessResponse
+from backend.hukom_bot.schema.mixin import DateRangeableMixin
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
     require_role,
-    get_pubsub_service, 
-    get_admin_orchistrator
+    get_pubsub_service,
+    get_admin_orchistrator,
 )
 
 admin_sse_router = APIRouter()
 
 
 async def admin_dashboard_event_stream(
-    request: Request, 
+    request: Request,
+    query: DateRangeableMixin,
     orchistrator: AdminOrchistrator,
-    service: PubsubService
+    service: PubsubService,
 ):
     await service.subscribe(settings.ADMIN_DASHBOARD_CH)
 
@@ -40,7 +41,7 @@ async def admin_dashboard_event_stream(
                 yield ": heartbeat\n\n"
                 continue
 
-            data = await orchistrator.get_dashboard_data()                        
+            data = await orchistrator.get_dashboard_data()
             yield f"data:{data.model_dump()}"
     finally:
         await service.unsubscribe(settings.ADMIN_DASHBOARD_CH)
@@ -50,6 +51,7 @@ async def admin_dashboard_event_stream(
 @admin_sse_router.get("/dashboard")
 async def admin_dashboard_update(
     request: Request,
+    query: Annotated[DateRangeableMixin, Query()],
     orchistrator: Annotated[AdminOrchistrator, Depends(get_admin_orchistrator)],
     service: Annotated[PubsubService, Depends(get_pubsub_service)],
     _us: Annotated[User, Depends(verify_user)],
@@ -57,7 +59,7 @@ async def admin_dashboard_update(
 ):
     return StreamingResponse(
         admin_dashboard_event_stream(
-            request=request, orchistrator=orchistrator, service=service
+            request=request, query=query, orchistrator=orchistrator, service=service
         ),
         media_type="text/event-stream",
         headers={

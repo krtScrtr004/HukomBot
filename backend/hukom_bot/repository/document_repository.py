@@ -391,10 +391,10 @@ class DocumentRepository:
             return row["count"]
 
     def _build_get_by_upload_status_param(
-        self, upload_status: UploadStatus, date_range: DateRangeableMixin
+        self, upload_status: UploadStatus, date_range: DateRangeableMixin | None
     ) -> DocumentGetByUploadStatus:
         return DocumentGetByUploadStatus(
-            upload_status=upload_status, **date_range.model_dump()
+            upload_status=upload_status, **date_range.model_dump() if date_range else {}
         )
 
     async def count_pending(
