@@ -6,7 +6,7 @@ from fastapi.concurrency import run_in_threadpool
 from backend.hukom_bot.schema.chunk_schema import *
 from backend.hukom_bot.repository.chunk_repository import ChunkRepository
 from backend.hukom_bot.exception.chunk_exception import ChunkFileException
-
+from backend.hukom_bot.schema.mixin import DateRangeableMixin
 from backend.hukom_bot.util.extract_text_from_pdf import extract_text_from_pdf
 
 ocr_semaphor = asyncio.Semaphore(
@@ -35,8 +35,8 @@ class ChunkService:
     ):
         return await self._chunk_repo.search(chunk, connection)
 
-    async def count_all(self, connection: AsyncConnection = None):
-        return await self._chunk_repo.count_all(connection=connection)
+    async def count_all(self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None):
+        return await self._chunk_repo.count_all(date_range=date_range, connection=connection)
 
     # Others ======================
 

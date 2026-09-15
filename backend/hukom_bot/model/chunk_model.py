@@ -1,5 +1,6 @@
 from __future__ import annotations
 from uuid import UUID
+from datetime import datetime
 from typing import Optional
 from typing import List, Optional
 from pydantic import (
@@ -20,6 +21,7 @@ class Chunk(BaseModel):
     chunk_text: str
     section: Optional[str] = Field(default=None)
     embedding: List
+    created_at: datetime = Field(default_factory=datetime.now)
 
     # Navigation prop
     document: Optional[Document] = Field(default=None)

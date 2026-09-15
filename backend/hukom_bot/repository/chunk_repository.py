@@ -5,7 +5,9 @@ from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.document_model import Document
 from backend.hukom_bot.model.chunk_model import Chunk
 from backend.hukom_bot.schema.chunk_schema import *
+from backend.hukom_bot.schema.mixin import DateRangeableMixin
 from backend.hukom_bot.util.chunk_caster import ChunkCaster
+from backend.hukom_bot.util.utility import build_date_range_where_clause
 
 
 class ChunkRepository:
@@ -242,19 +244,41 @@ class ChunkRepository:
 
         return chunks
 
-    async def count_all(self, connection: AsyncConnection = None):
+    async def count_all(
+        self, date_range: DateRangeableMixin | None, connection: AsyncConnection = None
+    ):
         if connection is not None:
-            return await self._count_all_implement(conn=connection)
+            return await self._count_all_implement(
+                conn=connection, date_range=date_range
+            )
 
         try:
             async with self._database.connection() as conn:
-                return await self._count_all_implement(conn=conn)
+                return await self._count_all_implement(conn=conn, date_range=date_range)
         except errors.OperationalError:
             raise
 
-    async def _count_all_implement(self, conn: AsyncConnection) -> int:
+    async def _count_all_implement(
+        self, conn: AsyncConnection, date_range: DateRangeableMixin | None
+    ) -> int:
         async with conn.cursor() as cur:
-            await cur.execute("""SELECT COUNT(id) FROM chunks""")
+            date_range_query = (
+                build_date_range_where_clause(
+                    column_name="created_at", 
+                    date_rangeable=date_range,
+                    include_where=True
+                )
+                if date_range is not None
+                else ""
+            )
+
+            await cur.execute(
+                f"""
+                SELECT COUNT(id) 
+                FROM chunks
+                {date_range_query}    
+                """
+            )
 
             row = await cur.fetchone()
             return row["count"]
