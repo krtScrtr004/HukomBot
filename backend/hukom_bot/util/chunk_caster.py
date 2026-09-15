@@ -13,4 +13,5 @@ class ChunkCaster:
             chunk_text=chunk.chunk_text,
             section=chunk.section,
             embedding=chunk.embedding,
+            created_at=chunk.created_at
         )

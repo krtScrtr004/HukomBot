@@ -52,14 +52,16 @@ class ChunkRepository:
                     chunk_number, 
                     chunk_text, 
                     embedding, 
-                    section
+                    section,
+                    created_at
                 ) VALUES (
                     %(id)s,
                     %(document_id)s, 
                     %(chunk_number)s, 
                     %(chunk_text)s, 
                     %(embedding)s, 
-                    %(section)s
+                    %(section)s,
+                    %(created_at)s
                 )
                 """,
                 [chunk.model_dump() for chunk in chunks],
@@ -103,6 +105,7 @@ class ChunkRepository:
                     c.chunk_text AS c_chunk_text,
                     c.embedding AS c_embedding,
                     c.section AS c_section,
+                    c.created_at AS c_created_at,
                     ts_rank(c.search_vector, q.q) AS c_rank,
 
                     -- Document Info
@@ -138,6 +141,7 @@ class ChunkRepository:
                 chunk_text=row["c_chunk_text"],
                 embedding=ast.literal_eval(row["c_embedding"]),
                 section=row["c_section"],
+                created_at=["c_created_at"],
                 # Document Prop
                 document=Document(
                     id=row["d_id"],
@@ -185,6 +189,7 @@ class ChunkRepository:
                     c.chunk_text as c_chunk_text,
                     c.embedding as c_embedding,
                     c.section as c_section,
+                    c.created_at AS c_created_at,
 
                     -- Document Info
                     d.id AS d_id,
@@ -218,6 +223,7 @@ class ChunkRepository:
                 chunk_text=row["c_chunk_text"],
                 embedding=ast.literal_eval(row["c_embedding"]),
                 section=row["c_section"],
+                created_at=["c_created_at"],
                 # Document Prop
                 document=Document(
                     id=row["d_id"],

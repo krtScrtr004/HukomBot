@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID, uuid4
 from typing import List, Optional
 from pydantic import BaseModel, Field
@@ -12,6 +13,7 @@ class ChunkCreate(BaseModel):
     chunk_text: str = Field(min_length=1, max_length=10000)
     section: Optional[str] = Field(default=None, min_length=2, max_length=100)
     embedding: Optional[List] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"arbitrary_types_allowed": True}
 
