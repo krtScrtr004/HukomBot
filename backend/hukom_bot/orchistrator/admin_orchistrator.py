@@ -3,11 +3,7 @@ from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.service.chunk_service import ChunkService
 from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.service.user_service import UserService
-from backend.hukom_bot.schema.admin_schema import (
-    AdminDashboardData,
-    DocumentStatusCount,
-    DocumentWeeklyCount,
-)
+from backend.hukom_bot.schema.admin_schema import AdminDashboardData
 from backend.hukom_bot.schema.mixin import DateRangeableMixin
 
 
@@ -47,6 +43,11 @@ class AdminOrchistrator:
                 await self._document_service.count_by_upload_status(
                     date_range=date_range, connection=conn
                 )
+            )
+            
+            # By Document Type
+            to_return.document_type_count = await self._document_service.count_by_document_type(
+                date_range=date_range, connection=conn
             )
 
             # Weekly (Mon to Sun)
