@@ -4,7 +4,9 @@ from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.user_schema import *
+from backend.hukom_bot.schema.mixin import DateRangeableMixin
 from backend.hukom_bot.util.user_caster import UserCaster
+from backend.hukom_bot.util.utility import build_date_range_where_clause
 
 
 class UserRepository:
@@ -332,21 +334,40 @@ class UserRepository:
 
         return users
 
-    async def count_active(self, connection: AsyncConnection = None):
+    async def count_active(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
         if connection is not None:
-            return await self._count_active_implement(conn=connection)
+            return await self._count_active_implement(
+                conn=connection, date_range=date_range
+            )
 
         try:
             async with self._database.connection() as conn:
-                return await self._count_active_implement(conn=conn)
+                return await self._count_active_implement(
+                    conn=conn, date_range=date_range
+                )
         except errors.OperationalError:
             raise
 
-    async def _count_active_implement(self, conn: AsyncConnection) -> int:
+    async def _count_active_implement(
+        self, conn: AsyncConnection, date_range: DateRangeableMixin
+    ) -> int:
         async with conn.cursor() as cur:
-            await cur.execute(
-                """SELECT COUNT(u.id) FROM users u WHERE u.is_active = true"""
+            date_range_query = (
+                build_date_range_where_clause(
+                    column_name="u.created_at", date_rangeable=date_range
+                )
+                if date_range
+                else ""
             )
+
+            await cur.execute(f"""
+                SELECT COUNT(u.id) 
+                FROM users u 
+                WHERE u.is_active = true
+                {date_range_query}
+                """)
 
             row = await cur.fetchone()
             return row["count"]
