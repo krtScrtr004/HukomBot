@@ -13,7 +13,7 @@ from backend.hukom_bot.schema.chatbot_schema import (
     GetCaseAnalysisResponse,
 )
 from backend.hukom_bot.schema.mixin import PaginatableMixin
-from backend.hukom_bot.schema.http_schema import QueryParams
+from backend.hukom_bot.schema.user_schema import UserGetQueryParams
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.api.v1.dependency import (
     verify_user,
@@ -50,7 +50,7 @@ async def run_case_analysis_pipeline(
 
 @case_analysis_api_router.get("/")
 async def get_user_case_analyses(
-    params: Annotated[QueryParams, Query()],
+    params: Annotated[UserGetQueryParams, Query()],
     user: Annotated[User, Depends(verify_user)],
     service: Annotated[CaseAnalysisService, Depends(get_case_analysis_service)],
     _rl=Depends(rate_limit(limit=60, window=60)),
