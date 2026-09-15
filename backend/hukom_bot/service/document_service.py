@@ -95,6 +95,9 @@ class DocumentService:
             date_range=date_range, connection=connection
         )
 
+    async def count_weekly(self, connection: AsyncConnection = None):
+        return await self._document_repo.count_weekly(connection=connection)
+
     # Others =======
 
     def get_file_from_storage(self, upload_file_name, file_type):

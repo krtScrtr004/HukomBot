@@ -1,11 +1,11 @@
 from psycopg import errors
 from uuid import UUID
 from psycopg import AsyncConnection
-
 from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.document_model import Document
 from backend.hukom_bot.schema.document_schema import *
+from backend.hukom_bot.schema.admin_schema import DocumentWeeklyCount
 from backend.hukom_bot.util.document_caster import DocumentCaster
 from backend.hukom_bot.util.utility import build_date_range_where_clause
 
@@ -517,6 +517,37 @@ class DocumentRepository:
 
             row = await cur.fetchone()
             return row["count"]
+
+    async def count_weekly(self, connection: AsyncConnection = None):
+        if connection is not None:
+            return await self._count_weekly_implement(connection=connection)
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_weekly_implement(connection=conn)
+        except errors.OperationalError:
+            raise
+
+    async def _count_weekly_implement(self, connection: AsyncConnection):
+        async with connection.cursor() as cur:
+            await cur.execute("""
+                SELECT 
+                    to_char(created_at, 'FMDay') AS day_name,
+                    COUNT(*) AS total_count
+                FROM documents
+                WHERE created_at >= date_trunc('week', current_date)
+                AND created_at <  date_trunc('week', current_date) + INTERVAL '7 days'
+                GROUP BY to_char(created_at, 'FMDay'), created_at::date, EXTRACT(isodow FROM created_at)
+                ORDER BY EXTRACT(isodow FROM created_at) ASC
+                """)
+
+            rows = await cur.fetchall()
+            if not rows:
+                return DocumentWeeklyCount()
+            
+            daily_counts = {row["day_name"]: row["total_count"] for row in rows}
+
+            return DocumentWeeklyCount(**daily_counts)
 
     # DELETE ============================================================================
 
