@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from uuid import UUID, uuid4
 from psycopg import AsyncConnection
+from backend.hukom_bot.schema.mixin import DateRangeableMixin
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
 from backend.hukom_bot.schema.document_schema import *
 from backend.hukom_bot.repository.document_repository import DocumentRepository
@@ -52,23 +53,47 @@ class DocumentService:
     async def all(self, param: DocumentGetAll, connection: AsyncConnection = None):
         return await self._document_repo.all(param=param, connection=connection)
 
-    async def count_all(self, connection: AsyncConnection = None):
-        return await self._document_repo.count_all(connection=connection)
+    async def count_all(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        return await self._document_repo.count_all(
+            date_range=date_range, connection=connection
+        )
 
-    async def count_pending(self, connection: AsyncConnection = None):
-        return await self._document_repo.count_pending(connection=connection)
+    async def count_pending(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        return await self._document_repo.count_pending(
+            date_range=date_range, connection=connection
+        )
 
-    async def count_ongoing(self, connection: AsyncConnection = None):
-        return await self._document_repo.count_ongoing(connection=connection)
+    async def count_ongoing(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        return await self._document_repo.count_ongoing(
+            date_range=date_range, connection=connection
+        )
 
-    async def count_completed(self, connection: AsyncConnection = None):
-        return await self._document_repo.count_completed(connection=connection)
+    async def count_completed(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        return await self._document_repo.count_completed(
+            date_range=date_range, connection=connection
+        )
 
-    async def count_failed(self, connection: AsyncConnection = None):
-        return await self._document_repo.count_failed(connection=connection)
+    async def count_failed(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        return await self._document_repo.count_failed(
+            date_range=date_range, connection=connection
+        )
 
-    async def count_rejected(self, connection: AsyncConnection = None):
-        return await self._document_repo.count_rejected(connection=connection)
+    async def count_rejected(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        return await self._document_repo.count_rejected(
+            date_range=date_range, connection=connection
+        )
 
     # Others =======
 
