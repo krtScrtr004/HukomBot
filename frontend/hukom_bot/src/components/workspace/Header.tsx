@@ -59,28 +59,20 @@ export default function Header({
 					</button>
 				) : null}
 
-				{user?.role === 'admin' ? (
-					<NavLink
-						to="/admin"
-						className="flex items-center gap-1 text-primary font-bold hover:opacity-90"
-					>
-						<i className="bi bi-speedometer2" aria-hidden="true" />
-						Admin
-					</NavLink>
-				) : null}
-
 				{/* Analysis version list toggle button */}
-				<button
-					type="button"
-					onClick={onToggleVersionPanel}
-					className="lg:hidden p-2 rounded-sm text-text-secondary hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-					aria-label="Toggle version panel"
-				>
-					<i
-						className="bi bi-clock-history text-xl"
-						aria-hidden="true"
-					/>
-				</button>
+				{onToggleVersionPanel && (
+					<button
+						type="button"
+						onClick={onToggleVersionPanel}
+						className="lg:hidden p-2 rounded-sm text-text-secondary hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+						aria-label="Toggle version panel"
+					>
+						<i
+							className="bi bi-clock-history text-xl"
+							aria-hidden="true"
+						/>
+					</button>
+				)}
 
 				{/* Theme toggle button */}
 				<ThemeToggle className="right-10 rounded-sm hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" />

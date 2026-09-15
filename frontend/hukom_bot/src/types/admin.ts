@@ -6,13 +6,32 @@ import type { LegalDocumentType, UploadStatus } from './workspace';
 export interface AdminDashboardData {
   active_user_count: number;
   documents_count: number;
-  pending_document_count: number;
-  ongoing_document_count: number;
-  completed_document_count: number;
-  failed_document_count: number;
-  rejected_document_count: number;
+  document_status_count: {
+    pending: number;
+    ongoing: number;
+    completed: number;
+    failed: number;
+    rejected: number;
+  };
+  document_weekly_count: Record<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday', number>;
+  document_type_count: Record<string, number>;
   chunks_count: number;
 }
+
+export type AdminDashboardDateRange =
+  | 'today'
+  | 'yesterday'
+  | 'this_week'
+  | 'last_week'
+  | 'this_month'
+  | 'last_month'
+  | 'last_7_days'
+  | 'last_30_days'
+  | 'last_90_days'
+  | 'last_6_months'
+  | 'this_year'
+  | 'last_year'
+  | 'all_time';
 
 export interface AdminUserListItem {
   id: string;

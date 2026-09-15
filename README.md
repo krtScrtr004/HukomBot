@@ -148,7 +148,7 @@ All API endpoints use the `/api/v1` base path.
 | `PATCH` | `/api/v1/documents/{id}` | Yes | `admin` | 10 req/min | Update document metadata |
 | `PATCH` | `/api/v1/documents/{id}/approve` | Yes | `admin` | 10 req/min | Approve a document |
 | `GET` | `/api/v1/documents/{id}/upload-status` | Yes | Any | 60 req/min | Get document upload status |
-| `GET` | `/api/v1/admin/dashboard` | Yes | `admin` | 60 req/min | Get admin dashboard data |
+| `GET` | `/api/v1/admin/dashboard` | No | Any | 60 req/min | Get admin dashboard data |
 | `GET` | `/events/v1/admin/dashboard` | Yes | `admin` | — | Stream admin dashboard updates (SSE) |
 | `POST` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 5 req/min | Run case analysis |
 | `GET` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 60 req/min | List the user's case analysis sessions |
@@ -317,12 +317,12 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
   ```http
   GET /api/v1/admin/dashboard
   ```
-   for retrieving admin dashboard data with aggregated counts (admin only).
+   for retrieving admin dashboard data with aggregated counts (any user).
 - Added:
   ```http
   GET /events/v1/admin/dashboard
   ```
-  for streaming real-time admin dashboard updates via Server-Sent Events (SSE) (admin only).
+  for streaming real-time admin dashboard updates via Server-Sent Events (SSE) (`admin` only).
 - Added `PubsubService` class wrapping Redis pub/sub for publish/subscribe messaging.
 - Added `ADMIN_DASHBOARD_CH` configuration variable for the Redis channel name.
 - Added publish (trigger) statements to document and user actions that update admin dashboard statistics.
@@ -336,6 +336,11 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Added `UserGetAll` and `DocumentGetAll` schemas for non-search list endpoints.
 - Added `OrderableMixin` and `OrderEnum` (`ASC`/`DESC`) for sortable list responses.
 - Added `AdminDashboardData` schema with aggregated counts for active users, documents by status, and chunks.
+- Updated `AdminDashboardData` schema to include per-status, per-weekly, and per-type document counts via `DocumentStatusCount`, `DocumentWeeklyCount`, and `DocumentTypeCount` schemas.
+- Updated `GET /api/v1/admin/dashboard` to accept optional `date_range`, `date_start`, and `date_end` query parameters for filtering by date range.
+- Removed authentication requirement from `GET /api/v1/admin/dashboard` (now accessible by any user).
+- Updated `GET /events/v1/admin/dashboard` SSE stream to emit raw `AdminDashboardData` JSON instead of `SuccessResponse` wrapper.
+- Added `date_range`, `date_start`, and `date_end` query parameters to `GET /events/v1/admin/dashboard`.
 - Added `rejection_message` field to `DocumentCreate`, `DocumentUpdateBase`, and `DocumentResponse` schemas.
 - Added `rejected` value to the `UploadStatus` enum with status level `-1` and state transition logic in `DocumentOrchistrator.update_pipeline()`.
 - Made `uploader` field optional (`UserResponse | None`) in `DocumentResponse` schema.

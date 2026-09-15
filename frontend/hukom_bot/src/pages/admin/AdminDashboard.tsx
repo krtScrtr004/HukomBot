@@ -1,36 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { EVENT_BASE_URL_V1 } from '@/services/apiClient'; 
 import { useAdmin } from '@/contexts/AdminContext';
-import type { AdminDashboardData } from '@/types/admin';
+import type { AdminDashboardData, AdminDashboardDateRange } from '@/types/admin';
 import PendingFilesList from '@/components/PendingFilesList';
 import LoadingSpinner from '@/components/workspace/shared/LoadingSpinner';
-import UploadDocumentModal from '@/components/UploadDocumentModal';
 
 function isDashboardData(value: unknown): value is AdminDashboardData {
 	if (!value || typeof value !== 'object') return false;
 
 	const data = value as Record<string, unknown>;
-	return [
-		'active_user_count',
-		'documents_count',
-		'pending_document_count',
-		'ongoing_document_count',
-		'completed_document_count',
-		'failed_document_count',
-		'rejected_document_count',
-		'chunks_count',
-	].every((key) => typeof data[key] === 'number');
+	const status = data.document_status_count;
+	const weekly = data.document_weekly_count;
+	return typeof data.active_user_count === 'number' &&
+		typeof data.documents_count === 'number' &&
+		typeof data.chunks_count === 'number' &&
+		!!status && typeof status === 'object' &&
+		['pending', 'ongoing', 'completed', 'failed', 'rejected'].every((key) => typeof (status as Record<string, unknown>)[key] === 'number') &&
+		!!weekly && typeof weekly === 'object' &&
+		['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].every((key) => typeof (weekly as Record<string, unknown>)[key] === 'number') &&
+		!!data.document_type_count && typeof data.document_type_count === 'object';
 }
 
 function parseDashboardEvent(eventData: string): AdminDashboardData | null {
 	try {
-		// Remove trailing ':heartbeat
-		// Cut at the last colon in the string
-		const lastColonIndex = eventData.lastIndexOf(":");
-		const jsonString = eventData.substring(0, lastColonIndex).trim();
-		const validJson = jsonString.replace(/'/g, '"');
-
-		const parsed: unknown = JSON.parse(validJson);
+		const parsed: unknown = JSON.parse(eventData.trim());
 		if (!parsed || typeof parsed !== 'object') return null;
 
 		const payload = parsed as {
@@ -95,20 +88,30 @@ export default function AdminDashboardPage() {
 	const { state, fetchDashboard, fetchPendingFiles, dispatch } = useAdmin();
 	const { dashboard } = state;
 	const initRef = useRef(false);
-	const [uploadModalOpen, setUploadModalOpen] = useState(false);
+	const [dateRange, setDateRange] = useState<AdminDashboardDateRange>('last_30_days');
+	const weeklyMax = dashboard.data
+		? Math.max(...Object.values(dashboard.data.document_weekly_count), 1)
+		: 1;
+	const documentTotal = dashboard.data?.documents_count ?? 1;
+	const dateRangeLabels: Record<AdminDashboardDateRange, string> = {
+		today: 'Today', yesterday: 'Yesterday', this_week: 'This week', last_week: 'Last week', this_month: 'This month', last_month: 'Last month', last_7_days: 'Last 7 days', last_30_days: 'Last 30 days', last_90_days: 'Last 90 days', last_6_months: 'Last 6 months', this_year: 'This year', last_year: 'Last year', all_time: 'All time',
+	};
 
 	useEffect(() => {
 		if (initRef.current) return;
 		initRef.current = true;
-		void fetchDashboard();
 		void fetchPendingFiles();
-	}, [fetchDashboard, fetchPendingFiles]);
+	}, [fetchPendingFiles]);
+
+	useEffect(() => {
+		void fetchDashboard(dateRange);
+	}, [dateRange, fetchDashboard]);
 
 	useEffect(() => {
 		let es: EventSource | null = null;
 		const openStream = () => {
 			if (document.hidden || es) return;
-			es = new EventSource(`${EVENT_BASE_URL_V1}/admin/dashboard`, {
+			es = new EventSource(`${EVENT_BASE_URL_V1}/admin/dashboard?date_range=${encodeURIComponent(dateRange)}`, {
 				withCredentials: true,
 			});
 			es.onmessage = (event) => {
@@ -136,7 +139,7 @@ export default function AdminDashboardPage() {
 			es?.close();
 			document.removeEventListener('visibilitychange', handleVisibility);
 		};
-	}, [dispatch]);
+	}, [dateRange, dispatch]);
 
 	return (
 		<div className="mx-auto max-w-7xl space-y-8">
@@ -156,25 +159,21 @@ export default function AdminDashboardPage() {
 				</div>
 				
 				<div className="flex gap-2">
-					<button
-						type="button"
+					<div
 						className="flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text-secondary hover:bg-hover"
 					>
 						<i className="bi bi-calendar3" aria-hidden="true" />
-						Last 30 days
-						<i
-							className="bi bi-chevron-down text-xs"
-							aria-hidden="true"
-						/>
-					</button>
-					<button
-						type="button"
-						onClick={() => setUploadModalOpen(true)}
-						className="flex items-center gap-2 rounded-sm bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
-					>
-						<i className="bi bi-plus-lg" aria-hidden="true" />
-						Upload Document
-					</button>
+						<select
+							aria-label="Dashboard date range"
+							value={dateRange}
+							onChange={(event) => setDateRange(event.target.value as AdminDashboardDateRange)}
+							className="cursor-pointer bg-transparent outline-none"
+						>
+							{Object.entries(dateRangeLabels).map(([value, label]) => (
+								<option key={value} value={value}>{label}</option>
+							))}
+						</select>
+					</div>
 				</div>
 			</header>
 
@@ -212,7 +211,7 @@ export default function AdminDashboardPage() {
 							],
 							[
 								'Processing Activity',
-								dashboard.data.ongoing_document_count,
+								dashboard.data.document_status_count.ongoing,
 								'bi-activity',
 								'text-success',
 							],
@@ -282,7 +281,7 @@ export default function AdminDashboardPage() {
 								<div
 									className="relative h-36 w-36 shrink-0 rounded-full"
 									style={{
-										background: `conic-gradient(var(--color-success) 0 ${(dashboard.data.completed_document_count / Math.max(dashboard.data.documents_count, 1)) * 100}%, var(--color-info) 0 ${((dashboard.data.completed_document_count + dashboard.data.ongoing_document_count) / Math.max(dashboard.data.documents_count, 1)) * 100}%, var(--color-warning) 0 ${((dashboard.data.completed_document_count + dashboard.data.ongoing_document_count + dashboard.data.pending_document_count) / Math.max(dashboard.data.documents_count, 1)) * 100}%, var(--color-danger) 0 100%)`,
+										background: `conic-gradient(var(--color-success) 0 ${(dashboard.data.document_status_count.completed / Math.max(dashboard.data.documents_count, 1)) * 100}%, var(--color-info) 0 ${((dashboard.data.document_status_count.completed + dashboard.data.document_status_count.ongoing) / Math.max(dashboard.data.documents_count, 1)) * 100}%, var(--color-warning) 0 ${((dashboard.data.document_status_count.completed + dashboard.data.document_status_count.ongoing + dashboard.data.document_status_count.pending) / Math.max(dashboard.data.documents_count, 1)) * 100}%, var(--color-danger) 0 100%)`,
 									}}
 								>
 									<div className="absolute inset-4 flex flex-col items-center justify-center rounded-full bg-surface">
@@ -299,28 +298,23 @@ export default function AdminDashboardPage() {
 									{[
 										[
 											'Completed',
-											dashboard.data
-												.completed_document_count,
+											dashboard.data.document_status_count.completed,
 											'bg-success',
 										],
 										[
 											'Ongoing',
-											dashboard.data
-												.ongoing_document_count,
+											dashboard.data.document_status_count.ongoing,
 											'bg-info',
 										],
 										[
 											'Pending',
-											dashboard.data
-												.pending_document_count,
+											dashboard.data.document_status_count.pending,
 											'bg-warning',
 										],
 										[
 											'Failed / rejected',
-											dashboard.data
-												.failed_document_count +
-												dashboard.data
-													.rejected_document_count,
+											dashboard.data.document_status_count.failed +
+											dashboard.data.document_status_count.rejected,
 											'bg-danger',
 										],
 									].map(([name, value, color]) => (
@@ -359,33 +353,43 @@ export default function AdminDashboardPage() {
 								/>
 							</div>
 
-							<div className="mt-8 flex h-36 items-end gap-3 border-b border-border px-2">
-								{[38, 56, 44, 72, 61, 88, 76].map(
-									(height, index) => (
-										<div
-											key={index}
-											className="group flex flex-1 flex-col items-center gap-2"
-										>
-											<div
-												className="w-full rounded-t-sm bg-primary/70 transition-all group-hover:bg-primary"
-												style={{ height: `${height}%` }}
-											/>
-											<span className="text-[10px] text-text-muted">
-												{
-													[
-														'Mon',
-														'Tue',
-														'Wed',
-														'Thu',
-														'Fri',
-														'Sat',
-														'Sun',
-													][index]
-												}
-											</span>
-										</div>
-									),
-								)}
+							<div className="relative mt-8 h-44 px-2">
+								<div className="absolute inset-x-2 top-0 border-t border-border" />
+								<div className="absolute inset-x-2 top-1/2 border-t border-border/60" />
+								<div className="absolute inset-x-2 bottom-6 border-t border-border" />
+								<div className="absolute inset-x-2 bottom-6 top-0">
+									<svg viewBox="0 0 700 140" preserveAspectRatio="none" className="h-full w-full overflow-visible" role="img" aria-label="Weekly document processing activity">
+										<polyline fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-primary" points={Object.entries(dashboard.data.document_weekly_count).map(([, value], index, entries) => `${(index / Math.max(entries.length - 1, 1)) * 700},${140 - (value / weeklyMax) * 120}`).join(' ')} />
+										{Object.entries(dashboard.data.document_weekly_count).map(([day, value], index, entries) => <circle key={day} cx={(index / Math.max(entries.length - 1, 1)) * 700} cy={140 - (value / weeklyMax) * 120} r="5" className="fill-surface stroke-primary" strokeWidth="3"><title>{day}: {value}</title></circle>)}
+									</svg>
+								</div>
+								<div className="absolute inset-x-2 bottom-0 flex justify-between text-[10px] text-text-muted">{Object.keys(dashboard.data.document_weekly_count).map((day) => <span key={day}>{day.slice(0, 3)}</span>)}</div>
+							</div>
+						</article>
+
+						<article className="rounded-sm border border-border bg-surface p-5 xl:col-span-2">
+							<div className="flex items-center justify-between">
+								<div>
+									<h2 className="font-semibold">Documents by type</h2>
+									<p className="mt-1 text-xs text-text-secondary">Most common legal document categories</p>
+								</div>
+								<i className="bi bi-bar-chart-fill text-primary" aria-hidden="true" />
+							</div>
+							<div className="mt-6 space-y-4">
+								{Object.entries(dashboard.data.document_type_count)
+									.filter(([, value]) => value > 0)
+									.sort(([, first], [, second]) => second - first)
+									.slice(0, 8)
+									.map(([type, value], _, entries) => {
+										const largestValue = Math.max(...entries.map(([, entryValue]) => entryValue), documentTotal);
+										const percentage = (value / largestValue) * 100;
+											return <div key={type} className="grid grid-cols-[minmax(7rem,13rem)_1fr_2rem] items-center gap-3 text-xs">
+												<span className="truncate text-text-secondary">{type.replaceAll('_', ' ')}</span>
+												<div className="relative h-5 border-b border-border"><div className="absolute inset-x-0 top-1/2 border-t border-border/60" /><div className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-r-full bg-primary" style={{ width: `${Math.max(percentage, 3)}%` }} /></div>
+												<strong className="text-right">{value}</strong>
+											</div>;
+									})}
+								{Object.values(dashboard.data.document_type_count).every((value) => value === 0) && <p className="text-sm text-text-muted">No document type activity for this range.</p>}
 							</div>
 						</article>
 					</section>
@@ -393,10 +397,6 @@ export default function AdminDashboardPage() {
 					<PendingFilesList />
 				</>
 			)}
-			<UploadDocumentModal
-				open={uploadModalOpen}
-				onClose={() => setUploadModalOpen(false)}
-			/>
 		</div>
 	);
 }

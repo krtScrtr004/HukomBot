@@ -13,6 +13,7 @@ import { listUsers } from '@/services/adminUsersService';
 import { listDocuments } from '@/services/adminDocumentsService';
 import type {
 	AdminDashboardData,
+	AdminDashboardDateRange,
 	AdminDocumentListItem,
 	AdminUserListItem,
 } from '@/types/admin';
@@ -114,7 +115,7 @@ type AdminAction =
 interface AdminContextValue {
 	state: AdminState;
 	dispatch: React.Dispatch<AdminAction>;
-	fetchDashboard: () => Promise<void>;
+	fetchDashboard: (dateRange?: AdminDashboardDateRange) => Promise<void>;
 	fetchPendingFiles: () => Promise<void>;
 	fetchUsers: () => Promise<void>;
 	fetchDocuments: () => Promise<void>;
@@ -391,10 +392,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 		[navigate, showToast],
 	);
 
-	const fetchDashboard = useCallback(async () => {
+	const fetchDashboard = useCallback(async (dateRange: AdminDashboardDateRange = 'last_30_days') => {
 		dispatch({ type: 'SET_DASHBOARD_LOADING', payload: true });
 		try {
-			const data = await getDashboardData();
+			const data = await getDashboardData(dateRange);
 			dispatch({ type: 'SET_DASHBOARD_DATA', payload: data });
 			dispatch({ type: 'SET_DASHBOARD_ERROR', payload: null });
 		} catch (error) {

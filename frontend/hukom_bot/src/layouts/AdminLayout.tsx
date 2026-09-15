@@ -3,6 +3,8 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import Logo from '@/components/ui/Logo';
 import Sidebar from '@/components/ui/Sidebar';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import Header from '@/components/workspace/Header';
+import UploadDocumentModal from '@/components/UploadDocumentModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { logout } from '@/services/authService';
 
@@ -17,6 +19,7 @@ export default function AdminLayout() {
 	const { user } = useAuth();
 	const navigate = useNavigate();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
 	const handleSignOut = async () => {
 		await logout();
@@ -24,60 +27,35 @@ export default function AdminLayout() {
 	};
 
 	return (
-		<div className="flex h-dvh bg-background text-text-primary">
-			<Sidebar
-				ariaLabel="Admin navigation"
-				mobileOpen={sidebarOpen}
-				onMobileClose={() => setSidebarOpen(false)}
-			>
-				<AdminSidebarContent
-					user={user}
-					onSignOut={handleSignOut}
-					onNavigate={() => setSidebarOpen(false)}
-				/>
-			</Sidebar>
-			
-			<div className="flex min-h-0 min-w-0 overflow-y-auto flex-1 flex-col">
-				<header
-					className="flex min-h-(--header-height) items-center justify-between gap-4 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur md:px-8"
-					role="banner"
+		<div className="flex h-dvh flex-col bg-background text-text-primary">
+			<Header
+				userRole={user?.role}
+				onToggleSidebar={() => setSidebarOpen(true)}
+				onUploadClick={() => setUploadModalOpen(true)}
+			/>
+
+			<div className="relative flex min-h-0 min-w-0 flex-1">
+				<Sidebar
+					ariaLabel="Admin navigation"
+					mobileOpen={sidebarOpen}
+					onMobileClose={() => setSidebarOpen(false)}
 				>
-					<div className="flex items-center gap-3">
-						<button
-							type="button"
-							onClick={() => setSidebarOpen(true)}
-							className="rounded-sm p-2 text-text-secondary hover:bg-hover lg:hidden"
-							aria-label="Open admin navigation"
-						>
-							<i
-								className="bi bi-list text-xl"
-								aria-hidden="true"
-							/>
-						</button>
+					<AdminSidebarContent
+						user={user}
+						onSignOut={handleSignOut}
+						onNavigate={() => setSidebarOpen(false)}
+					/>
+				</Sidebar>
 
-						<div>
-							<p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-								HukomBot control center
-							</p>
-							<p className="mt-1 text-sm text-text-secondary">
-								Monitor your legal knowledge operations
-							</p>
-						</div>
-					</div>
-
-					<div className="hidden items-center gap-2 text-xs text-text-muted sm:flex">
-						<i
-							className="bi bi-circle-fill text-[8px] text-success"
-							aria-hidden="true"
-						/>
-						Live system status
-					</div>
-				</header>
-
-				<main className="min-h-fit flex-1 p-4 md:p-8">
+				<main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:p-8">
 					<Outlet />
 				</main>
 			</div>
+
+			<UploadDocumentModal
+				open={uploadModalOpen}
+				onClose={() => setUploadModalOpen(false)}
+			/>
 		</div>
 	);
 }
@@ -94,13 +72,7 @@ function AdminSidebarContent({
 	onNavigate,
 }: AdminSidebarContentProps) {
 	return (
-		<div className="flex h-full flex-col">
-			<section className="shrink-0 border-b border-border p-3">
-				<div className="flex items-center justify-between gap-2">
-					<Logo className="h-16 w-auto" />
-				</div>
-			</section>
-
+		<div className="flex h-full flex-col pt-3">
 			<section className="flex-1 overflow-y-auto p-2 scrollbar-thin">
 				<nav className="space-y-1" aria-label="Admin navigation">
 					{[
@@ -148,7 +120,7 @@ function AdminSidebarContent({
 						<p className="truncate text-sm font-semibold">
 							{user ? user.first_name : 'User'}
 						</p>
-						
+
 						<p className="text-xs text-text-secondary">
 							Administrator
 						</p>
@@ -156,7 +128,6 @@ function AdminSidebarContent({
 				</div>
 
 				<div className="flex items-center">
-					<ThemeToggle className="rounded-sm hover:bg-hover" />
 					<button
 						type="button"
 						onClick={() => void onSignOut()}
