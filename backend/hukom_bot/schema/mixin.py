@@ -22,9 +22,9 @@ class OrderableMixin(BaseModel):
     
     
 class DateRangeableMixin(BaseModel):
-    date_range: str | None = Field(default=None)
+    date_range: DateRange | None = Field(default=None)
     date_start: datetime | None = Field(default=None)
-    date_end: DateRange | None = Field(default=None)
+    date_end: str | None = Field(default=None)
     
     model_config = {"arbitrary_types_allowed": True}
     
