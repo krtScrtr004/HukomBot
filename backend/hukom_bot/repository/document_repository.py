@@ -5,7 +5,10 @@ from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.document_model import Document
 from backend.hukom_bot.schema.document_schema import *
-from backend.hukom_bot.schema.admin_schema import DocumentWeeklyCount
+from backend.hukom_bot.schema.admin_schema import (
+    DocumentStatusCount,
+    DocumentWeeklyCount,
+)
 from backend.hukom_bot.util.document_caster import DocumentCaster
 from backend.hukom_bot.util.utility import build_date_range_where_clause
 
@@ -390,146 +393,194 @@ class DocumentRepository:
             row = await cur.fetchone()
             return row["count"]
 
-    def _build_get_by_upload_status_param(
-        self, upload_status: UploadStatus, date_range: DateRangeableMixin | None
-    ) -> DocumentGetByUploadStatus:
-        return DocumentGetByUploadStatus(
-            upload_status=upload_status, **date_range.model_dump() if date_range else {}
-        )
+    # def _build_get_by_upload_status_param(
+    #     self, upload_status: UploadStatus, date_range: DateRangeableMixin | None
+    # ) -> DocumentGetByUploadStatus:
+    #     return DocumentGetByUploadStatus(
+    #         upload_status=upload_status, **date_range.model_dump() if date_range else {}
+    #     )
 
-    async def count_pending(
+    # async def count_pending(
+    #     self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    # ):
+    #     param = self._build_get_by_upload_status_param(
+    #         upload_status=UploadStatus.PENDING, date_range=date_range
+    #     )
+
+    #     if connection is not None:
+    #         return await self._count_by_upload_status_implement(
+    #             conn=connection, param=param
+    #         )
+
+    #     try:
+    #         async with self._database.connection() as conn:
+    #             return await self._count_by_upload_status_implement(
+    #                 conn=conn, param=param
+    #             )
+    #     except errors.OperationalError:
+    #         raise
+
+    # async def count_ongoing(
+    #     self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    # ):
+    #     param = self._build_get_by_upload_status_param(
+    #         upload_status=UploadStatus.ONGOING, date_range=date_range
+    #     )
+
+    #     if connection is not None:
+    #         return await self._count_by_upload_status_implement(
+    #             conn=connection, param=param
+    #         )
+
+    #     try:
+    #         async with self._database.connection() as conn:
+    #             return await self._count_by_upload_status_implement(
+    #                 conn=conn, param=param
+    #             )
+    #     except errors.OperationalError:
+    #         raise
+
+    # async def count_completed(
+    #     self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    # ):
+    #     param = self._build_get_by_upload_status_param(
+    #         upload_status=UploadStatus.COMPLETED, date_range=date_range
+    #     )
+
+    #     if connection is not None:
+    #         return await self._count_by_upload_status_implement(
+    #             conn=connection, param=param
+    #         )
+
+    #     try:
+    #         async with self._database.connection() as conn:
+    #             return await self._count_by_upload_status_implement(
+    #                 conn=conn, param=param
+    #             )
+    #     except errors.OperationalError:
+    #         raise
+
+    # async def count_failed(
+    #     self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    # ):
+    #     param = self._build_get_by_upload_status_param(
+    #         upload_status=UploadStatus.FAILED, date_range=date_range
+    #     )
+
+    #     if connection is not None:
+    #         return await self._count_by_upload_status_implement(
+    #             conn=connection, param=param
+    #         )
+
+    #     try:
+    #         async with self._database.connection() as conn:
+    #             return await self._count_by_upload_status_implement(
+    #                 conn=conn, param=param
+    #             )
+    #     except errors.OperationalError:
+    #         raise
+
+    # async def count_rejected(
+    #     self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    # ):
+    #     param = self._build_get_by_upload_status_param(
+    #         upload_status=UploadStatus.REJECTED, date_range=date_range
+    #     )
+
+    #     if connection is not None:
+    #         return await self._count_by_upload_status_implement(
+    #             conn=connection, param=param
+    #         )
+
+    #     try:
+    #         async with self._database.connection() as conn:
+    #             return await self._count_by_upload_status_implement(
+    #                 conn=conn, param=param
+    #             )
+    #     except errors.OperationalError:
+    #         raise
+
+    # async def _count_by_upload_status_implement(
+    #     self, conn: AsyncConnection, param: DocumentGetByUploadStatus
+    # ) -> int:
+    #     async with conn.cursor() as cur:
+    #         date_range_query = build_date_range_where_clause(
+    #             column_name="d.created_at", date_rangeable=param
+    #         )
+
+    #         await cur.execute(
+    #             f"""
+    #             SELECT COUNT(d.id)
+    #             FROM documents d
+    #             WHERE d.upload_status = %s
+    #             {date_range_query}
+    #             """,
+    #             (param.upload_status.value,),
+    #         )
+
+    #         row = await cur.fetchone()
+    #         return row["count"]
+
+    async def count_by_upload_status(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
-        param = self._build_get_by_upload_status_param(
-            upload_status=UploadStatus.PENDING, date_range=date_range
-        )
-
         if connection is not None:
             return await self._count_by_upload_status_implement(
-                conn=connection, param=param
+                conn=connection, date_range=date_range
             )
 
         try:
             async with self._database.connection() as conn:
                 return await self._count_by_upload_status_implement(
-                    conn=conn, param=param
-                )
-        except errors.OperationalError:
-            raise
-
-    async def count_ongoing(
-        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
-    ):
-        param = self._build_get_by_upload_status_param(
-            upload_status=UploadStatus.ONGOING, date_range=date_range
-        )
-
-        if connection is not None:
-            return await self._count_by_upload_status_implement(
-                conn=connection, param=param
-            )
-
-        try:
-            async with self._database.connection() as conn:
-                return await self._count_by_upload_status_implement(
-                    conn=conn, param=param
-                )
-        except errors.OperationalError:
-            raise
-
-    async def count_completed(
-        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
-    ):
-        param = self._build_get_by_upload_status_param(
-            upload_status=UploadStatus.COMPLETED, date_range=date_range
-        )
-
-        if connection is not None:
-            return await self._count_by_upload_status_implement(
-                conn=connection, param=param
-            )
-
-        try:
-            async with self._database.connection() as conn:
-                return await self._count_by_upload_status_implement(
-                    conn=conn, param=param
-                )
-        except errors.OperationalError:
-            raise
-
-    async def count_failed(
-        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
-    ):
-        param = self._build_get_by_upload_status_param(
-            upload_status=UploadStatus.FAILED, date_range=date_range
-        )
-
-        if connection is not None:
-            return await self._count_by_upload_status_implement(
-                conn=connection, param=param
-            )
-
-        try:
-            async with self._database.connection() as conn:
-                return await self._count_by_upload_status_implement(
-                    conn=conn, param=param
-                )
-        except errors.OperationalError:
-            raise
-
-    async def count_rejected(
-        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
-    ):
-        param = self._build_get_by_upload_status_param(
-            upload_status=UploadStatus.REJECTED, date_range=date_range
-        )
-
-        if connection is not None:
-            return await self._count_by_upload_status_implement(
-                conn=connection, param=param
-            )
-
-        try:
-            async with self._database.connection() as conn:
-                return await self._count_by_upload_status_implement(
-                    conn=conn, param=param
+                    conn=conn, date_range=date_range
                 )
         except errors.OperationalError:
             raise
 
     async def _count_by_upload_status_implement(
-        self, conn: AsyncConnection, param: DocumentGetByUploadStatus
-    ) -> int:
+        self, conn: AsyncConnection, date_range: DateRangeableMixin | None
+    ):
         async with conn.cursor() as cur:
-            date_range_query = build_date_range_where_clause(
-                column_name="d.created_at", date_rangeable=param
+            date_range_query = (
+                build_date_range_where_clause(
+                    column_name="created_at",
+                    date_rangeable=date_range,
+                    include_where=True,
+                )
+                if date_range is not None
+                else ""
             )
 
-            await cur.execute(
-                f"""
-                SELECT COUNT(d.id) 
-                FROM documents d
-                WHERE d.upload_status = %s
+            await cur.execute(f"""
+                SELECT 
+                    upload_status AS status, 
+                    COUNT(*) AS total_count
+                FROM documents
                 {date_range_query}
-                """,
-                (param.upload_status.value,),
-            )
+                GROUP BY upload_status
+                ORDER BY total_count DESC;
+                """)
 
-            row = await cur.fetchone()
-            return row["count"]
+            rows = await cur.fetchall()
+            if not rows:
+                return DocumentStatusCount()
+
+            status_count = {row["status"]: row["total_count"] for row in rows}
+
+            return DocumentStatusCount(**status_count)
 
     async def count_weekly(self, connection: AsyncConnection = None):
         if connection is not None:
-            return await self._count_weekly_implement(connection=connection)
+            return await self._count_weekly_implement(conn=connection)
 
         try:
             async with self._database.connection() as conn:
-                return await self._count_weekly_implement(connection=conn)
+                return await self._count_weekly_implement(conn=conn)
         except errors.OperationalError:
             raise
 
-    async def _count_weekly_implement(self, connection: AsyncConnection):
-        async with connection.cursor() as cur:
+    async def _count_weekly_implement(self, conn: AsyncConnection):
+        async with conn.cursor() as cur:
             await cur.execute("""
                 SELECT 
                     to_char(created_at, 'FMDay') AS day_name,
@@ -544,7 +595,7 @@ class DocumentRepository:
             rows = await cur.fetchall()
             if not rows:
                 return DocumentWeeklyCount()
-            
+
             daily_counts = {row["day_name"]: row["total_count"] for row in rows}
 
             return DocumentWeeklyCount(**daily_counts)

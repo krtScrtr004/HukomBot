@@ -36,15 +36,17 @@ class AdminOrchistrator:
             )
 
             # Documents ===================================================
-            
+
             # All
             to_return.documents_count = await self._document_service.count_all(
                 date_range=date_range, connection=conn
             )
 
             # By Status
-            to_return.document_status_count = await self._build_document_status_count(
-                date_range=date_range, connection=conn
+            to_return.document_status_count = (
+                await self._document_service.count_by_upload_status(
+                    date_range=date_range, connection=conn
+                )
             )
 
             # Weekly (Mon to Sun)
@@ -60,30 +62,3 @@ class AdminOrchistrator:
             await conn.commit()
 
             return to_return
-
-    async def _build_document_status_count(
-        self, date_range: DateRangeableMixin, connection: AsyncConnection
-    ) -> DocumentStatusCount:
-        obj = DocumentStatusCount()
-
-        obj.pending = await self._document_service.count_pending(
-            date_range=date_range, connection=connection
-        )
-
-        obj.ongoing = await self._document_service.count_ongoing(
-            date_range=date_range, connection=connection
-        )
-
-        obj.completed = await self._document_service.count_completed(
-            date_range=date_range, connection=connection
-        )
-
-        obj.failed = await self._document_service.count_failed(
-            date_range=date_range, connection=connection
-        )
-
-        obj.rejected = await self._document_service.count_rejected(
-            date_range=date_range, connection=connection
-        )
-
-        return obj

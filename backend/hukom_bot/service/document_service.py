@@ -60,38 +60,10 @@ class DocumentService:
             date_range=date_range, connection=connection
         )
 
-    async def count_pending(
+    async def count_by_upload_status(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
-        return await self._document_repo.count_pending(
-            date_range=date_range, connection=connection
-        )
-
-    async def count_ongoing(
-        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
-    ):
-        return await self._document_repo.count_ongoing(
-            date_range=date_range, connection=connection
-        )
-
-    async def count_completed(
-        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
-    ):
-        return await self._document_repo.count_completed(
-            date_range=date_range, connection=connection
-        )
-
-    async def count_failed(
-        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
-    ):
-        return await self._document_repo.count_failed(
-            date_range=date_range, connection=connection
-        )
-
-    async def count_rejected(
-        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
-    ):
-        return await self._document_repo.count_rejected(
+        return await self._document_repo.count_by_upload_status(
             date_range=date_range, connection=connection
         )
 
