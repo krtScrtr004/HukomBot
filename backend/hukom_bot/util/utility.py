@@ -1,6 +1,9 @@
 from uuid import UUID
 from pathlib import Path
 from fastapi import Request
+from datetime import datetime
+from backend.hukom_bot.enum.date_range import DateRange
+from backend.hukom_bot.schema.mixin import DateRangeableMixin
 
 
 def get_project_root(level: int = 4) -> Path:
@@ -61,3 +64,34 @@ def get_client_ip(request: Request, trusted_proxies: bool = True) -> str | None:
 
 def generate_daily_token_quota_key(user_id: UUID) -> str:
     return f"token:user:{user_id}:daily"
+
+
+def build_date_range_where_clause(
+    column_name: str, date_rangeable: DateRangeableMixin, include_where: bool = False
+) -> str:
+    if not any(date_rangeable.model_dump().values()):
+        return ""
+
+    prefix = " WHERE " if include_where else " AND "
+
+    date_start = date_rangeable.date_start
+    date_end = date_rangeable.date_end
+
+    if date_rangeable.date_range:
+        if date_rangeable.date_range is DateRange.ALL_TIME:
+            return ""
+        date_start = date_rangeable.date_range.to_datetime()
+        date_end = datetime.now()
+
+    conditions: list[str] = []
+
+    if date_start is not None:
+        conditions.append(f"{column_name} >= '{date_start.isoformat()}'")
+
+    if date_end is not None:
+        conditions.append(f"{column_name} <= '{date_end.isoformat()}'")
+
+    if not conditions:
+        return ""
+
+    return prefix + " AND ".join(conditions)
