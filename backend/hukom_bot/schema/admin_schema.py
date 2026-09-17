@@ -94,3 +94,5 @@ class AdminDashboardData(BaseModel):
     chunks_count: int = Field(default=0, min=0)
 
     model_config = {"arbitrary_types_allowed": True}
+
+
