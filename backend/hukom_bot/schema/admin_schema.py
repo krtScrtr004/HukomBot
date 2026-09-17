@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from backend.hukom_bot.enum.user_role import UserRole
 
 
 class DocumentStatusCount(BaseModel):
@@ -109,5 +110,11 @@ class UserRegistrationMonthlyCount(BaseModel):
     october: int = Field(default=0, min=0)
     november: int = Field(default=0, min=0)
     december: int = Field(default=0, min=0)
+    
+
+class UserRoleCount(BaseModel):
+    standard: int = Field(default=0, min=0)
+    contributor: int = Field(default=0, min=0)
+    admin: int = Field(default=0, min=0)
     
     
