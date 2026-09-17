@@ -4,7 +4,10 @@ from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.user_schema import *
-from backend.hukom_bot.schema.admin_schema import UserRegistrationMonthlyCount
+from backend.hukom_bot.schema.admin_schema import (
+    UserRegistrationMonthlyCount,
+    UserRoleCount,
+)
 from backend.hukom_bot.schema.mixin import DateRangeableMixin
 from backend.hukom_bot.util.user_caster import UserCaster
 from backend.hukom_bot.util.utility import build_date_range_where_clause
@@ -490,7 +493,7 @@ class UserRepository:
             return await self._count_registration_implement(
                 conn=connection, interval_days=interval_days
             )
-            
+
         try:
             async with self._database.connection() as conn:
                 return await self._count_registration_implement(
@@ -510,9 +513,59 @@ class UserRepository:
                 """,
                 (interval_days,),
             )
-            
+
             row = await cur.fetchone()
             return row["count"]
+
+
+    async def count_by_role(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        if connection is not None:
+            return await self._count_by_role(
+                conn=connection, date_range=date_range
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_by_role(
+                    conn=conn, date_range=date_range
+                )
+        except errors.OperationalError:
+            raise
+        
+    async def _count_by_role(
+        self,
+        conn: AsyncConnection,
+        date_range: DateRangeableMixin | None,
+    ):
+        async with conn.cursor() as cur:
+            date_range_query = (
+                build_date_range_where_clause(
+                    column_name="u.created_at",
+                    date_rangeable=date_range,
+                    include_where=True,
+                )
+                if date_range is not None
+                else ""
+            )
+
+            await cur.execute(
+                f"""
+                SELECT role, COUNT(*)
+                FROM users
+                {date_range_query}
+                GROUP BY role
+                """,
+            )
+
+            rows = await cur.fetchall()
+            if not rows:
+                return UserRoleCount()
+            
+            role_counts = {row["role"]: row["count"] for row in rows}
+            
+            return UserRoleCount(role_counts)
 
     # DELETE ============================================================================
 
