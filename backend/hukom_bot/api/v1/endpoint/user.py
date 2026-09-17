@@ -77,6 +77,7 @@ async def update_user_info(
     last_name: Annotated[str | None, Form()] = None,
     role: Annotated[UserRole | None, Form()] = None,
     profile_picture: Annotated[UploadFile | None, File()] = None,
+    is_active: Annotated[bool | None, Form()] = None,
     user: Annotated[User, Depends(verify_user)],
     orchistrator: Annotated[UserOrchistrator, Depends(get_user_orchistrator)],
     service: Annotated[PubsubService, Depends(get_pubsub_service)],
@@ -86,6 +87,7 @@ async def update_user_info(
         first_name=first_name,
         last_name=last_name,
         role=role,
+        is_active=is_active
     )
 
     if payload.model_fields_set or profile_picture is not None:

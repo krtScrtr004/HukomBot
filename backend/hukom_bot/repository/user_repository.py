@@ -119,6 +119,9 @@ class UserRepository:
         if user.role:
             set_clauses.append("role = %(role)s")
             values["role"] = user.role.value
+        if user.is_active is not None:
+            set_clauses.append("is_active = %(is_active)s")
+            values["is_active"] = user.is_active
 
         if not set_clauses:
             raise RuntimeError("No fields to update")

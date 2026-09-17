@@ -52,6 +52,13 @@ class UserOrchistrator:
                     details=["You are not allowed to update application role"]
                 )
 
+            if not am_I_admin and user.is_active is not None:
+                raise UnauthorizedException(
+                    details=[
+                        "You are not allowed to reactivate/deactivate your own account"
+                    ]
+                )
+
             existing_user = (
                 await self._user_service.get_by_id(id=user_id, connection=con)
                 if user
@@ -63,32 +70,40 @@ class UserOrchistrator:
             upload_result = None
 
             try:
-                # Extract and upload profile picture, if provided
-                contents = await profile_picture.read() if profile_picture else None
-                if contents:
-                    if not self._user_service.is_valid_image_type(contents):
-                        raise InvalidFileTypeException(
-                            message="Invalid profile picture type",
-                            code="INVALID_IMAGE_TYPE",
-                            details=[
-                                f"{", ".join(self._user_service.ALLOWED_IMAGE_TYPES)} are the only allowed image types"
-                            ],
+                # Do not allow users to modify others' profile picture
+                if is_me:
+                    # Extract and upload profile picture, if provided
+                    contents = await profile_picture.read() if profile_picture else None
+                    if contents:
+                        if not self._user_service.is_valid_image_type(contents):
+                            raise InvalidFileTypeException(
+                                message="Invalid profile picture type",
+                                code="INVALID_IMAGE_TYPE",
+                                details=[
+                                    f"{", ".join(self._user_service.ALLOWED_IMAGE_TYPES)} are the only allowed image types"
+                                ],
+                            )
+
+                        MAX_FILE_SIZE = 5 * 1024 * 1024  # MAX: 5MB
+                        file_size = len(contents)
+                        if file_size > MAX_FILE_SIZE:
+                            raise FileSizeTooLargeException(
+                                details=[f"Max size is {MAX_FILE_SIZE}"]
+                            )
+
+                        # Upload image to cloudinary, if not None
+                        upload_result = await run_in_threadpool(
+                            upload_to_cloudinary, contents
                         )
 
-                    MAX_FILE_SIZE = 5 * 1024 * 1024  # MAX: 5MB
-                    file_size = len(contents)
-                    if file_size > MAX_FILE_SIZE:
-                        raise FileSizeTooLargeException(
-                            details=[f"Max size is {MAX_FILE_SIZE}"]
+                        logger.info(
+                            f"New image uploaded to image file storage. Size: {file_size}, Type: {get_mime_type(contents)}"
                         )
-
-                    # Upload image to cloudinary, if not None
-                    upload_result = await run_in_threadpool(
-                        upload_to_cloudinary, contents
-                    )
-
-                    logger.info(
-                        f"New image uploaded to image file storage. Size: {file_size}, Type: {get_mime_type(contents)}"
+                else:
+                    raise UnauthorizedException(
+                        details=[
+                            "You are not allowed to modify others' profile picture"
+                        ]
                     )
 
                 update_schema = self._create_update_schema(
