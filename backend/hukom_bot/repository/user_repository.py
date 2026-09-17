@@ -340,23 +340,42 @@ class UserRepository:
     async def count_active(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
+        user = UserGetByActiveState(is_active=True, **date_range.model_dump())
+
         if connection is not None:
-            return await self._count_active_implement(
-                conn=connection, date_range=date_range
+            return await self._count_by_active_state_implement(
+                conn=connection, user=user
             )
 
         try:
             async with self._database.connection() as conn:
-                return await self._count_active_implement(
-                    conn=conn, date_range=date_range
-                )
+                return await self._count_by_active_state_implement(conn=conn, user=user)
         except errors.OperationalError:
             raise
 
-    async def _count_active_implement(
-        self, conn: AsyncConnection, date_range: DateRangeableMixin | None
+    async def count_inactive(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        user = UserGetByActiveState(is_active=False, **date_range.model_dump())
+
+        if connection is not None:
+            return await self._count_by_active_state_implement(
+                conn=connection, user=user
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_by_active_state_implement(conn=conn, user=user)
+        except errors.OperationalError:
+            raise
+
+    async def _count_by_active_state_implement(
+        self, conn: AsyncConnection, user: UserGetByActiveState
     ) -> int:
         async with conn.cursor() as cur:
+            dump = user.model_dump()
+
+            date_range = DateRangeableMixin(dump)
             date_range_query = (
                 build_date_range_where_clause(
                     column_name="u.created_at", date_rangeable=date_range
@@ -365,12 +384,15 @@ class UserRepository:
                 else ""
             )
 
-            await cur.execute(f"""
+            await cur.execute(
+                f"""
                 SELECT COUNT(u.id) 
                 FROM users u 
-                WHERE u.is_active = true
+                WHERE u.is_active = %(is_active)s
                 {date_range_query}
-                """)
+                """,
+                dump,
+            )
 
             row = await cur.fetchone()
             return row["count"]
