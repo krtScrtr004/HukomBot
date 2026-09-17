@@ -96,3 +96,18 @@ class AdminDashboardData(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
+class UserRegistrationMonthlyCount(BaseModel):
+    january: int = Field(default=0, min=0)
+    february: int = Field(default=0, min=0)
+    march: int = Field(default=0, min=0)
+    april: int = Field(default=0, min=0)
+    may: int = Field(default=0, min=0)
+    june: int = Field(default=0, min=0)
+    july: int = Field(default=0, min=0)
+    august: int = Field(default=0, min=0)
+    september: int = Field(default=0, min=0)
+    october: int = Field(default=0, min=0)
+    november: int = Field(default=0, min=0)
+    december: int = Field(default=0, min=0)
+    
+    
