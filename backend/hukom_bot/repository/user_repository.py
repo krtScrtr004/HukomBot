@@ -483,6 +483,37 @@ class UserRepository:
 
             return UserRegistrationMonthlyCount(monthly_counts)
 
+    async def count_registration(
+        self, interval_days: int = 360, connection: AsyncConnection = None
+    ):
+        if connection is not None:
+            return await self._count_registration_implement(
+                conn=connection, interval_days=interval_days
+            )
+            
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_registration_implement(
+                    conn=conn, interval_days=interval_days
+                )
+        except errors.OperationalError:
+            raise
+
+    async def _count_registration_implement(
+        self, conn: AsyncConnection, interval_days: int
+    ):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT COUNT(*) FROM users
+                WHERE created_at >= CURRENT_DATE - INTERVAL '%s days';
+                """,
+                (interval_days,),
+            )
+            
+            row = await cur.fetchone()
+            return row["count"]
+
     # DELETE ============================================================================
 
     async def delete(self, id: UUID, connection: AsyncConnection = None):
