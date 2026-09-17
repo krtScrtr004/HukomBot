@@ -17,6 +17,7 @@ class UserUpdateBase(BaseModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=255)
     last_name: str | None = Field(default=None, min_length=1, max_length=255)
     role: UserRole | None = Field(default=None)
+    is_active: bool | None = Field(default=None)
 
     model_config = {"arbitrary_types_allowed": True}
 
