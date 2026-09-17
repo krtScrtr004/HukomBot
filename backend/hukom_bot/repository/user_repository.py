@@ -4,6 +4,7 @@ from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.user_schema import *
+from backend.hukom_bot.schema.admin_schema import UserRegistrationMonthlyCount
 from backend.hukom_bot.schema.mixin import DateRangeableMixin
 from backend.hukom_bot.util.user_caster import UserCaster
 from backend.hukom_bot.util.utility import build_date_range_where_clause
@@ -437,6 +438,50 @@ class UserRepository:
 
             row = await cur.fetchone()
             return row["count"]
+
+    async def count_monthly_registration(
+        self, year: int = datetime.now().year, connection: AsyncConnection = None
+    ):
+        if connection is not None:
+            return await self._count_monthly_registration_implement(
+                conn=connection, year=year
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_monthly_registration_implement(
+                    conn=conn, year=year
+                )
+        except errors.OperationalError:
+            raise
+
+    async def _count_monthly_registration_implement(
+        self, conn: AsyncConnection, year: int
+    ):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                f"""
+                SELECT 
+                    to_char(created_at, 'FMMonth') AS month_name,
+                    COUNT(*) AS total_count
+                FROM users
+                WHERE EXTRACT(YEAR FROM created_at) = %s
+                GROUP BY 
+                    date_trunc('month', created_at), 
+                    to_char(created_at, 'FMMonth YYYY')
+                ORDER BY 
+                    date_trunc('month', created_at) ASC;
+                """,
+                (year,),
+            )
+
+            rows = await cur.fetchall()
+            if not rows:
+                return UserRegistrationMonthlyCount()
+
+            monthly_counts = {row["month_name"]: row["total_count"] for row in rows}
+
+            return UserRegistrationMonthlyCount(monthly_counts)
 
     # DELETE ============================================================================
 
