@@ -337,6 +337,47 @@ class UserRepository:
 
         return users
 
+    async def count_all(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        if connection is not None:
+            return await self._count_by_active_state_implement(
+                conn=connection, date_range=date_range
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_by_active_state_implement(
+                    conn=conn, date_range=date_range
+                )
+        except errors.OperationalError:
+            raise
+
+    async def _count_all_implement(
+        self, conn: AsyncConnection, date_range: DateRangeableMixin | None
+    ) -> int:
+        async with conn.cursor() as cur:
+            date_range_query = (
+                build_date_range_where_clause(
+                    column_name="u.created_at",
+                    date_rangeable=date_range,
+                    include_where=True,
+                )
+                if date_range is not None
+                else ""
+            )
+
+            await cur.execute(
+                f"""
+                SELECT COUNT(u.id) 
+                FROM users u 
+                {date_range_query}
+                """,
+            )
+
+            row = await cur.fetchone()
+            return row["count"]
+
     async def count_active(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
@@ -380,7 +421,7 @@ class UserRepository:
                 build_date_range_where_clause(
                     column_name="u.created_at", date_rangeable=date_range
                 )
-                if date_range is not None
+                if any(date_range.model_dump().values())
                 else ""
             )
 
