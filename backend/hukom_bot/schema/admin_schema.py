@@ -118,3 +118,13 @@ class UserRoleCount(BaseModel):
     admin: int = Field(default=0, min=0)
     
     
+class AdminUserAnalytics(BaseModel):
+    registered_count: int = Field(default=0, min=0)
+    active_count: int = Field(default=0, min=0)
+    inactive_count: int = Field(default=0, min=0)
+    monthly_registration_count: UserRegistrationMonthlyCount = Field(default=None)
+    new_registration_count: int = Field(default=0, min=0)
+    role_count: UserRoleCount = Field(default=None)
+    
+    model_config = {"arbitrary_types_allowed": True}
+    
