@@ -88,6 +88,11 @@ class AuthService:
                         ),
                         connection=conn,
                     )
+                    
+                    await self._pubsub_service.publish(
+                        channel=settings.ADMIN_USER_ANALYTICS_CH,
+                        data="Users analytics data updated"
+                    )
 
                     await conn.commit()
 

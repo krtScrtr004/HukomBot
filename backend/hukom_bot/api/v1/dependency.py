@@ -299,8 +299,11 @@ def get_case_analysis_service(
 def get_user_orchistrator(
     db: Database = Depends(get_db),
     user_service: UserService = Depends(get_user_service),
+    pubsub_service: PubsubService = Depends(get_pubsub_service),
 ) -> UserOrchistrator:
-    return UserOrchistrator(db=db, user_service=user_service)
+    return UserOrchistrator(
+        db=db, user_service=user_service, pubsub_service=pubsub_service
+    )
 
 
 def get_admin_orchistrator(

@@ -3,10 +3,12 @@ from uuid import UUID
 from datetime import datetime
 from fastapi import UploadFile
 from fastapi.concurrency import run_in_threadpool
+from backend.hukom_bot.core.settings import settings
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.service.user_service import UserService
+from backend.hukom_bot.service.pubsub_service import PubsubService
 from backend.hukom_bot.schema.user_schema import UserUpdate, UserUpdateBase
 from backend.hukom_bot.exception.app_exception import UnauthorizedException
 from backend.hukom_bot.util.upload_image import (
@@ -24,9 +26,12 @@ logger = logging.getLogger(__name__)
 
 
 class UserOrchistrator:
-    def __init__(self, db: Database, user_service: UserService):
+    def __init__(
+        self, db: Database, user_service: UserService, pubsub_service: PubsubService
+    ):
         self._db = db
         self._user_service = user_service
+        self._pubsub_service = pubsub_service
 
     async def update_pipeline(
         self,
@@ -126,6 +131,12 @@ class UserOrchistrator:
                 )
 
                 await con.commit()
+
+                await self._pubsub_service.publish(
+                    channel=settings.ADMIN_USER_ANALYTICS_CH,
+                    data="Users analytics data updated",
+                )
+
             except Exception as ex:
                 await con.rollback()
 
