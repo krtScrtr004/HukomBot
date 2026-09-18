@@ -44,8 +44,8 @@ class UserService:
             provider_id=provider_id, connection=connection
         )
 
-    async def search(self, param: UserSearch, connection: AsyncConnection = None):
-        return await self._user_repo.search(param=param, connection=connection)
+    async def search(self, user: UserSearch, connection: AsyncConnection = None):
+        return await self._user_repo.search(user=user, connection=connection)
 
     async def all(self, param: UserGetAll, connection: AsyncConnection = None):
         return await self._user_repo.all(param=param, connection=connection)

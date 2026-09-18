@@ -33,7 +33,7 @@ async def get_users(
     _rr=Depends(require_role(UserRole.ADMIN)),
 ):
     result = (
-        await service.search(param=query)
+        await service.search(user=query)
         if query.query
         else await service.all(param=UserCaster.search_to_all(query))
     )
