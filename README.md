@@ -148,8 +148,10 @@ All API endpoints use the `/api/v1` base path.
 | `PATCH` | `/api/v1/documents/{id}` | Yes | `admin` | 10 req/min | Update document metadata |
 | `PATCH` | `/api/v1/documents/{id}/approve` | Yes | `admin` | 10 req/min | Approve a document |
 | `GET` | `/api/v1/documents/{id}/upload-status` | Yes | Any | 60 req/min | Get document upload status |
-| `GET` | `/api/v1/admin/dashboard` | No | Any | 60 req/min | Get admin dashboard data |
+| `GET` | `/api/v1/admin/dashboard` | Yes | `admin` | 60 req/min | Get admin dashboard data |
+| `GET` | `/api/v1/admin/users` | Yes | `admin` | 60 req/min | Get admin user analytics |
 | `GET` | `/events/v1/admin/dashboard` | Yes | `admin` | — | Stream admin dashboard updates (SSE) |
+| `GET` | `/events/v1/admin/users` | Yes | `admin` | — | Stream admin user analytics updates (SSE) |
 | `POST` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 5 req/min | Run case analysis |
 | `GET` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 60 req/min | List the user's case analysis sessions |
 | `GET` | `/api/v1/case-analyses/{id}/versions` | Yes | `standard`, `contributor` | 60 req/min | List versions of a case analysis session |
@@ -310,21 +312,26 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
    for listing/searching documents (admin only).
 - Added:
   ```http
-  GET /api/v1/documents/{document_id}
-  ```
-   for retrieving a single document by ID (admin only).
-- Added:
-  ```http
   GET /api/v1/admin/dashboard
   ```
-   for retrieving admin dashboard data with aggregated counts (any user).
+   for retrieving admin dashboard data with aggregated counts (admin only).
+- Added:
+  ```http
+  GET /api/v1/admin/users
+  ```
+   for retrieving admin user analytics with registration and role counts (admin only).
 - Added:
   ```http
   GET /events/v1/admin/dashboard
   ```
-  for streaming real-time admin dashboard updates via Server-Sent Events (SSE) (`admin` only).
+   for streaming real-time admin dashboard updates via Server-Sent Events (SSE) (`admin` only).
+- Added:
+  ```http
+  GET /events/v1/admin/users
+  ```
+   for streaming real-time user analytics updates via Server-Sent Events (SSE) (`admin` only).
 - Added `PubsubService` class wrapping Redis pub/sub for publish/subscribe messaging.
-- Added `ADMIN_DASHBOARD_CH` configuration variable for the Redis channel name.
+- Added `ADMIN_DASHBOARD_CH` and `ADMIN_USER_ANALYTICS_CH` configuration variables for the Redis channel names.
 - Added publish (trigger) statements to document and user actions that update admin dashboard statistics.
 - Added `role` field to the JWT payload emitted at login.
 - Added `AuthContext` (`AuthContext.tsx`) for frontend auth state management.
@@ -338,9 +345,10 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Added `AdminDashboardData` schema with aggregated counts for active users, documents by status, and chunks.
 - Updated `AdminDashboardData` schema to include per-status, per-weekly, and per-type document counts via `DocumentStatusCount`, `DocumentWeeklyCount`, and `DocumentTypeCount` schemas.
 - Updated `GET /api/v1/admin/dashboard` to accept optional `date_range`, `date_start`, and `date_end` query parameters for filtering by date range.
-- Removed authentication requirement from `GET /api/v1/admin/dashboard` (now accessible by any user).
+- Updated `GET /api/v1/admin/dashboard` to require admin authentication (previously accessible by any user).
 - Updated `GET /events/v1/admin/dashboard` SSE stream to emit raw `AdminDashboardData` JSON instead of `SuccessResponse` wrapper.
 - Added `date_range`, `date_start`, and `date_end` query parameters to `GET /events/v1/admin/dashboard`.
+- Added `AdminUserAnalytics`, `UserRegistrationMonthlyCount`, and `UserRoleCount` schemas for admin user analytics.
 - Added `rejection_message` field to `DocumentCreate`, `DocumentUpdateBase`, and `DocumentResponse` schemas.
 - Added `rejected` value to the `UploadStatus` enum with status level `-1` and state transition logic in `DocumentOrchistrator.update_pipeline()`.
 - Made `uploader` field optional (`UserResponse | None`) in `DocumentResponse` schema.
@@ -397,6 +405,18 @@ PATCH /users/{user_id}
 using `multipart/form-data` with form fields and an optional file upload.
 
 The endpoint now uses `UserOrchistrator` for authorization and transactional updates.
+
+**New features:**
+- Added `is_active` field (admin only) - allows admins to activate/deactivate user accounts
+- Profile picture can only be modified by the profile owner (not by other users or admins)
+- Non-admin users cannot modify their own `is_active` status
+- The endpoint uses `UserOrchistrator.update_pipeline()` for:
+  - Profile updates (first_name, last_name)
+  - Role changes (admin only)
+  - Account activation/deactivation (admin only via `is_active`)
+  - File validation and Cloudinary image uploads (profile owner only)
+  - Authorization checks (self or admin; admin-only for `role` and `is_active` fields)
+  - Database transactions with rollback on failure
 
 ### Token Usage API
 
