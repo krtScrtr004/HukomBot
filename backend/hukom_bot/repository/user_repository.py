@@ -255,23 +255,41 @@ class UserRepository:
 
         return User.model_validate(row) if row is not None else None
 
+    def _build_optional_search_query(self, user: UserSearch) -> str:
+        conditions: list[str] = []
+
+        if user.is_active is not None:
+            conditions.append("u.is_active = %(is_active)s")
+
+        if user.role is not None:
+            conditions.append("u.role = %(role)s")
+
+        if user.oauth_provider is not None:
+            conditions.append("u.provider = %(oauth_provider)s")
+
+        if not conditions:
+            return ""
+
+        return "AND " + " AND ".join(conditions)
+
     async def search(
-        self, param: UserSearch, connection: AsyncConnection = None
+        self, user: UserSearch, connection: AsyncConnection = None
     ) -> list[User]:
         if connection is not None:
-            return await self._search_implement(conn=connection, param=param)
+            return await self._search_implement(conn=connection, user=user)
 
         async with self._database.connection() as conn:
             try:
-                result = await self._search_implement(conn=conn, param=param)
+                result = await self._search_implement(conn=conn, user=user)
                 await conn.commit()
                 return result
             except errors.OperationalError as ex:
                 await conn.rollback()
                 raise
 
-    async def _search_implement(self, conn: AsyncConnection, param: UserSearch):
-        column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
+    async def _search_implement(self, conn: AsyncConnection, user: UserSearch):
+        column_order = ", ".join(f"{col} {user.order.value}" for col in user.column)
+        optional_search_query = self._build_optional_search_query(user)
 
         async with conn.cursor() as cur:
             await cur.execute(
@@ -285,12 +303,13 @@ class UserRepository:
                         ts_rank(u.search_vector, q.q) AS rank
                     FROM users u, query q
                     WHERE u.search_vector @@ q.q
+                    {optional_search_query}
                     ORDER BY rank DESC                    
                 ) ORDER BY {column_order}
                 LIMIT %(limit)s
                 OFFSET %(offset)s
                 """,
-                param.model_dump(),
+                user.model_dump(),
             )
 
             rows = await cur.fetchall()
