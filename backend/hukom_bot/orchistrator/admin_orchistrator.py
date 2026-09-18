@@ -3,7 +3,7 @@ from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.service.chunk_service import ChunkService
 from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.service.user_service import UserService
-from backend.hukom_bot.schema.admin_schema import AdminDashboardData
+from backend.hukom_bot.schema.admin_schema import AdminDashboardData, AdminUserAnalytics
 from backend.hukom_bot.schema.mixin import DateRangeableMixin
 
 
@@ -44,10 +44,12 @@ class AdminOrchistrator:
                     date_range=date_range, connection=conn
                 )
             )
-            
+
             # By Document Type
-            to_return.document_type_count = await self._document_service.count_by_document_type(
-                date_range=date_range, connection=conn
+            to_return.document_type_count = (
+                await self._document_service.count_by_document_type(
+                    date_range=date_range, connection=conn
+                )
             )
 
             # Weekly (Mon to Sun)
@@ -62,4 +64,37 @@ class AdminOrchistrator:
 
             await conn.commit()
 
+            return to_return
+
+    async def get_user_analytics(self) -> AdminUserAnalytics:
+        to_return = AdminUserAnalytics()
+
+        async with self._db.connection() as conn:
+            to_return.registered_count = await self._user_service.count_all(
+                connection=conn
+            )
+
+            to_return.active_count = await self._user_service.count_active(
+                connection=conn
+            )
+
+            to_return.inactive_count = await self._user_service.count_inactive(
+                connection=conn
+            )
+
+            to_return.monthly_registration_count = (
+                await self._user_service.count_monthly_registration(connection=conn)
+            )
+            
+            # Last 30 days only
+            to_return.new_registration_count = await self._user_service.count_registration(
+                interval_days=30, connection=conn
+            )
+            
+            to_return.role_count = await self._user_service.count_by_role(
+                connection=conn
+            )
+            
+            await conn.commit()
+            
             return to_return
