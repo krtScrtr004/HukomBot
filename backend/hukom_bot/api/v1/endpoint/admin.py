@@ -22,11 +22,23 @@ logger = logging.getLogger(__name__)
 async def get_dashboard_data(
     query: Annotated[DateRangeableMixin, Query()],
     orchistrator: Annotated[AdminOrchistrator, Depends(get_admin_orchistrator)],
-    # _us: Annotated[User, Depends(verify_user)],
-    # _rl=Depends(rate_limit(limit=60, window=60)),
-    # _rr=Depends(require_role(UserRole.ADMIN))
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN))
 
 ):
     result = await orchistrator.get_dashboard_data(date_range=query)
+
+    return SuccessResponse(message="Dashboard data retrived successfully", data=result)
+
+@admin_api_router.get("/users")
+async def get_dashboard_data(
+    orchistrator: Annotated[AdminOrchistrator, Depends(get_admin_orchistrator)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN))
+
+):
+    result = await orchistrator.get_user_analytics()
 
     return SuccessResponse(message="Dashboard data retrived successfully", data=result)
