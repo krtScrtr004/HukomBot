@@ -35,6 +35,9 @@ class UserUpdate(UserUpdateBase):
 
 class UserSearch(PaginatableMixin, OrderableMixin):
     query: str | None = Field(default=None, min_length=3, max_length=256)
+    is_active: bool | None = Field(default=None)
+    role: UserRole | None = Field(default=None)
+    oauth_provider: OAuthProvider | None = Field(default=None)
     column: list[str] = Field(default_factory=lambda: ["last_name", "first_name"])
 
     model_config = {"arbitrary_types_allowed": True}
