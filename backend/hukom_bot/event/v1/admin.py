@@ -44,3 +44,26 @@ async def admin_dashboard_update(
             "X-Accel-Buffering": "no",
         },
     )
+
+@admin_sse_router.get("/users")
+async def admin_user_analytics_update(
+    request: Request,
+    orchistrator: Annotated[AdminOrchistrator, Depends(get_admin_orchistrator)],
+    service: Annotated[PubsubService, Depends(get_pubsub_service)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rr=Depends(require_role(UserRole.ADMIN)),
+):
+    return StreamingResponse(
+        sse_handler(
+            request=request,
+            channel_name=settings.ADMIN_USER_ANALYTICS_CH,
+            data_builder=orchistrator.get_user_analytics,
+            pubsub_service=service,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
