@@ -1,4 +1,5 @@
 from uuid import UUID
+from datetime import datetime
 from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.schema.user_schema import (
@@ -49,10 +50,45 @@ class UserService:
     async def all(self, param: UserGetAll, connection: AsyncConnection = None):
         return await self._user_repo.all(param=param, connection=connection)
 
+    async def count_all(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        return await self._user_repo.count_all(
+            date_range=date_range, connection=connection
+        )
+
     async def count_active(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
         return await self._user_repo.count_active(
+            date_range=date_range, connection=connection
+        )
+
+    async def count_inactive(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        return await self._user_repo.count_inactive(
+            date_range=date_range, connection=connection
+        )
+
+    async def count_monthly_registration(
+        self, year: int = datetime.now().year, connection: AsyncConnection = None
+    ):
+        return await self._user_repo.count_monthly_registration(
+            year=year, connection=connection
+        )
+
+    async def count_registration(
+        self, interval_days: int = 360, connection: AsyncConnection = None
+    ):
+        return await self._user_repo.count_registration(
+            interval_days=interval_days, connection=connection
+        )
+        
+    async def count_by_role(
+        self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
+    ):
+        return await self._user_repo.count_by_role(
             date_range=date_range, connection=connection
         )
 
