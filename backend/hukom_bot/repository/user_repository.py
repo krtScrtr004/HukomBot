@@ -345,15 +345,13 @@ class UserRepository:
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
         if connection is not None:
-            return await self._count_by_active_state_implement(
+            return await self._count_all_implement(
                 conn=connection, date_range=date_range
             )
 
         try:
             async with self._database.connection() as conn:
-                return await self._count_by_active_state_implement(
-                    conn=conn, date_range=date_range
-                )
+                return await self._count_all_implement(conn=conn, date_range=date_range)
         except errors.OperationalError:
             raise
 
@@ -385,7 +383,9 @@ class UserRepository:
     async def count_active(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
-        user = UserGetByActiveState(is_active=True, **date_range.model_dump())
+        user = UserGetByActiveState(
+            is_active=True, **date_range.model_dump() if date_range is not None else {}
+        )
 
         if connection is not None:
             return await self._count_by_active_state_implement(
@@ -401,7 +401,9 @@ class UserRepository:
     async def count_inactive(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
-        user = UserGetByActiveState(is_active=False, **date_range.model_dump())
+        user = UserGetByActiveState(
+            is_active=True, **date_range.model_dump() if date_range is not None else {}
+        )
 
         if connection is not None:
             return await self._count_by_active_state_implement(
@@ -420,7 +422,7 @@ class UserRepository:
         async with conn.cursor() as cur:
             dump = user.model_dump()
 
-            date_range = DateRangeableMixin(dump)
+            date_range = DateRangeableMixin(**dump)
             date_range_query = (
                 build_date_range_where_clause(
                     column_name="u.created_at", date_rangeable=date_range
@@ -471,7 +473,7 @@ class UserRepository:
                 WHERE EXTRACT(YEAR FROM created_at) = %s
                 GROUP BY 
                     date_trunc('month', created_at), 
-                    to_char(created_at, 'FMMonth YYYY')
+                    to_char(created_at, 'FMMonth')
                 ORDER BY 
                     date_trunc('month', created_at) ASC;
                 """,
@@ -484,7 +486,7 @@ class UserRepository:
 
             monthly_counts = {row["month_name"]: row["total_count"] for row in rows}
 
-            return UserRegistrationMonthlyCount(monthly_counts)
+            return UserRegistrationMonthlyCount(**monthly_counts)
 
     async def count_registration(
         self, interval_days: int = 360, connection: AsyncConnection = None
@@ -517,23 +519,18 @@ class UserRepository:
             row = await cur.fetchone()
             return row["count"]
 
-
     async def count_by_role(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
         if connection is not None:
-            return await self._count_by_role(
-                conn=connection, date_range=date_range
-            )
+            return await self._count_by_role(conn=connection, date_range=date_range)
 
         try:
             async with self._database.connection() as conn:
-                return await self._count_by_role(
-                    conn=conn, date_range=date_range
-                )
+                return await self._count_by_role(conn=conn, date_range=date_range)
         except errors.OperationalError:
             raise
-        
+
     async def _count_by_role(
         self,
         conn: AsyncConnection,
@@ -562,10 +559,10 @@ class UserRepository:
             rows = await cur.fetchall()
             if not rows:
                 return UserRoleCount()
-            
+
             role_counts = {row["role"]: row["count"] for row in rows}
-            
-            return UserRoleCount(role_counts)
+
+            return UserRoleCount(**role_counts)
 
     # DELETE ============================================================================
 
