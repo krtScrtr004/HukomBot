@@ -1,4 +1,5 @@
 from typing import Annotated
+from functools import partial
 from fastapi import APIRouter, Request, Depends, Query
 from fastapi.responses import StreamingResponse
 from backend.hukom_bot.core.settings import settings
@@ -13,39 +14,9 @@ from backend.hukom_bot.api.v1.dependency import (
     get_pubsub_service,
     get_admin_orchistrator,
 )
+from backend.hukom_bot.util.sse_handler import sse_handler
 
 admin_sse_router = APIRouter()
-
-
-async def admin_dashboard_event_stream(
-    request: Request,
-    query: DateRangeableMixin,
-    orchistrator: AdminOrchistrator,
-    service: PubsubService,
-):
-    await service.subscribe(settings.ADMIN_DASHBOARD_CH)
-
-    try:
-        while True:
-            # Detect client disconnect
-            if await request.is_disconnected():
-                break
-
-            message = await service.get_message(
-                ignore_subscribe_messages=True, timeout=15.0
-            )
-
-            # No progress event within timeout — send a comment as heartbeat
-            # so proxies/browsers don't time out the connection
-            if message is None:
-                yield ": heartbeat\n\n"
-                continue
-
-            data = await orchistrator.get_dashboard_data()
-            yield f"data:{data.model_dump()}"
-    finally:
-        await service.unsubscribe(settings.ADMIN_DASHBOARD_CH)
-        await service.close()
 
 
 @admin_sse_router.get("/dashboard")
@@ -57,9 +28,14 @@ async def admin_dashboard_update(
     _us: Annotated[User, Depends(verify_user)],
     _rr=Depends(require_role(UserRole.ADMIN)),
 ):
+    data_handler = partial(orchistrator.get_dashboard_data, date_range=query)
+
     return StreamingResponse(
-        admin_dashboard_event_stream(
-            request=request, query=query, orchistrator=orchistrator, service=service
+        sse_handler(
+            request=request,
+            channel_name=settings.ADMIN_DASHBOARD_CH,
+            data_builder=data_handler,
+            pubsub_service=service,
         ),
         media_type="text/event-stream",
         headers={
