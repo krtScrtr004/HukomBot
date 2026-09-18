@@ -9,18 +9,19 @@ class Settings(BaseSettings):
         "case_sensitive": True,
         "extra": "ignore",
     }
-    
+
     DEBUG: bool
-    
+
     BASE_PAGE_URL: str
     BASE_API_URL: str
     BASE_API_URL_V1: str
-    
+
     # -- Redis --
     REDIS_HOST: str
     REDIS_PORT: int
-    
+
     ADMIN_DASHBOARD_CH: str
+    ADMIN_USER_ANALYTICS_CH: str
 
     # -- Database --
     DB_HOST: str
