@@ -255,7 +255,7 @@ class UserRepository:
 
         return User.model_validate(row) if row is not None else None
 
-    def _build_optional_search_query(self, user: UserSearch) -> str:
+    def _build_search_query(self, user: UserSearch) -> str:
         conditions: list[str] = []
 
         if user.is_active is not None:
@@ -289,7 +289,7 @@ class UserRepository:
 
     async def _search_implement(self, conn: AsyncConnection, user: UserSearch):
         column_order = ", ".join(f"{col} {user.order.value}" for col in user.column)
-        optional_search_query = self._build_optional_search_query(user)
+        search_query = self._build_search_query(user)
 
         async with conn.cursor() as cur:
             await cur.execute(
@@ -303,7 +303,7 @@ class UserRepository:
                         ts_rank(u.search_vector, q.q) AS rank
                     FROM users u, query q
                     WHERE u.search_vector @@ q.q
-                    {optional_search_query}
+                    {search_query}
                     ORDER BY rank DESC                    
                 ) ORDER BY {column_order}
                 LIMIT %(limit)s
@@ -339,12 +339,15 @@ class UserRepository:
         self, conn: AsyncConnection, param: UserGetAll
     ) -> list[User]:
         column_order = ", ".join(f"{col} {param.order.value}" for col in param.column)
+        search_query = self._build_search_query(param)
 
         async with conn.cursor() as cur:
             await cur.execute(
                 f"""
                 SELECT * 
-                FROM users
+                FROM users u
+                WHERE 1=1
+                {search_query}
                 ORDER BY {column_order}
                 LIMIT %(limit)s
                 OFFSET %(offset)s

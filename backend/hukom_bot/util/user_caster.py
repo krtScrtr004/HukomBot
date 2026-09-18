@@ -50,6 +50,9 @@ class UserCaster:
     @staticmethod
     def search_to_all(user: UserSearch) -> UserGetAll:
         return UserGetAll(
+            is_active=user.is_active,
+            role=user.role,
+            oauth_provider=user.oauth_provider,
             column=user.column,
             order=user.order,
             limit=user.limit,
