@@ -489,7 +489,8 @@ class UserRepository:
             await cur.execute(
                 f"""
                 SELECT 
-                    to_char(created_at, 'FMMonth') AS month_name,
+                    lower(left(to_char(created_at, 'FMMonth'), 1)) || 
+                        substring(to_char(created_at, 'FMMonth') from 2) AS month_name,
                     COUNT(*) AS total_count
                 FROM users
                 WHERE EXTRACT(YEAR FROM created_at) = %s
