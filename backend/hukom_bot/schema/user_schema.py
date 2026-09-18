@@ -52,6 +52,9 @@ class UserGetByActiveState(PaginatableMixin, DateRangeableMixin):
 
 
 class UserGetAll(PaginatableMixin, OrderableMixin):
+    is_active: bool | None = Field(default=None)
+    role: UserRole | None = Field(default=None)
+    oauth_provider: OAuthProvider | None = Field(default=None)
     column: list[str] = Field(default_factory=lambda: ["last_name", "first_name"])
 
 
