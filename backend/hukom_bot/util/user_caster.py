@@ -44,6 +44,7 @@ class UserCaster:
             role=user.role,
             profile_picture=user.profile_picture,
             provider=user.provider,
+            is_active=user.is_active,
             created_at=user.created_at
         )
         

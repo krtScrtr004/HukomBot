@@ -70,6 +70,7 @@ class UserResponse(BaseModel):
     role: UserRole
     profile_picture: str | None
     provider: OAuthProvider
+    is_active: bool
     created_at: datetime
 
     model_config = {"arbitrary_types_allowed": True}
