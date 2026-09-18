@@ -64,6 +64,13 @@ class UserOrchistrator:
                     ]
                 )
 
+            if not is_me and profile_picture is not None:
+                raise UnauthorizedException(
+                    details=[
+                        "You are not allowed to modify others' profile picture"
+                    ]
+                )
+
             existing_user = (
                 await self._user_service.get_by_id(id=user_id, connection=con)
                 if user
@@ -75,7 +82,6 @@ class UserOrchistrator:
             upload_result = None
 
             try:
-                # Do not allow users to modify others' profile picture
                 if is_me:
                     # Extract and upload profile picture, if provided
                     contents = await profile_picture.read() if profile_picture else None
@@ -104,13 +110,6 @@ class UserOrchistrator:
                         logger.info(
                             f"New image uploaded to image file storage. Size: {file_size}, Type: {get_mime_type(contents)}"
                         )
-                else:
-                    raise UnauthorizedException(
-                        details=[
-                            "You are not allowed to modify others' profile picture"
-                        ]
-                    )
-
                 update_schema = self._create_update_schema(
                     user_id=user_id,
                     user=user,
