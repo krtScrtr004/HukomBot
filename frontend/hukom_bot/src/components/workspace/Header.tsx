@@ -1,8 +1,6 @@
-import { NavLink } from 'react-router-dom';
 import Logo from '@/components/ui/Logo';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import type { UserRole } from '@/types/user';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface HeaderProps {
 	userName?: string;
@@ -20,8 +18,6 @@ export default function Header({
 	onToggleVersionPanel,
 	onUploadClick,
 }: HeaderProps) {
-	const { user } = useAuth();
-
 	return (
 		<header
 			className="relative h-(--header-height) shrink-0 flex items-center justify-between gap-4 px-4 border-b border-border bg-surface"

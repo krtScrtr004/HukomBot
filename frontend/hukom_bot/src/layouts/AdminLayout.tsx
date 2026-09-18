@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import Logo from '@/components/ui/Logo';
 import Sidebar from '@/components/ui/Sidebar';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 import Header from '@/components/workspace/Header';
 import UploadDocumentModal from '@/components/UploadDocumentModal';
 import { useAuth } from '@/contexts/AuthContext';

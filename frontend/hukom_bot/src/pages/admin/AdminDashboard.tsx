@@ -142,7 +142,7 @@ export default function AdminDashboardPage() {
 	}, [dateRange, dispatch]);
 
 	return (
-		<div className="mx-auto max-w-7xl space-y-8">
+		<div className=" space-y-8">
 			<header className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
 				<div>
 					<p className="text-sm text-text-secondary">
@@ -257,7 +257,7 @@ export default function AdminDashboardPage() {
 			{dashboard.data && (
 				<>
 					<section
-						className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]"
+						className="grid gap-5.5 xl:grid-cols-[0.8fr_1.2fr]"
 						aria-label="Analytics overview"
 					>
 						<article className="rounded-sm border border-border bg-surface p-5">
