@@ -143,7 +143,7 @@ class ChunkRepository:
                 chunk_text=row["c_chunk_text"],
                 embedding=ast.literal_eval(row["c_embedding"]),
                 section=row["c_section"],
-                created_at=["c_created_at"],
+                created_at=row["c_created_at"],
                 # Document Prop
                 document=Document(
                     id=row["d_id"],
@@ -225,7 +225,7 @@ class ChunkRepository:
                 chunk_text=row["c_chunk_text"],
                 embedding=ast.literal_eval(row["c_embedding"]),
                 section=row["c_section"],
-                created_at=["c_created_at"],
+                created_at=row["c_created_at"],
                 # Document Prop
                 document=Document(
                     id=row["d_id"],
