@@ -353,17 +353,31 @@ export default function AdminDashboardPage() {
 								/>
 							</div>
 
-							<div className="relative mt-8 h-44 px-2">
-								<div className="absolute inset-x-2 top-0 border-t border-border" />
-								<div className="absolute inset-x-2 top-1/2 border-t border-border/60" />
-								<div className="absolute inset-x-2 bottom-6 border-t border-border" />
-								<div className="absolute inset-x-2 bottom-6 top-0">
+							<div className="relative mt-8 h-44 pl-10 pr-2">
+								{/* Y-Axis Scale Tick Labels */}
+								<div className="absolute left-0 top-0 w-8 text-right text-[10px] text-text-muted font-mono leading-none -translate-y-1/2">
+									{weeklyMax.toLocaleString()}
+								</div>
+								<div className="absolute left-0 top-1/2 w-8 text-right text-[10px] text-text-muted font-mono leading-none -translate-y-1/2">
+									{Math.round(weeklyMax / 2).toLocaleString()}
+								</div>
+								<div className="absolute left-0 bottom-6 w-8 text-right text-[10px] text-text-muted font-mono leading-none translate-y-1/2">
+									0
+								</div>
+
+								{/* Background Grid Lines */}
+								<div className="absolute left-10 right-2 top-0 border-t border-border" />
+								<div className="absolute left-10 right-2 top-1/2 border-t border-border/60 border-dashed" />
+								<div className="absolute left-10 right-2 bottom-6 border-t border-border" />
+
+								{/* SVG Plot */}
+								<div className="absolute left-10 right-2 bottom-6 top-0">
 									<svg viewBox="0 0 700 140" preserveAspectRatio="none" className="h-full w-full overflow-visible" role="img" aria-label="Weekly document processing activity">
 										<polyline fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-primary" points={Object.entries(dashboard.data.document_weekly_count).map(([, value], index, entries) => `${(index / Math.max(entries.length - 1, 1)) * 700},${140 - (value / weeklyMax) * 120}`).join(' ')} />
 										{Object.entries(dashboard.data.document_weekly_count).map(([day, value], index, entries) => <circle key={day} cx={(index / Math.max(entries.length - 1, 1)) * 700} cy={140 - (value / weeklyMax) * 120} r="5" className="fill-surface stroke-primary" strokeWidth="3"><title>{day}: {value}</title></circle>)}
 									</svg>
 								</div>
-								<div className="absolute inset-x-2 bottom-0 flex justify-between text-[10px] text-text-muted">{Object.keys(dashboard.data.document_weekly_count).map((day) => <span key={day}>{day.slice(0, 3)}</span>)}</div>
+								<div className="absolute left-10 right-2 bottom-0 flex justify-between text-[10px] text-text-muted">{Object.keys(dashboard.data.document_weekly_count).map((day) => <span key={day}>{day.slice(0, 3)}</span>)}</div>
 							</div>
 						</article>
 

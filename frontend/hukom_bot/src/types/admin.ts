@@ -18,6 +18,36 @@ export interface AdminDashboardData {
   chunks_count: number;
 }
 
+export interface UserRegistrationMonthlyCount {
+  january: number;
+  february: number;
+  march: number;
+  april: number;
+  may: number;
+  june: number;
+  july: number;
+  august: number;
+  september: number;
+  october: number;
+  november: number;
+  december: number;
+}
+
+export interface UserRoleCount {
+  standard: number;
+  contributor: number;
+  admin: number;
+}
+
+export interface AdminUserAnalytics {
+  registered_count: number;
+  active_count: number;
+  inactive_count: number;
+  monthly_registration_count: UserRegistrationMonthlyCount;
+  new_registration_count: number;
+  role_count: UserRoleCount;
+}
+
 export type AdminDashboardDateRange =
   | 'today'
   | 'yesterday'
@@ -40,12 +70,16 @@ export interface AdminUserListItem {
   email: string;
   role: UserRole;
   provider: 'google' | 'facebook' | 'apple';
+  is_active: boolean;
   profile_picture?: string;
   created_at: string; // ISO8601
 }
 
 export interface AdminUsersQueryParams {
   query?: string;
+  is_active?: boolean;
+  role?: UserRole;
+  oauth_provider?: 'google' | 'facebook' | 'apple';
   limit?: number;
   offset?: number;
   column?: string[]; // e.g. ['last_name', 'first_name']

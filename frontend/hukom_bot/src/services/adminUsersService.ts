@@ -1,5 +1,5 @@
 import { apiFetch } from '@/services/apiClient';
-import type { AdminUserListItem, AdminUsersQueryParams } from '@/types/admin';
+import type { AdminUserAnalytics, AdminUserListItem, AdminUsersQueryParams } from '@/types/admin';
 
 /** GET /users/ (admin) with query params */
 export async function listUsers(
@@ -7,6 +7,9 @@ export async function listUsers(
 ): Promise<AdminUserListItem[]> {
 	const query = new URLSearchParams();
 	if (params.query) query.set('query', params.query);
+	if (params.is_active !== undefined) query.set('is_active', String(params.is_active));
+	if (params.role) query.set('role', params.role);
+	if (params.oauth_provider) query.set('oauth_provider', params.oauth_provider);
 	if (params.limit !== undefined) query.set('limit', String(params.limit));
 	if (params.offset !== undefined) query.set('offset', String(params.offset));
 	if (params.column?.length) query.set('column', params.column.join(','));
@@ -15,4 +18,9 @@ export async function listUsers(
 	return apiFetch<AdminUserListItem[]>(
 		`/users/${qs ? `?${qs}` : ''}`,
 	);
+}
+
+/** GET /admin/users (admin) analytics */
+export async function getUserAnalytics(): Promise<AdminUserAnalytics> {
+	return apiFetch<AdminUserAnalytics>('/admin/users');
 }

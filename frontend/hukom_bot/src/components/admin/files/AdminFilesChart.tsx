@@ -177,17 +177,31 @@ export default function AdminFilesChart() {
 						</div>
 					</div>
 
-					{/* SVG Trend Graph */}
+					{/* SVG Trend Graph with Y-Axis Scale */}
 					<div className="mt-6">
-						<div className="relative h-48 px-1">
+						<div className="relative h-48 pl-10 pr-2">
+							{/* Y-Axis Scale Tick Labels */}
+							<div className="absolute left-0 top-0 w-8 text-right text-[10px] text-text-muted font-mono leading-none -translate-y-1/2">
+								{maxValue.toLocaleString()}
+							</div>
+							<div className="absolute left-0 top-1/3 w-8 text-right text-[10px] text-text-muted font-mono leading-none -translate-y-1/2">
+								{Math.round((maxValue * 2) / 3).toLocaleString()}
+							</div>
+							<div className="absolute left-0 top-2/3 w-8 text-right text-[10px] text-text-muted font-mono leading-none -translate-y-1/2">
+								{Math.round(maxValue / 3).toLocaleString()}
+							</div>
+							<div className="absolute left-0 bottom-6 w-8 text-right text-[10px] text-text-muted font-mono leading-none translate-y-1/2">
+								0
+							</div>
+
 							{/* Background Grid Lines */}
-							<div className="absolute inset-x-0 top-0 border-t border-border/40" />
-							<div className="absolute inset-x-0 top-1/3 border-t border-border/30 border-dashed" />
-							<div className="absolute inset-x-0 top-2/3 border-t border-border/30 border-dashed" />
-							<div className="absolute inset-x-0 bottom-6 border-t border-border" />
+							<div className="absolute left-10 right-2 top-0 border-t border-border/40" />
+							<div className="absolute left-10 right-2 top-1/3 border-t border-border/30 border-dashed" />
+							<div className="absolute left-10 right-2 top-2/3 border-t border-border/30 border-dashed" />
+							<div className="absolute left-10 right-2 bottom-6 border-t border-border" />
 
 							{/* SVG Plot */}
-							<div className="absolute inset-x-1 bottom-6 top-2">
+							<div className="absolute left-10 right-2 bottom-6 top-2">
 								<svg
 									viewBox="0 0 800 160"
 									preserveAspectRatio="none"
@@ -253,7 +267,7 @@ export default function AdminFilesChart() {
 							</div>
 
 							{/* X-Axis Labels */}
-							<div className="absolute inset-x-1 bottom-0 flex justify-between text-[11px] text-text-muted font-medium">
+							<div className="absolute left-10 right-2 bottom-0 flex justify-between text-[11px] text-text-muted font-medium">
 								{trendData.map((d) => (
 									<span key={d.label}>{d.label}</span>
 								))}

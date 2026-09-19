@@ -4,6 +4,7 @@ import { updateUserProfile } from '@/services/userService';
 import type { AdminUserListItem } from '@/types/admin';
 import type { UserRole } from '@/types/user';
 import { useAdmin } from '@/contexts/AdminContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastProvider';
 import { getAdminErrorMessage } from '@/utils/adminErrors';
 import CharacterCounter from '@/components/ui/CharacterCounter';
@@ -25,10 +26,12 @@ export default function EditUserModal({
 	onClose,
 }: EditUserModalProps) {
 	const { patchUser } = useAdmin();
+	const { user: currentUser } = useAuth();
 	const { showToast } = useToast();
 	const [firstName, setFirstName] = useState('');
 	const [lastName, setLastName] = useState('');
 	const [role, setRole] = useState<UserRole>('standard');
+	const [isActive, setIsActive] = useState(true);
 	const [profileFile, setProfileFile] = useState<File | null>(null);
 	const [profilePreviewUrl, setProfilePreviewUrl] = useState<string | null>(
 		null,
@@ -48,6 +51,7 @@ export default function EditUserModal({
 			setFirstName(user.first_name);
 			setLastName(user.last_name);
 			setRole(user.role);
+				setIsActive(user.is_active);
 			setProfileFile(null);
 			setProfilePreviewUrl(user.profile_picture ?? null);
 			setFieldErrors({});
@@ -119,6 +123,7 @@ export default function EditUserModal({
 			formData.append('first_name', firstName.trim());
 			formData.append('last_name', lastName.trim());
 			formData.append('role', role);
+			formData.append('is_active', String(isActive));
 			if (profileFile) {
 				formData.append('profile_picture', profileFile);
 			}
@@ -128,6 +133,7 @@ export default function EditUserModal({
 				first_name: firstName.trim(),
 				last_name: lastName.trim(),
 				role,
+				is_active: isActive,
 				profile_picture: profilePreviewUrl ?? user.profile_picture,
 			});
 			showToast('User updated successfully.', 'success');
@@ -162,7 +168,7 @@ export default function EditUserModal({
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="edit-user-title"
-				className="relative z-10 w-150 rounded-lg bg-surface border border-border shadow-lg flex flex-col max-h-[90vh] overflow-hidden"
+				className="relative z-10 w-150 rounded-sm bg-surface border border-border shadow-lg flex flex-col max-h-[90vh] overflow-hidden"
 			>
 				{/* Modal Header */}
 				<header className="p-4 border-b border-border shrink-0 flex items-center justify-between bg-surface">
@@ -209,9 +215,8 @@ export default function EditUserModal({
 							<label className="block text-sm font-medium text-text-primary">
 								Profile Picture
 							</label>
-							<p className="text-xs text-text-muted">
-								Supports JPG, JPEG, or PNG. Maximum size 5MB.
-							</p>
+							{currentUser?.id === user.id ? <p className="text-xs text-text-muted">Supports JPG, JPEG, or PNG. Maximum size 5MB.</p> : <p className="text-xs text-text-muted">Profile pictures can only be changed by the account owner.</p>}
+							{currentUser?.id === user.id && <>
 							<input
 								ref={fileInputRef}
 								type="file"
@@ -240,7 +245,13 @@ export default function EditUserModal({
 									<ErrorText error={fieldErrors.profile_picture} />
 								</div>
 							) : null}
+							</>}
 						</div>
+					</div>
+
+					<div className="flex items-center justify-between rounded-md border border-border bg-surface-muted p-3">
+						<div><p className="text-sm font-medium text-text-primary">Account status</p><p className="text-xs text-text-muted">{isActive ? 'This user can sign in and use the application.' : 'This user cannot sign in until reactivated.'}</p></div>
+						<label className="inline-flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} disabled={saving || currentUser?.id === user.id} className="h-4 w-4 accent-primary" />{isActive ? 'Active' : 'Inactive'}</label>
 					</div>
 
 					{/* Form Input Fields */}

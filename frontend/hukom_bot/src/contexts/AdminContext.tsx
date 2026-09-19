@@ -9,12 +9,13 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { ApiError, isAuthError } from '@/services/apiClient';
 import { getDashboardData } from '@/services/adminDashboardService';
-import { listUsers } from '@/services/adminUsersService';
+import { listUsers, getUserAnalytics } from '@/services/adminUsersService';
 import { listDocuments } from '@/services/adminDocumentsService';
 import type {
 	AdminDashboardData,
 	AdminDashboardDateRange,
 	AdminDocumentListItem,
+	AdminUserAnalytics,
 	AdminUserListItem,
 } from '@/types/admin';
 import {
@@ -38,11 +39,19 @@ interface AdminState {
 		loading: boolean;
 		error: string | null;
 	};
+	userAnalytics: {
+		data: AdminUserAnalytics | null;
+		loading: boolean;
+		error: string | null;
+	};
 	users: {
 		items: AdminUserListItem[];
 		query: string;
 		column: string[];
 		order: 'ASC' | 'DESC';
+		statusFilter: 'all' | 'active' | 'inactive';
+		roleFilter: 'all' | AdminUserListItem['role'];
+		providerFilter: 'all' | AdminUserListItem['provider'];
 		offset: number;
 		hasMore: boolean;
 		loading: boolean;
@@ -74,6 +83,10 @@ type AdminAction =
 	| { type: 'SET_DASHBOARD_DATA'; payload: AdminDashboardData | null }
 	| { type: 'SET_DASHBOARD_ERROR'; payload: string | null }
 	| { type: 'DISPATCH_DASHBOARD_UPDATE'; payload: AdminDashboardData }
+	| { type: 'SET_USER_ANALYTICS_LOADING'; payload: boolean }
+	| { type: 'SET_USER_ANALYTICS_DATA'; payload: AdminUserAnalytics | null }
+	| { type: 'SET_USER_ANALYTICS_ERROR'; payload: string | null }
+	| { type: 'DISPATCH_USER_ANALYTICS_UPDATE'; payload: AdminUserAnalytics }
 	| { type: 'SET_PENDING_LOADING'; payload: boolean }
 	| { type: 'SET_PENDING_FILES'; payload: AdminDocumentListItem[] }
 	| { type: 'SET_PENDING_ERROR'; payload: string | null }
@@ -85,6 +98,9 @@ type AdminAction =
 	| { type: 'SET_USERS_FORBIDDEN'; payload: boolean }
 	| { type: 'SET_USERS_OFFSET'; payload: number }
 	| { type: 'SET_USERS_QUERY'; payload: string }
+	| { type: 'SET_USERS_STATUS_FILTER'; payload: 'all' | 'active' | 'inactive' }
+	| { type: 'SET_USERS_ROLE_FILTER'; payload: 'all' | AdminUserListItem['role'] }
+	| { type: 'SET_USERS_PROVIDER_FILTER'; payload: 'all' | AdminUserListItem['provider'] }
 	| {
 			type: 'SET_USERS_SORT';
 			payload: { column: string[]; order: 'ASC' | 'DESC' };
@@ -118,6 +134,7 @@ interface AdminContextValue {
 	fetchDashboard: (dateRange?: AdminDashboardDateRange) => Promise<void>;
 	fetchPendingFiles: () => Promise<void>;
 	fetchUsers: () => Promise<void>;
+	fetchUserAnalytics: () => Promise<void>;
 	fetchDocuments: () => Promise<void>;
 	patchUser: (user: AdminUserListItem) => void;
 	patchDocument: (document: AdminDocumentListItem) => void;
@@ -129,11 +146,15 @@ const AdminContext = createContext<AdminContextValue | undefined>(undefined);
 const initialState: AdminState = {
 	dashboard: { data: null, loading: false, error: null },
 	pendingFiles: { items: [], loading: false, error: null },
+	userAnalytics: { data: null, loading: false, error: null },
 	users: {
 		items: [],
 		query: '',
 		column: ['last_name', 'first_name'],
 		order: 'ASC',
+		statusFilter: 'all',
+		roleFilter: 'all',
+		providerFilter: 'all',
 		offset: 0,
 		hasMore: false,
 		loading: false,
@@ -181,6 +202,26 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
 			return {
 				...state,
 				dashboard: { ...state.dashboard, data: action.payload },
+			};
+		case 'SET_USER_ANALYTICS_LOADING':
+			return {
+				...state,
+				userAnalytics: { ...state.userAnalytics, loading: action.payload },
+			};
+		case 'SET_USER_ANALYTICS_DATA':
+			return {
+				...state,
+				userAnalytics: { ...state.userAnalytics, data: action.payload },
+			};
+		case 'SET_USER_ANALYTICS_ERROR':
+			return {
+				...state,
+				userAnalytics: { ...state.userAnalytics, error: action.payload },
+			};
+		case 'DISPATCH_USER_ANALYTICS_UPDATE':
+			return {
+				...state,
+				userAnalytics: { ...state.userAnalytics, data: action.payload },
 			};
 		case 'SET_PENDING_LOADING':
 			return {
@@ -237,6 +278,12 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
 				...state,
 				users: { ...state.users, query: action.payload },
 			};
+		case 'SET_USERS_STATUS_FILTER':
+			return { ...state, users: { ...state.users, statusFilter: action.payload } };
+		case 'SET_USERS_ROLE_FILTER':
+			return { ...state, users: { ...state.users, roleFilter: action.payload } };
+		case 'SET_USERS_PROVIDER_FILTER':
+			return { ...state, users: { ...state.users, providerFilter: action.payload } };
 		case 'SET_USERS_SORT':
 			return {
 				...state,
@@ -440,6 +487,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 		try {
 			const data = await listUsers({
 				query: users.query || undefined,
+				is_active: users.statusFilter === 'all' ? undefined : users.statusFilter === 'active',
+				role: users.roleFilter === 'all' ? undefined : users.roleFilter,
+				oauth_provider: users.providerFilter === 'all' ? undefined : users.providerFilter,
 				limit: ADMIN_USERS_PAGE_SIZE,
 				offset: users.offset,
 				column: users.column,
@@ -512,6 +562,22 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 		}
 	}, []);
 
+	const fetchUserAnalytics = useCallback(async () => {
+		dispatch({ type: 'SET_USER_ANALYTICS_LOADING', payload: true });
+		try {
+			const data = await getUserAnalytics();
+			dispatch({ type: 'SET_USER_ANALYTICS_DATA', payload: data });
+			dispatch({ type: 'SET_USER_ANALYTICS_ERROR', payload: null });
+		} catch (error) {
+			dispatch({
+				type: 'SET_USER_ANALYTICS_ERROR',
+				payload: getAdminErrorMessage(error),
+			});
+		} finally {
+			dispatch({ type: 'SET_USER_ANALYTICS_LOADING', payload: false });
+		}
+	}, []);
+
 	const patchUser = useCallback((user: AdminUserListItem) => {
 		dispatch({ type: 'PATCH_USER', payload: user });
 	}, []);
@@ -528,6 +594,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 				fetchDashboard,
 				fetchPendingFiles,
 				fetchUsers,
+				fetchUserAnalytics,
 				fetchDocuments,
 				patchUser,
 				patchDocument,

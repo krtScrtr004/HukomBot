@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { EVENT_BASE_URL_V1 } from '@/services/apiClient';
 import { useAdmin } from '@/contexts/AdminContext';
 import DataTable, { type DataTableColumn } from '@/components/ui/DataTable';
-import {
-	type AdminUserListItem,
-	ADMIN_USERS_PAGE_SIZE,
+import type {
+	AdminUserAnalytics,
+	AdminUserListItem,
 } from '@/types/admin';
+import { ADMIN_USERS_PAGE_SIZE } from '@/types/admin';
 import AdminUsersChart from '@/components/admin/users/AdminUsersChart';
 import EditUserModal from '@/components/admin/users/EditUserModal';
 import EmptyState from '@/components/workspace/shared/EmptyState';
@@ -38,13 +40,56 @@ function getRoleBadgeColor(role: string): string {
 	}
 }
 
+function isUserAnalytics(value: unknown): value is AdminUserAnalytics {
+	if (!value || typeof value !== 'object') return false;
+	const data = value as Record<string, unknown>;
+	return (
+		typeof data.registered_count === 'number' &&
+		typeof data.active_count === 'number' &&
+		typeof data.inactive_count === 'number' &&
+		typeof data.new_registration_count === 'number' &&
+		!!data.monthly_registration_count &&
+		typeof data.monthly_registration_count === 'object' &&
+		!!data.role_count &&
+		typeof data.role_count === 'object'
+	);
+}
+
+function parseUserAnalyticsEvent(eventData: string): AdminUserAnalytics | null {
+	try {
+		const parsed: unknown = JSON.parse(eventData.trim());
+		if (!parsed || typeof parsed !== 'object') return null;
+
+		const payload = parsed as {
+			success?: unknown;
+			data?: unknown;
+		};
+
+		if ('success' in payload && payload.success !== true) return null;
+		const data = 'data' in payload ? payload.data : parsed;
+		return isUserAnalytics(data) ? data : null;
+	} catch {
+		return null;
+	}
+}
+
 export default function AdminUsersPage() {
-	const { state, dispatch, fetchUsers } = useAdmin();
-	const { users, editUserModal } = state;
+	const { state, dispatch, fetchUsers, fetchUserAnalytics } = useAdmin();
+	const { users, userAnalytics, editUserModal } = state;
 	const [searchTerm, setSearchTerm] = useState('');
+	const [refreshing, setRefreshing] = useState(false);
+
 	const fetchRef = useRef(fetchUsers);
 	fetchRef.current = fetchUsers;
+	const fetchAnalyticsRef = useRef(fetchUserAnalytics);
+	fetchAnalyticsRef.current = fetchUserAnalytics;
 
+	// Initial data fetch
+	useEffect(() => {
+		void fetchAnalyticsRef.current();
+	}, []);
+
+	// Search & pagination trigger
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			dispatch({ type: 'SET_USERS_QUERY', payload: searchTerm.trim() });
@@ -60,7 +105,58 @@ export default function AdminUsersPage() {
 		users.offset,
 		users.column,
 		users.order,
+		users.statusFilter,
+		users.roleFilter,
+		users.providerFilter,
 	]);
+
+	// SSE Live Stream for User Analytics
+	useEffect(() => {
+		let es: EventSource | null = null;
+		const openStream = () => {
+			if (document.hidden || es) return;
+			es = new EventSource(`${EVENT_BASE_URL_V1}/admin/users`, {
+				withCredentials: true,
+			});
+			es.onmessage = (event) => {
+				if (event.data == null) return;
+				const data = parseUserAnalyticsEvent(event.data);
+				if (data) {
+					dispatch({
+						type: 'DISPATCH_USER_ANALYTICS_UPDATE',
+						payload: data,
+					});
+				}
+			};
+		};
+
+		openStream();
+
+		const handleVisibility = () => {
+			if (document.hidden) {
+				es?.close();
+				es = null;
+			} else {
+				openStream();
+			}
+		};
+
+		document.addEventListener('visibilitychange', handleVisibility);
+		return () => {
+			es?.close();
+			document.removeEventListener('visibilitychange', handleVisibility);
+		};
+	}, [dispatch]);
+
+	// Manual refresh handler for users table & analytics
+	const handleManualRefresh = async () => {
+		setRefreshing(true);
+		try {
+			await Promise.all([fetchUsers(), fetchUserAnalytics()]);
+		} finally {
+			setRefreshing(false);
+		}
+	};
 
 	const tableColumns: DataTableColumn<AdminUserListItem>[] = [
 		{
@@ -111,6 +207,16 @@ export default function AdminUsersPage() {
 					)}`}
 				>
 					{row.role}
+				</span>
+			),
+		},
+		{
+			key: 'is_active',
+			header: 'Status',
+			render: (row) => (
+				<span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${row.is_active ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+					<i className="bi bi-circle-fill text-[7px]" aria-hidden="true" />
+					{row.is_active ? 'Active' : 'Inactive'}
 				</span>
 			),
 		},
@@ -196,11 +302,14 @@ export default function AdminUsersPage() {
 				</div>
 			</header>
 
-			{/* Interactive Charts & Stat Cards */}
-			<AdminUsersChart />
+			{/* Analytics Charts & Stat Cards (Live API Data & SSE) */}
+			<AdminUsersChart
+				analytics={userAnalytics.data}
+				loading={userAnalytics.loading}
+			/>
 
 			{/* Table & Controls Section */}
-			<div className="rounded-lg border border-border bg-surface p-5 shadow-xs space-y-4">
+			<div className="rounded-sm border border-border bg-surface p-5 shadow-xs space-y-4">
 				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 					<div>
 						<h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
@@ -211,17 +320,48 @@ export default function AdminUsersPage() {
 						</p>
 					</div>
 
-					<div className="relative w-full sm:w-72">
-						<i className="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm" />
-						<input
-							type="search"
-							placeholder="Search by name or email…"
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							className="w-full pl-9 pr-3 py-2 border border-border rounded-md text-sm bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-							aria-label="Search users"
-						/>
+					<div className="flex items-center gap-2 w-full sm:w-auto">
+						{/* Search Bar Input */}
+						<div className="relative flex-1 sm:w-72">
+							<i className="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm" />
+							<input
+								type="search"
+								placeholder="Search by name or email…"
+								value={searchTerm}
+								onChange={(e) => setSearchTerm(e.target.value)}
+								className="w-full pl-9 pr-3 py-2 border border-border rounded-md text-sm bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+								aria-label="Search users"
+							/>
+						</div>
+
+						{/* Manual Refresh Button */}
+						<button
+							type="button"
+							onClick={() => void handleManualRefresh()}
+							disabled={refreshing || users.loading || userAnalytics.loading}
+							className="px-3 py-2 text-xs font-medium border border-border rounded-md bg-background text-text-secondary hover:text-text-primary hover:bg-hover transition-colors flex items-center gap-1.5 shrink-0"
+							title="Refresh users directory and analytics stats"
+						>
+							<i
+								className={`bi bi-arrow-clockwise text-sm ${
+									refreshing || users.loading || userAnalytics.loading ? 'animate-spin' : ''
+								}`}
+							/>
+							<span className="hidden sm:inline">Refresh</span>
+						</button>
 					</div>
+				</div>
+
+				<div className="grid gap-2 border-t border-border pt-4 sm:grid-cols-3">
+					<select aria-label="Filter users by account status" value={users.statusFilter} onChange={(event) => { dispatch({ type: 'SET_USERS_STATUS_FILTER', payload: event.target.value as typeof users.statusFilter }); dispatch({ type: 'SET_USERS_OFFSET', payload: 0 }); }} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text-secondary">
+						<option value="all">All account statuses</option><option value="active">Active</option><option value="inactive">Inactive</option>
+					</select>
+					<select aria-label="Filter users by role" value={users.roleFilter} onChange={(event) => { dispatch({ type: 'SET_USERS_ROLE_FILTER', payload: event.target.value as typeof users.roleFilter }); dispatch({ type: 'SET_USERS_OFFSET', payload: 0 }); }} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text-secondary">
+						<option value="all">All roles</option><option value="standard">Standard</option><option value="contributor">Contributor</option><option value="admin">Admin</option>
+					</select>
+					<select aria-label="Filter users by authentication provider" value={users.providerFilter} onChange={(event) => { dispatch({ type: 'SET_USERS_PROVIDER_FILTER', payload: event.target.value as typeof users.providerFilter }); dispatch({ type: 'SET_USERS_OFFSET', payload: 0 }); }} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text-secondary">
+						<option value="all">All providers</option><option value="google">Google</option><option value="facebook">Facebook</option><option value="apple">Apple</option>
+					</select>
 				</div>
 
 				<DataTable
@@ -237,7 +377,7 @@ export default function AdminUsersPage() {
 					onRowClick={(row) =>
 						dispatch({ type: 'OPEN_EDIT_USER_MODAL', payload: row })
 					}
-					onRetry={() => void fetchUsers()}
+					onRetry={() => void handleManualRefresh()}
 				/>
 
 				{/* Pagination Controls */}
@@ -281,7 +421,7 @@ export default function AdminUsersPage() {
 				</div>
 
 				{users.error && users.items.length > 0 ? (
-					<ErrorText error={users.error} onRetry={() => void fetchUsers()} />
+					<ErrorText error={users.error} onRetry={() => void handleManualRefresh()} />
 				) : null}
 			</div>
 
