@@ -3,8 +3,13 @@ from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.service.chunk_service import ChunkService
 from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.service.user_service import UserService
-from backend.hukom_bot.schema.admin_schema import AdminDashboardData, AdminUserAnalytics
+from backend.hukom_bot.schema.admin_schema import (
+    AdminDashboardData,
+    AdminUserAnalytics,
+    AdminDocumentAnalytics,
+)
 from backend.hukom_bot.schema.mixin import DateRangeableMixin
+from backend.hukom_bot.util.user_caster import UserCaster
 
 
 class AdminOrchistrator:
@@ -85,16 +90,51 @@ class AdminOrchistrator:
             to_return.monthly_registration_count = (
                 await self._user_service.count_monthly_registration(connection=conn)
             )
-            
+
             # Last 30 days only
-            to_return.new_registration_count = await self._user_service.count_registration(
-                interval_days=30, connection=conn
+            to_return.new_registration_count = (
+                await self._user_service.count_registration(
+                    interval_days=30, connection=conn
+                )
             )
-            
+
             to_return.role_count = await self._user_service.count_by_role(
                 connection=conn
             )
-            
+
             await conn.commit()
-            
+
+            return to_return
+
+    async def get_document_analytics(self) -> AdminDocumentAnalytics:
+        to_return = AdminDocumentAnalytics()
+
+        async with self._db.connection() as conn:
+            to_return.total_count = await self._document_service.count_all(
+                connection=conn
+            )
+
+            to_return.status_count = (
+                await self._document_service.count_by_upload_status(connection=conn)
+            )
+
+            to_return.type_count = await self._document_service.count_by_document_type(
+                connection=conn
+            )
+
+            to_return.monthly_upload_count = (
+                await self._document_service.count_monthly_upload(connection=conn)
+            )
+
+            to_return.new_upload_count = await self._document_service.count_registration(
+                interval_days=30, connection=conn
+            )
+
+            most_upload_users = await self._user_service.get_most_upload_count(
+                limit=15, connection=conn
+            )
+            to_return.most_upload_user = [
+                UserCaster.base_to_response(user) for user in most_upload_users
+            ]
+
             return to_return

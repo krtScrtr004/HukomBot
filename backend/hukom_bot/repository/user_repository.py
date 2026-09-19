@@ -274,18 +274,20 @@ class UserRepository:
         self, limit: int = 10, connection: AsyncConnection = None
     ):
         if connection is not None:
-            return await self._get_most_upload_count(connection, limit)
+            return await self._get_most_upload_count_implement(connection, limit)
 
         async with self._database.connection() as conn:
             try:
-                result = await self._get_most_upload_count(conn, limit)
+                result = await self._get_most_upload_count_implement(conn, limit)
                 await conn.commit()
                 return result
             except errors.OperationalError as ex:
                 await conn.rollback()
                 raise
 
-    async def _get_most_upload_count(self, conn: AsyncConnection, limit: int = 10):
+    async def _get_most_upload_count_implement(
+        self, conn: AsyncConnection, limit: int = 10
+    ):
         async with conn.cursor() as cur:
             await cur.execute(
                 """
@@ -307,7 +309,7 @@ class UserRepository:
             )
 
             rows = await cur.fetchall()
-            users = [User(row) for row in rows]
+            users = [User.model_validate(row) for row in rows]
 
             return users
 

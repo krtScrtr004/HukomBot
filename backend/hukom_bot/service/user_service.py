@@ -44,6 +44,13 @@ class UserService:
             provider_id=provider_id, connection=connection
         )
 
+    async def get_most_upload_count(
+        self, limit: int = 10, connection: AsyncConnection = None
+    ):
+        return await self._user_repo.get_most_upload_count(
+            limit=limit, connection=connection
+        )
+
     async def search(self, user: UserSearch, connection: AsyncConnection = None):
         return await self._user_repo.search(user=user, connection=connection)
 
@@ -84,7 +91,7 @@ class UserService:
         return await self._user_repo.count_registration(
             interval_days=interval_days, connection=connection
         )
-        
+
     async def count_by_role(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
