@@ -270,6 +270,47 @@ class UserRepository:
 
         return User.model_validate(row) if row is not None else None
 
+    async def get_most_upload_count(
+        self, limit: int = 10, connection: AsyncConnection = None
+    ):
+        if connection is not None:
+            return await self._get_most_upload_count(connection, limit)
+
+        async with self._database.connection() as conn:
+            try:
+                result = await self._get_most_upload_count(conn, limit)
+                await conn.commit()
+                return result
+            except errors.OperationalError as ex:
+                await conn.rollback()
+                raise
+
+    async def _get_most_upload_count(self, conn: AsyncConnection, limit: int = 10):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT 
+                    u.*,
+                    (
+                        SELECT COUNT(d.id)
+                        FROM documents d
+                        WHERE d.uploader_id = u.id
+                    ) AS upload_count
+                FROM users u
+                ORDER BY 
+                    upload_count DESC,
+                    u.last_name ASC,
+                    u.first_name ASC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+
+            rows = await cur.fetchall()
+            users = [User(row) for row in rows]
+
+            return users
+
     def _build_search_query(self, user: UserSearch) -> str:
         conditions: list[str] = []
 
