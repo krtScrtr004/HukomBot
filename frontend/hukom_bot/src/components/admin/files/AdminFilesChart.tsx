@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import LineGraph from '@/components/admin/shared/LineGraph';
+import DonutChart from '@/components/admin/shared/DonutChart';
 
 type TimeRange = '7d' | '30d' | '12m';
 
@@ -41,10 +43,10 @@ const DUMMY_TRENDS: Record<TimeRange, DummyUploadTrend[]> = {
 };
 
 const DUMMY_DOC_TYPES = [
-	{ name: 'Supreme Court Decisions', count: 950, percent: 41, color: 'bg-primary' },
-	{ name: 'Executive Orders / Acts', count: 620, percent: 27, color: 'bg-info' },
-	{ name: 'Legal Statutes & Codes', count: 480, percent: 21, color: 'bg-success' },
-	{ name: 'Other Documents', count: 250, percent: 11, color: 'bg-warning' },
+	{ name: 'Supreme Court Decisions', count: 950, color: 'bg-primary', cssColor: 'var(--color-primary)' },
+	{ name: 'Executive Orders / Acts', count: 620, color: 'bg-info', cssColor: 'var(--color-info)' },
+	{ name: 'Legal Statutes & Codes', count: 480, color: 'bg-success', cssColor: 'var(--color-success)' },
+	{ name: 'Other Documents', count: 250, color: 'bg-warning', cssColor: 'var(--color-warning)' },
 ];
 
 export default function AdminFilesChart() {
@@ -52,7 +54,6 @@ export default function AdminFilesChart() {
 	const [activeMetric, setActiveMetric] = useState<'uploads' | 'chunks'>('uploads');
 
 	const trendData = DUMMY_TRENDS[timeRange];
-	const maxValue = Math.max(...trendData.map((d) => d[activeMetric]), 1);
 
 	return (
 		<div className="space-y-4">
@@ -177,103 +178,13 @@ export default function AdminFilesChart() {
 						</div>
 					</div>
 
-					{/* SVG Trend Graph with Y-Axis Scale */}
-					<div className="mt-6">
-						<div className="relative h-48 pl-10 pr-2">
-							{/* Y-Axis Scale Tick Labels */}
-							<div className="absolute left-0 top-0 w-8 text-right text-[10px] text-text-muted font-mono leading-none -translate-y-1/2">
-								{maxValue.toLocaleString()}
-							</div>
-							<div className="absolute left-0 top-1/3 w-8 text-right text-[10px] text-text-muted font-mono leading-none -translate-y-1/2">
-								{Math.round((maxValue * 2) / 3).toLocaleString()}
-							</div>
-							<div className="absolute left-0 top-2/3 w-8 text-right text-[10px] text-text-muted font-mono leading-none -translate-y-1/2">
-								{Math.round(maxValue / 3).toLocaleString()}
-							</div>
-							<div className="absolute left-0 bottom-6 w-8 text-right text-[10px] text-text-muted font-mono leading-none translate-y-1/2">
-								0
-							</div>
-
-							{/* Background Grid Lines */}
-							<div className="absolute left-10 right-2 top-0 border-t border-border/40" />
-							<div className="absolute left-10 right-2 top-1/3 border-t border-border/30 border-dashed" />
-							<div className="absolute left-10 right-2 top-2/3 border-t border-border/30 border-dashed" />
-							<div className="absolute left-10 right-2 bottom-6 border-t border-border" />
-
-							{/* SVG Plot */}
-							<div className="absolute left-10 right-2 bottom-6 top-2">
-								<svg
-									viewBox="0 0 800 160"
-									preserveAspectRatio="none"
-									className="h-full w-full overflow-visible"
-									role="img"
-									aria-label="Upload activity chart"
-								>
-									<defs>
-										<linearGradient id="docTrendGradient" x1="0" y1="0" x2="0" y2="1">
-											<stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.35" />
-											<stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0.0" />
-										</linearGradient>
-									</defs>
-
-									{/* Gradient Area */}
-									<polygon
-										fill="url(#docTrendGradient)"
-										points={`0,160 ${trendData
-											.map(
-												(d, i) =>
-													`${(i / Math.max(trendData.length - 1, 1)) * 800},${
-														160 - (d[activeMetric] / maxValue) * 140
-													}`,
-											)
-											.join(' ')} 800,160`}
-									/>
-
-									{/* Line */}
-									<polyline
-										fill="none"
-										stroke="var(--color-primary)"
-										strokeWidth="3"
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										points={trendData
-											.map(
-												(d, i) =>
-													`${(i / Math.max(trendData.length - 1, 1)) * 800},${
-														160 - (d[activeMetric] / maxValue) * 140
-													}`,
-											)
-											.join(' ')}
-									/>
-
-									{/* Data Point Circles */}
-									{trendData.map((d, i) => {
-										const cx = (i / Math.max(trendData.length - 1, 1)) * 800;
-										const cy = 160 - (d[activeMetric] / maxValue) * 140;
-										return (
-											<g key={d.label} className="group cursor-pointer">
-												<circle
-													cx={cx}
-													cy={cy}
-													r="5"
-													className="fill-surface stroke-primary transition-all group-hover:r-7"
-													strokeWidth="3"
-												/>
-												<title>{`${d.label}: ${d[activeMetric]} ${activeMetric}`}</title>
-											</g>
-										);
-									})}
-								</svg>
-							</div>
-
-							{/* X-Axis Labels */}
-							<div className="absolute left-10 right-2 bottom-0 flex justify-between text-[11px] text-text-muted font-medium">
-								{trendData.map((d) => (
-									<span key={d.label}>{d.label}</span>
-								))}
-							</div>
-						</div>
-					</div>
+					<LineGraph
+						data={trendData.map((d) => ({ label: d.label, value: d[activeMetric] }))}
+						ariaLabel="Upload activity chart"
+						gradientId="docTrendGradient"
+						heightClass="h-48"
+						className="mt-6"
+					/>
 				</div>
 
 				{/* Document Categories / Types Breakdown */}
@@ -282,51 +193,22 @@ export default function AdminFilesChart() {
 						<div className="flex items-center justify-between border-b border-border pb-4">
 							<div>
 								<h3 className="font-semibold text-text-primary text-base flex items-center gap-2">
-									<i className="bi bi-[folder2-open] text-primary" /> Document Types
+									<i className="bi bi-folder2-open text-primary" /> Document Types
 								</h3>
 								<p className="text-xs text-text-muted mt-0.5">Distribution by legal category</p>
 							</div>
 						</div>
 
-						{/* Conic Gradient Donut Visual */}
-						<div className="my-6 flex items-center justify-center">
-							<div
-								className="relative h-36 w-36 rounded-full shadow-inner flex items-center justify-center"
-								style={{
-									background: `conic-gradient(
-										var(--color-primary) 0% 41%,
-										var(--color-info) 41% 68%,
-										var(--color-success) 68% 89%,
-										var(--color-warning) 89% 100%
-									)`,
-								}}
-							>
-								<div className="h-24 w-24 rounded-full bg-surface shadow-xs flex flex-col items-center justify-center">
-									<span className="text-xl font-bold text-text-primary">2,300</span>
-									<span className="text-[10px] text-text-muted uppercase font-medium">Files</span>
-								</div>
-							</div>
-						</div>
-
-						{/* Types List */}
-						<div className="space-y-2.5">
-							{DUMMY_DOC_TYPES.map((docType) => (
-								<div key={docType.name} className="flex items-center justify-between text-xs">
-									<div className="flex items-center gap-2">
-										<span className={`h-2.5 w-2.5 rounded-full ${docType.color}`} />
-										<span className="font-medium text-text-secondary truncate max-w-[140px]" title={docType.name}>
-											{docType.name}
-										</span>
-									</div>
-									<div className="flex items-center gap-3">
-										<span className="text-text-muted">{docType.percent}%</span>
-										<strong className="text-text-primary font-semibold w-10 text-right">
-											{docType.count}
-										</strong>
-									</div>
-								</div>
-							))}
-						</div>
+						<DonutChart
+							segments={DUMMY_DOC_TYPES.map((d) => ({
+								label: d.name,
+								value: d.count,
+								color: d.color,
+								cssColor: d.cssColor,
+							}))}
+							centerValue={2300}
+							centerLabel="Files"
+						/>
 					</div>
 
 					<div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-[11px] text-text-muted">
@@ -340,4 +222,3 @@ export default function AdminFilesChart() {
 		</div>
 	);
 }
-
