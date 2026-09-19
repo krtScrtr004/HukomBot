@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     ADMIN_DASHBOARD_CH: str
     ADMIN_USER_ANALYTICS_CH: str
+    ADMIN_DOCUMENT_ANALYTICS_CH: str
 
     # -- Database --
     DB_HOST: str
