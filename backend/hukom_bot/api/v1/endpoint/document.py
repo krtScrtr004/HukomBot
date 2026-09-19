@@ -165,7 +165,7 @@ async def approve_document(
         channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
     )
     
-    await service.publish(
+    await pubsub_service.publish(
         channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH, data="Document analytics data updated"
     )
 
