@@ -4,6 +4,7 @@ from psycopg import AsyncConnection
 from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.document_model import Document
+from backend.hukom_bot.schema.admin_schema import MonthlyCount
 from backend.hukom_bot.schema.document_schema import *
 from backend.hukom_bot.schema.admin_schema import (
     DocumentStatusCount,
@@ -472,6 +473,51 @@ class DocumentRepository:
             daily_counts = {row["day_name"]: row["total_count"] for row in rows}
 
             return DocumentWeeklyCount(**daily_counts)
+
+    async def count_monthly_upload(
+        self, year: int = datetime.now().year, connection: AsyncConnection = None
+    ):
+        if connection is not None:
+            return await self._count_monthly_upload_implement(
+                conn=connection, year=year
+            )
+
+        try:
+            async with self._database.connection() as conn:
+                return await self._count_monthly_upload_implement(
+                    conn=conn, year=year
+                )
+        except errors.OperationalError:
+            raise
+
+    async def _count_monthly_upload_implement(
+        self, conn: AsyncConnection, year: int
+    ):
+        async with conn.cursor() as cur:
+            await cur.execute(
+                f"""
+                SELECT 
+                    lower(left(to_char(created_at, 'FMMonth'), 1)) || 
+                        substring(to_char(created_at, 'FMMonth') from 2) AS month_name,
+                    COUNT(*) AS total_count
+                FROM documents
+                WHERE EXTRACT(YEAR FROM created_at) = %s
+                GROUP BY 
+                    date_trunc('month', created_at), 
+                    to_char(created_at, 'FMMonth')
+                ORDER BY 
+                    date_trunc('month', created_at) ASC;
+                """,
+                (year,),
+            )
+
+            rows = await cur.fetchall()
+            if not rows:
+                return MonthlyCount()
+
+            monthly_counts = {row["month_name"]: row["total_count"] for row in rows}
+
+            return MonthlyCount(**monthly_counts)
 
     async def count_by_document_type(
         self,
