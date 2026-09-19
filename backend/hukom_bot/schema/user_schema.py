@@ -72,5 +72,6 @@ class UserResponse(BaseModel):
     provider: OAuthProvider
     is_active: bool
     created_at: datetime
+    upload_count: int = Field(default=0)
 
     model_config = {"arbitrary_types_allowed": True}

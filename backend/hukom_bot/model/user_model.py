@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 from backend.hukom_bot.enum.user_role import UserRole
 from backend.hukom_bot.enum.oauth_provider import OAuthProvider
@@ -23,6 +23,7 @@ class UserBase(BaseModel):
 class User(UserBase):
     id: UUID
     is_active: bool
+    upload_count: int = Field(default=None)
     created_at: datetime
     updated_at: datetime
     
