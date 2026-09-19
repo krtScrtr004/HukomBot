@@ -99,6 +99,10 @@ async def upload_document(
     await service.publish(
         channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
     )
+    
+    await service.publish(
+        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH, data="Document analytics data updated"
+    )
 
     return SuccessResponse(message=result.message, data=result.data)
 
@@ -122,6 +126,11 @@ async def update_document(
     await service.publish(
         channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
     )
+    
+    await service.publish(
+        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH, data="Document analytics data updated"
+    )
+
 
     return SuccessResponse(
         message="Document info updated successfully", data={"id": document_id}
@@ -154,6 +163,10 @@ async def approve_document(
 
     await pubsub_service.publish(
         channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+    )
+    
+    await service.publish(
+        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH, data="Document analytics data updated"
     )
 
     return SuccessResponse(message=result.message, data=result.data["response"])
