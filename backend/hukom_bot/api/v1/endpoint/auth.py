@@ -5,6 +5,7 @@ import secrets
 import logging
 from typing import Annotated
 from fastapi import APIRouter, Request, Response, Query, Depends
+from fastapi.responses import RedirectResponse
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.response_schema import SuccessResponse
 from backend.hukom_bot.schema.auth_schema import JWTPayload
@@ -115,13 +116,17 @@ async def google_login_callback(
 
         google_user = google_service.retrieve_user(tokens.id_token, nonce)
 
-        user = await auth_service.authenticate_user(google_user)
+        user_result = await auth_service.authenticate_user(google_user)
+        if isinstance(user_result, RedirectResponse):
+            return user_result  # Redirect to /login due to UnauthorizedException
 
         token = jwt_service.encode(
-            payload=JWTPayload(provider_id=user.provider_id, role=user.role)
+            payload=JWTPayload(
+                provider_id=user_result.provider_id, role=user_result.role
+            )
         )
 
-        return auth_service.redirect_authorized(request, token, user.role)
+        return auth_service.redirect_authorized(request, token, user_result.role)
     except Exception as ex:
         logger.exception(str(ex))
 

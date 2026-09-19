@@ -68,12 +68,13 @@ class AuthService:
         user = await self._user_service.get_by_provider_id(provider_id)
         return user
 
-    async def authenticate_user(self, user: AuthUser) -> User:
+    async def authenticate_user(self, user: AuthUser) -> User | RedirectResponse:
         async with self._db.connection() as conn:
             try:
                 app_user = await self._user_service.get_by_provider_id(
                     user.provider_id, conn
                 )
+
                 if not app_user:
                     # Create user record if account is not yet connected
                     app_user = await self._user_service.create(
@@ -88,10 +89,10 @@ class AuthService:
                         ),
                         connection=conn,
                     )
-                    
+
                     await self._pubsub_service.publish(
                         channel=settings.ADMIN_USER_ANALYTICS_CH,
-                        data="Users analytics data updated"
+                        data="Users analytics data updated",
                     )
 
                     await conn.commit()
@@ -106,10 +107,15 @@ class AuthService:
                         "New account with provider id: %s has successfully connected to the app",
                         user.provider_id,
                     )
+                elif not app_user.is_active:
+                    raise UnauthorizedException(
+                        message="Your account has been deactivated. Please contact the admins for more information"
+                    )
 
                 return app_user
+            except UnauthorizedException:
+                return self.redirect_unauthorized(error_code="ACCOUNT_DISABLED")
             except Exception as ex:
-                logger.exception(str(ex))
                 await conn.rollback()
                 raise
 
@@ -133,13 +139,15 @@ class AuthService:
             return redirect
         except Exception as ex:
             logger.exception(ex)
-            
+
             return self.redirect_unauthorized(request)
 
     def redirect_unauthorized(
-        self, request: Request, error_code: str = "INTERNAL_SERVER_ERROR"
+        self, request: Request = None, error_code: str = "INTERNAL_SERVER_ERROR"
     ) -> RedirectResponse:
-        request.session.clear()
+        if request is not None:
+            request.session.clear()
+
         url = redirect_service.get_redirect_url(
             "login", payload={"error_code": error_code}
         )
