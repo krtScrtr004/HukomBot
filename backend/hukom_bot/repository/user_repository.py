@@ -159,8 +159,14 @@ class UserRepository:
         async with conn.cursor() as cur:
             await cur.execute(
                 """
-                SELECT *
-                FROM users
+                SELECT 
+                    u.*,
+                    (
+                        SELECT COUNT(d.id)
+                        FROM documents d
+                        WHERE d.uploader_id = u.id
+                    ) AS upload_count
+                FROM users u
                 WHERE id = %s
                 LIMIT 1
                 """,
@@ -200,9 +206,15 @@ class UserRepository:
 
             await cur.execute(
                 f"""
-                SELECT *
-                FROM users
-                WHERE id IN ({placeholders})
+                SELECT 
+                    u.*,
+                    (
+                        SELECT COUNT(d.id)
+                        FROM documents d
+                        WHERE d.uploader_id = u.id
+                    ) AS upload_count
+                FROM users u
+                WHERE u.id IN ({placeholders})
                 LIMIT %(limit)s
                 OFFSET %(offset)s
                 """,
@@ -240,9 +252,15 @@ class UserRepository:
         async with conn.cursor() as cur:
             await cur.execute(
                 """
-                SELECT *
-                FROM users
-                WHERE provider_id = %s
+                SELECT 
+                    u.*,
+                    (
+                        SELECT COUNT(d.id)
+                        FROM documents d
+                        WHERE d.uploader_id = u.id
+                    ) AS upload_count
+                FROM users u
+                WHERE u.provider_id = %s
                 LIMIT 1
                 """,
                 (provider_id,),
@@ -297,6 +315,11 @@ class UserRepository:
                     )
                     SELECT 
                         u.*,
+                        (
+                            SELECT COUNT(d.id)
+                            FROM documents d
+                            WHERE d.uploader_id = u.id
+                        ) AS upload_count,
                         ts_rank(u.search_vector, q.q) AS rank
                     FROM users u, query q
                     WHERE u.search_vector @@ q.q
@@ -341,7 +364,13 @@ class UserRepository:
         async with conn.cursor() as cur:
             await cur.execute(
                 f"""
-                SELECT * 
+                SELECT 
+                    u.*,
+                    (
+                        SELECT COUNT(d.id)
+                        FROM documents d
+                        WHERE d.uploader_id = u.id
+                    ) AS upload_count
                 FROM users u
                 WHERE 1=1
                 {search_query}
