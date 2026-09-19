@@ -1,5 +1,21 @@
 from pydantic import BaseModel, Field
 from backend.hukom_bot.enum.user_role import UserRole
+from backend.hukom_bot.schema.user_schema import UserResponse
+
+
+class MonthlyCount(BaseModel):
+    january: int = Field(default=0, min=0)
+    february: int = Field(default=0, min=0)
+    march: int = Field(default=0, min=0)
+    april: int = Field(default=0, min=0)
+    may: int = Field(default=0, min=0)
+    june: int = Field(default=0, min=0)
+    july: int = Field(default=0, min=0)
+    august: int = Field(default=0, min=0)
+    september: int = Field(default=0, min=0)
+    october: int = Field(default=0, min=0)
+    november: int = Field(default=0, min=0)
+    december: int = Field(default=0, min=0)
 
 
 class DocumentStatusCount(BaseModel):
@@ -86,6 +102,12 @@ class DocumentTypeCount(BaseModel):
     other: int = Field(default=0, min=0)
 
 
+class UserRoleCount(BaseModel):
+    standard: int = Field(default=0, min=0)
+    contributor: int = Field(default=0, min=0)
+    admin: int = Field(default=0, min=0)
+
+
 class AdminDashboardData(BaseModel):
     active_user_count: int = Field(default=0, min=0)
     documents_count: int = Field(default=0, min=0)
@@ -97,27 +119,6 @@ class AdminDashboardData(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-class MonthlyCount(BaseModel):
-    january: int = Field(default=0, min=0)
-    february: int = Field(default=0, min=0)
-    march: int = Field(default=0, min=0)
-    april: int = Field(default=0, min=0)
-    may: int = Field(default=0, min=0)
-    june: int = Field(default=0, min=0)
-    july: int = Field(default=0, min=0)
-    august: int = Field(default=0, min=0)
-    september: int = Field(default=0, min=0)
-    october: int = Field(default=0, min=0)
-    november: int = Field(default=0, min=0)
-    december: int = Field(default=0, min=0)
-    
-
-class UserRoleCount(BaseModel):
-    standard: int = Field(default=0, min=0)
-    contributor: int = Field(default=0, min=0)
-    admin: int = Field(default=0, min=0)
-    
-    
 class AdminUserAnalytics(BaseModel):
     registered_count: int = Field(default=0, min=0)
     active_count: int = Field(default=0, min=0)
@@ -125,5 +126,15 @@ class AdminUserAnalytics(BaseModel):
     monthly_registration_count: MonthlyCount = Field(default=None)
     new_registration_count: int = Field(default=0, min=0)
     role_count: UserRoleCount = Field(default=None)
-    
+
     model_config = {"arbitrary_types_allowed": True}
+
+
+class AdminDocumentAnalytics(BaseModel):
+    total_count: int = Field(default=0, min=0)
+    status_count: DocumentStatusCount = Field(default=None)
+    type_count: DocumentTypeCount = Field(default=None)
+    monthly_upload_count: MonthlyCount = Field(default=None)
+    new_upload_count: int = Field(default=0, min=0)
+    most_upload_user: list[UserResponse] = Field(default=[])
+    
