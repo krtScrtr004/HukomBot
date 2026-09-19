@@ -41,4 +41,17 @@ async def get_dashboard_data(
 ):
     result = await orchistrator.get_user_analytics()
 
-    return SuccessResponse(message="Dashboard data retrived successfully", data=result)
+    return SuccessResponse(message="User analytics data retrived successfully", data=result)
+
+
+@admin_api_router.get("/documents")
+async def get_dashboard_data(
+    orchistrator: Annotated[AdminOrchistrator, Depends(get_admin_orchistrator)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=60, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN))
+
+):
+    result = await orchistrator.get_document_analytics()
+
+    return SuccessResponse(message="Document analytics data retrived successfully", data=result)
