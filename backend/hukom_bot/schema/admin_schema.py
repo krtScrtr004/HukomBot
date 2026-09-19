@@ -97,7 +97,7 @@ class AdminDashboardData(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-class UserRegistrationMonthlyCount(BaseModel):
+class MonthlyCount(BaseModel):
     january: int = Field(default=0, min=0)
     february: int = Field(default=0, min=0)
     march: int = Field(default=0, min=0)
@@ -122,9 +122,8 @@ class AdminUserAnalytics(BaseModel):
     registered_count: int = Field(default=0, min=0)
     active_count: int = Field(default=0, min=0)
     inactive_count: int = Field(default=0, min=0)
-    monthly_registration_count: UserRegistrationMonthlyCount = Field(default=None)
+    monthly_registration_count: MonthlyCount = Field(default=None)
     new_registration_count: int = Field(default=0, min=0)
     role_count: UserRoleCount = Field(default=None)
     
     model_config = {"arbitrary_types_allowed": True}
-    

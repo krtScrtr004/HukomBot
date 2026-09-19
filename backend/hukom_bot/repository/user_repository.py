@@ -4,10 +4,7 @@ from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.model.user_model import User
 from backend.hukom_bot.schema.user_schema import *
-from backend.hukom_bot.schema.admin_schema import (
-    UserRegistrationMonthlyCount,
-    UserRoleCount,
-)
+from backend.hukom_bot.schema.admin_schema import MonthlyCount, UserRoleCount
 from backend.hukom_bot.schema.mixin import DateRangeableMixin
 from backend.hukom_bot.util.user_caster import UserCaster
 from backend.hukom_bot.util.utility import build_date_range_where_clause
@@ -505,11 +502,11 @@ class UserRepository:
 
             rows = await cur.fetchall()
             if not rows:
-                return UserRegistrationMonthlyCount()
+                return MonthlyCount()
 
             monthly_counts = {row["month_name"]: row["total_count"] for row in rows}
 
-            return UserRegistrationMonthlyCount(**monthly_counts)
+            return MonthlyCount(**monthly_counts)
 
     async def count_registration(
         self, interval_days: int = 360, connection: AsyncConnection = None
