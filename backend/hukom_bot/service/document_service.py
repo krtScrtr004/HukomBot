@@ -73,8 +73,15 @@ class DocumentService:
     async def count_monthly_upload(
         self, year: int = datetime.now().year, connection: AsyncConnection = None
     ):
-        return self._document_repo.count_monthly_upload(
+        return await self._document_repo.count_monthly_upload(
             year=year, connection=connection
+        )
+        
+    async def count_registration(
+        self, interval_days: int = 360, connection: AsyncConnection = None
+    ):
+        return await self._document_repo.count_registration(
+            interval_days=interval_days, connection=connection
         )
 
     async def count_by_document_type(
