@@ -424,7 +424,7 @@ class UserRepository:
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
     ):
         user = UserGetByActiveState(
-            is_active=True, **date_range.model_dump() if date_range is not None else {}
+            is_active=False, **date_range.model_dump() if date_range is not None else {}
         )
 
         if connection is not None:
