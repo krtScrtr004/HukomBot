@@ -150,8 +150,10 @@ All API endpoints use the `/api/v1` base path.
 | `GET` | `/api/v1/documents/{id}/upload-status` | Yes | Any | 60 req/min | Get document upload status |
 | `GET` | `/api/v1/admin/dashboard` | Yes | `admin` | 60 req/min | Get admin dashboard data |
 | `GET` | `/api/v1/admin/users` | Yes | `admin` | 60 req/min | Get admin user analytics |
+| `GET` | `/api/v1/admin/documents` | Yes | `admin` | 60 req/min | Get admin document analytics |
 | `GET` | `/events/v1/admin/dashboard` | Yes | `admin` | — | Stream admin dashboard updates (SSE) |
 | `GET` | `/events/v1/admin/users` | Yes | `admin` | — | Stream admin user analytics updates (SSE) |
+| `GET` | `/events/v1/admin/documents` | Yes | `admin` | — | Stream admin document analytics updates (SSE) |
 | `POST` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 5 req/min | Run case analysis |
 | `GET` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 60 req/min | List the user's case analysis sessions |
 | `GET` | `/api/v1/case-analyses/{id}/versions` | Yes | `standard`, `contributor` | 60 req/min | List versions of a case analysis session |
@@ -307,11 +309,6 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
   for deleting user accounts (admin only).
 - Added:
   ```http
-  GET /api/v1/documents/
-  ```
-   for listing/searching documents (admin only).
-- Added:
-  ```http
   GET /api/v1/admin/dashboard
   ```
    for retrieving admin dashboard data with aggregated counts (admin only).
@@ -322,6 +319,11 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
    for retrieving admin user analytics with registration and role counts (admin only).
 - Added:
   ```http
+  GET /api/v1/admin/documents
+  ```
+   for retrieving admin document analytics with status, type, monthly upload counts, and top uploaders (admin only).
+- Added:
+  ```http
   GET /events/v1/admin/dashboard
   ```
    for streaming real-time admin dashboard updates via Server-Sent Events (SSE) (`admin` only).
@@ -330,17 +332,22 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
   GET /events/v1/admin/users
   ```
    for streaming real-time user analytics updates via Server-Sent Events (SSE) (`admin` only).
+- Added:
+  ```http
+  GET /events/v1/admin/documents
+  ```
+   for streaming real-time document analytics updates via Server-Sent Events (SSE) (`admin` only).
 - Added `PubsubService` class wrapping Redis pub/sub for publish/subscribe messaging.
-- Added `ADMIN_DASHBOARD_CH` and `ADMIN_USER_ANALYTICS_CH` configuration variables for the Redis channel names.
+- Added `ADMIN_DASHBOARD_CH`, `ADMIN_USER_ANALYTICS_CH`, and `ADMIN_DOCUMENT_ANALYTICS_CH` configuration variables for the Redis channel names.
 - Added publish (trigger) statements to document and user actions that update admin dashboard statistics.
 - Added `role` field to the JWT payload emitted at login.
 - Added `AuthContext` (`AuthContext.tsx`) for frontend auth state management.
 - Added `RequireAuth` wrapper in `App.tsx` for protected route rendering.
 - Added `user.ts` type definitions for frontend.
-- Added `UserSearch` schema with query-based search and `OrderableMixin` for sortable columns.
+- Added `UserSearch` schema with query-based search, filter by `is_active`, `role`, `oauth_provider`, and `OrderableMixin` for sortable columns.
 - Added `DocumentSearch` schema with query-based search and `OrderableMixin`.
 - Added `DocumentResponse` schema with nested `UserResponse` for the uploader.
-- Added `UserGetAll` and `DocumentGetAll` schemas for non-search list endpoints.
+- Added `UserGetAll` and `DocumentGetAll` schemas for non-search list endpoints with filter by `is_active`, `role`, `oauth_provider`.
 - Added `OrderableMixin` and `OrderEnum` (`ASC`/`DESC`) for sortable list responses.
 - Added `AdminDashboardData` schema with aggregated counts for active users, documents by status, and chunks.
 - Updated `AdminDashboardData` schema to include per-status, per-weekly, and per-type document counts via `DocumentStatusCount`, `DocumentWeeklyCount`, and `DocumentTypeCount` schemas.
@@ -348,7 +355,8 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Updated `GET /api/v1/admin/dashboard` to require admin authentication (previously accessible by any user).
 - Updated `GET /events/v1/admin/dashboard` SSE stream to emit raw `AdminDashboardData` JSON instead of `SuccessResponse` wrapper.
 - Added `date_range`, `date_start`, and `date_end` query parameters to `GET /events/v1/admin/dashboard`.
-- Added `AdminUserAnalytics`, `UserRegistrationMonthlyCount`, and `UserRoleCount` schemas for admin user analytics.
+- Added `AdminUserAnalytics`, `MonthlyCount`, and `UserRoleCount` schemas for admin user analytics.
+- Added `AdminDocumentAnalytics` schema for admin document analytics with status, type, monthly upload counts, and top uploaders.
 - Added `rejection_message` field to `DocumentCreate`, `DocumentUpdateBase`, and `DocumentResponse` schemas.
 - Added `rejected` value to the `UploadStatus` enum with status level `-1` and state transition logic in `DocumentOrchistrator.update_pipeline()`.
 - Made `uploader` field optional (`UserResponse | None`) in `DocumentResponse` schema.
