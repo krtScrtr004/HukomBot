@@ -48,6 +48,15 @@ export interface AdminUserAnalytics {
   role_count: UserRoleCount;
 }
 
+export interface AdminDocumentAnalytics {
+  total_count: number;
+  status_count: Record<'pending' | 'ongoing' | 'completed' | 'failed' | 'rejected', number>;
+  type_count: Record<string, number>;
+  monthly_upload_count: Record<string, number>;
+  new_upload_count: number;
+  most_upload_user: Array<AdminUserListItem & { upload_count: number }>;
+}
+
 export type AdminDashboardDateRange =
   | 'today'
   | 'yesterday'

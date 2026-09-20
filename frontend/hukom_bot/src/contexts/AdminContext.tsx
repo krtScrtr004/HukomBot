@@ -10,11 +10,12 @@ import { useNavigate } from 'react-router-dom';
 import { ApiError, isAuthError } from '@/services/apiClient';
 import { getDashboardData } from '@/services/adminDashboardService';
 import { listUsers, getUserAnalytics } from '@/services/adminUsersService';
-import { listDocuments } from '@/services/adminDocumentsService';
+import { listDocuments, getDocumentAnalytics } from '@/services/adminDocumentsService';
 import type {
 	AdminDashboardData,
 	AdminDashboardDateRange,
 	AdminDocumentListItem,
+	AdminDocumentAnalytics,
 	AdminUserAnalytics,
 	AdminUserListItem,
 } from '@/types/admin';
@@ -41,6 +42,11 @@ interface AdminState {
 	};
 	userAnalytics: {
 		data: AdminUserAnalytics | null;
+		loading: boolean;
+		error: string | null;
+	};
+	documentAnalytics: {
+		data: AdminDocumentAnalytics | null;
 		loading: boolean;
 		error: string | null;
 	};
@@ -87,6 +93,10 @@ type AdminAction =
 	| { type: 'SET_USER_ANALYTICS_DATA'; payload: AdminUserAnalytics | null }
 	| { type: 'SET_USER_ANALYTICS_ERROR'; payload: string | null }
 	| { type: 'DISPATCH_USER_ANALYTICS_UPDATE'; payload: AdminUserAnalytics }
+	| { type: 'SET_DOCUMENT_ANALYTICS_LOADING'; payload: boolean }
+	| { type: 'SET_DOCUMENT_ANALYTICS_DATA'; payload: AdminDocumentAnalytics | null }
+	| { type: 'SET_DOCUMENT_ANALYTICS_ERROR'; payload: string | null }
+	| { type: 'DISPATCH_DOCUMENT_ANALYTICS_UPDATE'; payload: AdminDocumentAnalytics }
 	| { type: 'SET_PENDING_LOADING'; payload: boolean }
 	| { type: 'SET_PENDING_FILES'; payload: AdminDocumentListItem[] }
 	| { type: 'SET_PENDING_ERROR'; payload: string | null }
@@ -135,6 +145,7 @@ interface AdminContextValue {
 	fetchPendingFiles: () => Promise<void>;
 	fetchUsers: () => Promise<void>;
 	fetchUserAnalytics: () => Promise<void>;
+	fetchDocumentAnalytics: () => Promise<void>;
 	fetchDocuments: () => Promise<void>;
 	patchUser: (user: AdminUserListItem) => void;
 	patchDocument: (document: AdminDocumentListItem) => void;
@@ -147,6 +158,7 @@ const initialState: AdminState = {
 	dashboard: { data: null, loading: false, error: null },
 	pendingFiles: { items: [], loading: false, error: null },
 	userAnalytics: { data: null, loading: false, error: null },
+	documentAnalytics: { data: null, loading: false, error: null },
 	users: {
 		items: [],
 		query: '',
@@ -223,6 +235,14 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
 				...state,
 				userAnalytics: { ...state.userAnalytics, data: action.payload },
 			};
+		case 'SET_DOCUMENT_ANALYTICS_LOADING':
+			return { ...state, documentAnalytics: { ...state.documentAnalytics, loading: action.payload } };
+		case 'SET_DOCUMENT_ANALYTICS_DATA':
+			return { ...state, documentAnalytics: { ...state.documentAnalytics, data: action.payload } };
+		case 'SET_DOCUMENT_ANALYTICS_ERROR':
+			return { ...state, documentAnalytics: { ...state.documentAnalytics, error: action.payload } };
+		case 'DISPATCH_DOCUMENT_ANALYTICS_UPDATE':
+			return { ...state, documentAnalytics: { ...state.documentAnalytics, data: action.payload } };
 		case 'SET_PENDING_LOADING':
 			return {
 				...state,
@@ -578,6 +598,19 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 		}
 	}, []);
 
+	const fetchDocumentAnalytics = useCallback(async () => {
+		dispatch({ type: 'SET_DOCUMENT_ANALYTICS_LOADING', payload: true });
+		try {
+			const data = await getDocumentAnalytics();
+			dispatch({ type: 'SET_DOCUMENT_ANALYTICS_DATA', payload: data });
+			dispatch({ type: 'SET_DOCUMENT_ANALYTICS_ERROR', payload: null });
+		} catch (error) {
+			dispatch({ type: 'SET_DOCUMENT_ANALYTICS_ERROR', payload: getAdminErrorMessage(error) });
+		} finally {
+			dispatch({ type: 'SET_DOCUMENT_ANALYTICS_LOADING', payload: false });
+		}
+	}, []);
+
 	const patchUser = useCallback((user: AdminUserListItem) => {
 		dispatch({ type: 'PATCH_USER', payload: user });
 	}, []);
@@ -595,6 +628,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 				fetchPendingFiles,
 				fetchUsers,
 				fetchUserAnalytics,
+				fetchDocumentAnalytics,
 				fetchDocuments,
 				patchUser,
 				patchDocument,

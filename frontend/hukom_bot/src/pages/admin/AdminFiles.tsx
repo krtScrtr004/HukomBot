@@ -1,18 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { EVENT_BASE_URL_V1 } from '@/services/apiClient';
 import { useAdmin } from '@/contexts/AdminContext';
 import DataTable, { type DataTableColumn } from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
-import DocumentCard from '@/components/admin/files/DocumentCard';
-import AdminFilesSidebar from '@/components/admin/files/AdminFilesSidebar';
 import DocumentDetailModal from '@/components/admin/files/DocumentDetailModal';
 import FileReviewActions from '@/components/admin/files/FileReviewActions';
-import UploadDocumentModal from '@/components/UploadDocumentModal';
-import type { AdminDocumentListItem } from '@/types/admin';
+import type { AdminDocumentAnalytics, AdminDocumentListItem } from '@/types/admin';
 import { ADMIN_DOCUMENTS_PAGE_SIZE } from '@/types/admin';
 import type { UploadStatus } from '@/types/workspace';
-
-type ViewMode = 'grid' | 'table';
 
 const STATUS_FILTERS: { label: string; value: UploadStatus | 'all'; icon: string }[] = [
 	{ label: 'All Files', value: 'all', icon: 'bi-files' },
@@ -56,18 +52,69 @@ function getFileIcon(filename: string) {
 	}
 }
 
+function parseDocumentAnalyticsEvent(eventData: string): AdminDocumentAnalytics | null {
+	try {
+		const parsed: unknown = JSON.parse(eventData.trim());
+		if (!parsed || typeof parsed !== 'object') return null;
+		const payload = parsed as { success?: unknown; data?: unknown };
+		if ('success' in payload) {
+			return payload.success === true && payload.data && typeof payload.data === 'object'
+				? payload.data as AdminDocumentAnalytics
+				: null;
+		}
+		return parsed as AdminDocumentAnalytics;
+	} catch {
+		return null;
+	}
+}
+
+function DocumentAnalytics({ data, loading }: { data: AdminDocumentAnalytics | null; loading: boolean }) {
+	if (loading && !data) return <div className="rounded-sm border border-border bg-surface p-8 text-center text-sm text-text-muted">Loading document analytics...</div>;
+	if (!data) return null;
+	const statuses = Object.entries(data.status_count);
+	const monthly = Object.entries(data.monthly_upload_count);
+	const monthlyMax = Math.max(...monthly.map(([, value]) => value), 1);
+	const types = Object.entries(data.type_count).filter(([, value]) => value > 0).sort(([, a], [, b]) => b - a).slice(0, 8);
+	const typeMax = Math.max(...types.map(([, value]) => value), 1);
+	return <section className="space-y-4" aria-label="Document analytics">
+		<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+			{[['Total documents', data.total_count, 'bi-file-earmark-text-fill', 'text-primary'], ['New uploads', data.new_upload_count, 'bi-cloud-arrow-up-fill', 'text-info'], ['Pending review', data.status_count.pending, 'bi-hourglass-split', 'text-warning'], ['Processing', data.status_count.ongoing, 'bi-arrow-repeat', 'text-info'], ['Completed', data.status_count.completed, 'bi-check-circle-fill', 'text-success']].map(([label, value, icon, tone]) => <article key={String(label)} className="flex items-center gap-4 rounded-sm border border-border bg-surface p-4 shadow-sm"><span className={`flex h-10 w-10 items-center justify-center rounded-sm bg-hover ${tone}`}><i className={`bi ${icon} text-lg`} /></span><div><p className="text-xs text-text-secondary">{label}</p><p className="mt-1 text-2xl font-semibold">{Number(value).toLocaleString()}</p></div></article>)}
+		</div>
+		<div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+			<article className="rounded-sm border border-border bg-surface p-5"><h2 className="font-semibold">Upload activity</h2><p className="mt-1 text-xs text-text-secondary">Monthly document ingestion</p><div className="mt-6 flex h-40 items-end gap-2 border-b border-border">{monthly.map(([month, value]) => <div key={month} className="group flex min-w-0 flex-1 flex-col items-center gap-2"><div className="w-full rounded-t-sm bg-primary/70 group-hover:bg-primary" style={{ height: `${Math.max((value / monthlyMax) * 100, 3)}%` }} title={`${month}: ${value}`} /><span className="text-[10px] text-text-muted">{month.slice(0, 3)}</span></div>)}</div></article>
+			<article className="rounded-sm border border-border bg-surface p-5"><h2 className="font-semibold">Status distribution</h2><p className="mt-1 text-xs text-text-secondary">Current document pipeline</p><div className="mt-5 space-y-3">{statuses.map(([status, value]) => <div key={status}><div className="mb-1 flex justify-between text-xs"><span className="capitalize text-text-secondary">{status}</span><strong>{value}</strong></div><div className="h-2 rounded-full bg-hover"><div className={`h-full rounded-full ${status === 'completed' ? 'bg-success' : status === 'pending' ? 'bg-warning' : status === 'failed' || status === 'rejected' ? 'bg-danger' : 'bg-info'}`} style={{ width: `${Math.max((value / Math.max(data.total_count, 1)) * 100, value ? 4 : 0)}%` }} /></div></div>)}</div></article>
+		</div>
+		<article className="rounded-sm border border-border bg-surface p-5"><h2 className="font-semibold">Documents by type</h2><p className="mt-1 text-xs text-text-secondary">Top legal document categories</p><div className="mt-5 grid gap-x-8 gap-y-3 md:grid-cols-2">{types.map(([type, value]) => <div key={type} className="grid grid-cols-[minmax(7rem,12rem)_1fr_2rem] items-center gap-3 text-xs"><span className="truncate capitalize text-text-secondary">{type.replaceAll('_', ' ')}</span><div className="h-2 rounded-full bg-hover"><div className="h-full rounded-full bg-primary" style={{ width: `${(value / typeMax) * 100}%` }} /></div><strong className="text-right">{value}</strong></div>)}</div></article>
+		{data.most_upload_user.length > 0 && <article className="rounded-sm border border-border bg-surface p-5"><div className="flex items-center justify-between"><div><h2 className="font-semibold">Top uploaders</h2><p className="mt-1 text-xs text-text-secondary">Users with the most uploaded documents</p></div><i className="bi bi-trophy text-warning" aria-hidden="true" /></div><div className="mt-5 divide-y divide-border">{data.most_upload_user.slice(0, 10).map((user, index) => <div key={user.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{user.first_name} {user.last_name}</p><p className="truncate text-xs text-text-muted">{user.email}</p></div><strong className="text-sm">{user.upload_count.toLocaleString()}</strong><span className="text-xs text-text-muted">uploads</span></div>)}</div></article>}
+	</section>;
+}
+
 export default function AdminFilesPage() {
-	const { state, dispatch, fetchDocuments } = useAdmin();
-	const { documents } = state;
+	const { state, dispatch, fetchDocuments, fetchDocumentAnalytics } = useAdmin();
+	const { documents, documentAnalytics } = state;
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchTerm, setSearchTerm] = useState('');
-	const [viewMode, setViewMode] = useState<ViewMode>('grid');
 	const [selectedDocument, setSelectedDocument] = useState<AdminDocumentListItem | null>(null);
-	const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
 	const initFromUrlRef = useRef(false);
-	const fetchRef = useRef(fetchDocuments);
-	fetchRef.current = fetchDocuments;
+
+	useEffect(() => { void fetchDocumentAnalytics(); }, [fetchDocumentAnalytics]);
+
+	useEffect(() => {
+		let stream: EventSource | null = null;
+		const open = () => {
+			if (document.hidden || stream) return;
+			stream = new EventSource(`${EVENT_BASE_URL_V1}/admin/documents`, { withCredentials: true });
+			stream.onmessage = (event) => {
+				const data = parseDocumentAnalyticsEvent(event.data);
+				if (data) dispatch({ type: 'DISPATCH_DOCUMENT_ANALYTICS_UPDATE', payload: data });
+			};
+		};
+		open();
+		const onVisibility = () => { if (document.hidden) { stream?.close(); stream = null; } else open(); };
+		document.addEventListener('visibilitychange', onVisibility);
+		return () => { stream?.close(); document.removeEventListener('visibilitychange', onVisibility); };
+	}, [dispatch]);
 
 	useEffect(() => {
 		if (initFromUrlRef.current) return;
@@ -101,8 +148,9 @@ export default function AdminFilesPage() {
 	}, [searchTerm, dispatch]);
 
 	useEffect(() => {
-		void fetchRef.current();
+		void fetchDocuments();
 	}, [
+		fetchDocuments,
 		documents.offset,
 		documents.query,
 		documents.statusFilter,
@@ -233,7 +281,7 @@ export default function AdminFilesPage() {
 	];
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-4">
 			{/* Page Header */}
 			<header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
 				<div>
@@ -251,10 +299,9 @@ export default function AdminFilesPage() {
 				</div>
 			</header>
 
-			{/* 2-Column Knowledge Base & Pipeline Split Layout */}
-			<div className="grid gap-6 lg:grid-cols-3 items-start">
-				{/* Main Documents Explorer (Left 2 Columns) */}
-				<main className="lg:col-span-2 space-y-4">
+			<DocumentAnalytics data={documentAnalytics.data} loading={documentAnalytics.loading} />
+
+			<main className="space-y-4">
 					<div className="rounded-lg border border-border bg-surface p-5 shadow-xs space-y-4">
 						{/* Search Bar & View Mode Switcher */}
 						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -270,33 +317,6 @@ export default function AdminFilesPage() {
 								/>
 							</div>
 
-							{/* View Mode Switcher (Grid vs Table) */}
-							<div className="flex items-center gap-1 rounded-md border border-border bg-background p-1 self-end sm:self-auto shrink-0">
-								<button
-									type="button"
-									onClick={() => setViewMode('grid')}
-									className={`px-3 py-1.5 rounded-sm text-xs font-medium flex items-center gap-1.5 transition-colors ${
-										viewMode === 'grid'
-											? 'bg-surface text-primary shadow-xs border border-border'
-											: 'text-text-secondary hover:text-text-primary'
-									}`}
-									title="Grid View"
-								>
-									<i className="bi bi-grid-fill" /> Grid
-								</button>
-								<button
-									type="button"
-									onClick={() => setViewMode('table')}
-									className={`px-3 py-1.5 rounded-sm text-xs font-medium flex items-center gap-1.5 transition-colors ${
-										viewMode === 'table'
-											? 'bg-surface text-primary shadow-xs border border-border'
-											: 'text-text-secondary hover:text-text-primary'
-									}`}
-									title="Table View"
-								>
-									<i className="bi bi-[#list-task]" /> Table
-								</button>
-							</div>
 						</div>
 
 						{/* Status Filter Tab Pills */}
@@ -339,42 +359,19 @@ export default function AdminFilesPage() {
 							</div>
 						) : null}
 
-						{/* Content Rendering: Grid Mode vs Table Mode */}
-						{viewMode === 'grid' ? (
-							documents.items.length > 0 ? (
-								<div className="grid gap-4 sm:grid-cols-2 pt-2">
-									{documents.items.map((doc) => (
-										<DocumentCard
-											key={doc.id}
-											document={doc}
-											onSelect={(item) => setSelectedDocument(item)}
-										/>
-									))}
-								</div>
-							) : (
-								<div className="py-12 text-center text-text-muted text-sm border border-dashed border-border rounded-lg bg-surface-muted">
-									<i className="bi bi-folder-x text-3xl text-text-muted block mb-2" />
-									{emptyMessageForFilter(documents.statusFilter)}
-								</div>
-							)
-						) : (
-							<DataTable
-								columns={columns}
-								rows={documents.items}
-								rowKey={(row) => row.id}
-								loading={documents.loading}
-								error={documents.error}
-								emptyMessage={emptyMessageForFilter(documents.statusFilter)}
-								sortColumn={documents.column[0]}
-								sortOrder={documents.order}
-								onSortChange={handleSortChange}
-								onRowClick={(row) => setSelectedDocument(row)}
-								onRetry={() => {
-									dispatch({ type: 'SET_DOCS_OFFSET', payload: 0 });
-									void fetchDocuments();
-								}}
-							/>
-						)}
+						<DataTable
+							columns={columns}
+							rows={documents.items}
+							rowKey={(row) => row.id}
+							loading={documents.loading}
+							error={documents.error}
+							emptyMessage={emptyMessageForFilter(documents.statusFilter)}
+							sortColumn={documents.column[0]}
+							sortOrder={documents.order}
+							onSortChange={handleSortChange}
+							onRowClick={(row) => setSelectedDocument(row)}
+							onRetry={() => void fetchDocuments()}
+						/>
 
 						{/* Pagination Controls */}
 						<div className="flex items-center justify-between pt-3 border-t border-border">
@@ -418,10 +415,6 @@ export default function AdminFilesPage() {
 					</div>
 				</main>
 
-				{/* Sidebar Section (Right 1 Column) */}
-				<AdminFilesSidebar />
-			</div>
-
 			{/* Document Detail & Review Modal */}
 			<DocumentDetailModal
 				open={!!selectedDocument}
@@ -429,11 +422,6 @@ export default function AdminFilesPage() {
 				onClose={() => setSelectedDocument(null)}
 			/>
 
-			{/* Upload Document Modal Shortcut */}
-			<UploadDocumentModal
-				open={uploadModalOpen}
-				onClose={() => setUploadModalOpen(false)}
-			/>
 		</div>
 	);
 }

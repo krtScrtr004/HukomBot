@@ -2,8 +2,13 @@ import { apiFetch } from '@/services/apiClient';
 import type {
 	AdminDocumentListItem,
 	AdminDocumentsQueryParams,
+	AdminDocumentAnalytics,
 } from '@/types/admin';
 import type { LegalDocumentType, UploadStatus } from '@/types/workspace';
+
+export async function getDocumentAnalytics(): Promise<AdminDocumentAnalytics> {
+	return apiFetch<AdminDocumentAnalytics>('/admin/documents');
+}
 
 /** GET /documents/ with query params */
 export async function listDocuments(
