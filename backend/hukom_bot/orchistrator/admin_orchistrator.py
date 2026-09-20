@@ -131,7 +131,7 @@ class AdminOrchistrator:
             )
 
             most_upload_users = await self._user_service.get_most_upload_count(
-                limit=15, connection=conn
+                limit=5, connection=conn
             )
             to_return.most_upload_user = [
                 UserCaster.base_to_response(user) for user in most_upload_users

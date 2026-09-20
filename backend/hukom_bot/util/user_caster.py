@@ -45,7 +45,7 @@ class UserCaster:
             profile_picture=user.profile_picture,
             provider=user.provider,
             is_active=user.is_active,
-            upload_count=0,
+            upload_count=user.upload_count,
             created_at=user.created_at
         )
         
