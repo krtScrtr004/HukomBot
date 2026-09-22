@@ -185,7 +185,7 @@ export default function SessionExplorer({
 				<button
 					type="button"
 					onClick={() => setDropdownOpen((prev) => !prev)}
-					className="flex items-center gap-2.5 hover:bg-hover p-1.5 rounded-sm flex-1 text-left min-w-0 transition-colors cursor-pointer"
+					className="flex items-center gap-2.5 hover:bg-hover rounded-sm flex-1 text-left min-w-0 transition-colors cursor-pointer"
 					aria-label="User menu"
 					aria-expanded={dropdownOpen}
 					aria-haspopup="true"
@@ -232,7 +232,7 @@ export default function SessionExplorer({
 							onClick={() => setDropdownOpen(false)}
 							aria-hidden="true"
 						/>
-						<div className="absolute bottom-full left-3 right-3 mb-2 z-popover bg-surface border border-border rounded-sm shadow-md p-1.5 min-w-[200px] flex flex-col text-sm fade-in">
+						<div className="absolute bottom-full left-3 right-3 mb-2 z-popover bg-surface border border-border rounded-sm shadow-md p-1.5 min-w-50 flex flex-col text-sm fade-in">
 							<div className="px-3 py-2 border-b border-border mb-1 select-none">
 								<p className="font-semibold text-text-primary truncate">
 									{fullName}

@@ -240,7 +240,7 @@ export default function UserDetailPanel({
 								</p>
 							) : null}
 							<Link
-								to={`/admin/files?uploader_id=${user.id}`}
+								to={`/admin/documents?uploader_id=${user.id}`}
 								className="text-sm text-primary hover:underline"
 							>
 								View all in Uploaded Files

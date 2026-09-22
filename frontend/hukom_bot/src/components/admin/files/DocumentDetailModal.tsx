@@ -119,7 +119,7 @@ export default function DocumentDetailModal({
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="doc-detail-title"
-				className="relative z-10 w-150 rounded-lg bg-surface border border-border shadow-lg flex flex-col max-h-[90vh] overflow-hidden"
+				className="relative z-10 w-150 rounded-sm bg-surface border border-border shadow-lg flex flex-col max-h-[90vh] overflow-hidden"
 			>
 				{/* Modal Header */}
 				<header className="p-4 border-b border-border shrink-0 flex items-center justify-between bg-surface">

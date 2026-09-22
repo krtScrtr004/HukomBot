@@ -46,7 +46,7 @@ export default function WorkspaceLayout({
 
 				{/* Desktop version panel */}
 				<aside
-					className="hidden lg:flex flex-col shrink-0 border-l border-border bg-surface w-[var(--version-panel-width)]"
+					className="hidden lg:flex flex-col shrink-0 border-l border-border bg-surface w-(--version-panel-width)"
 					aria-label="Version explorer"
 				>
 					{versionPanel}
@@ -56,12 +56,12 @@ export default function WorkspaceLayout({
 				{versionPanelOpen && (
 					<>
 						<div
-							className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/40 lg:hidden"
+							className="fixed inset-0 z-(--z-modal-backdrop) bg-black/40 lg:hidden"
 							onClick={onVersionPanelClose}
 							aria-hidden="true"
 						/>
 						<aside
-							className="fixed inset-y-0 right-0 z-[var(--z-dialog)] w-[var(--version-panel-width)] flex flex-col border-l border-border bg-surface-overlay backdrop-blur-md lg:hidden"
+							className="fixed inset-y-0 right-0 z-(--z-dialog) w-(--version-panel-width) flex flex-col border-l border-border bg-surface-overlay backdrop-blur-md lg:hidden"
 							aria-label="Version explorer"
 							role="dialog"
 							aria-modal="true"

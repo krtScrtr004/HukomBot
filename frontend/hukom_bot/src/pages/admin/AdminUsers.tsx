@@ -166,7 +166,7 @@ export default function AdminUsersPage() {
 			render: (row) => {
 				const initials = `${row.first_name?.charAt(0) || ''}${row.last_name?.charAt(0) || ''}`.toUpperCase() || 'U';
 				return (
-					<div className="flex items-center gap-3 min-w-[180px]">
+					<div className="flex items-center gap-3 min-w-45">
 						<div className="relative h-9 w-9 rounded-full bg-surface-muted border border-border flex items-center justify-center overflow-hidden shrink-0">
 							{row.profile_picture ? (
 								<img
@@ -284,7 +284,7 @@ export default function AdminUsersPage() {
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-4">
 			{/* Page Header */}
 			<header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
 				<div>

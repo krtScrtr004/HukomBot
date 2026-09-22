@@ -431,7 +431,7 @@ interface WorkspaceContextValue {
 }
 
 // Create the workspace context
-const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
+export const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 /**
  * Provider component for the workspace context.

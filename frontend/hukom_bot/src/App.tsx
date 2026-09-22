@@ -74,7 +74,7 @@ export default function App() {
 						>
 							<Route index element={<AdminDashboardPage />} />
 							<Route path="users" element={<AdminUsersPage />} />
-							<Route path="files" element={<AdminFilesPage />} />
+							<Route path="documents" element={<AdminFilesPage />} />
 						</Route>
 					</Routes>
 				</AuthProvider>

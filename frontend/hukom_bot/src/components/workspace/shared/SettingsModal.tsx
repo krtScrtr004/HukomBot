@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { WorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { updateUserProfile, getUserTokenUsage } from '@/services/userService';
+import { getCurrentUser } from '@/services/authService';
 import { ApiError } from '@/services/apiClient';
 import { useToast } from '@/contexts/ToastProvider';
 import type { UserRole, UserTokenUsageResponse } from '@/types/user';
@@ -8,12 +10,29 @@ import type { UserRole, UserTokenUsageResponse } from '@/types/user';
 interface SettingsModalProps {
 	open: boolean;
 	onClose: () => void;
+	/** If provided, the modal will open on this tab instead of 'profile'. */
+	initialTab?: TabType;
 }
 
 type TabType = 'profile' | 'usage';
 
-export default function SettingsModal({ open, onClose }: SettingsModalProps) {
-	const { state, refreshUser, handleApiError } = useWorkspace();
+export default function SettingsModal({ open, onClose, initialTab }: SettingsModalProps) {
+	const workspaceCtx = useContext(WorkspaceContext);
+	const { user: authUser, login: authLogin } = useAuth();
+
+	// Use workspace context when available, otherwise fall back to AuthContext
+	const user = workspaceCtx ? workspaceCtx.state.user : authUser;
+	const refreshUser = workspaceCtx
+		? workspaceCtx.refreshUser
+		: async () => {
+				const updated = await getCurrentUser();
+				authLogin(updated);
+			};
+	const handleApiError = workspaceCtx
+		? workspaceCtx.handleApiError
+		: (err: unknown, context: string) => {
+				console.error(`Error in ${context}:`, err);
+			};
 	const { showToast } = useToast();
 
 	const [activeTab, setActiveTab] = useState<TabType>('profile');
@@ -37,20 +56,20 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const objectUrlRef = useRef<string | null>(null);
 
-	const isAdmin = state.user?.role === 'admin';
+	const isAdmin = user?.role === 'admin';
 
 	// Reset state and prefill form values when modal opens or user updates
 	useEffect(() => {
-		if (open && state.user) {
-			setFirstName(state.user.first_name || '');
-			setLastName(state.user.last_name || '');
-			setRole(state.user.role || 'standard');
+		if (open && user) {
+			setFirstName(user.first_name || '');
+			setLastName(user.last_name || '');
+			setRole(user.role || 'standard');
 			setProfileFile(null);
-			setProfilePreviewUrl(state.user.profile_picture || null);
+			setProfilePreviewUrl(user.profile_picture || null);
 			setError(null);
-			setActiveTab('profile');
+			setActiveTab(initialTab ?? 'profile');
 		}
-	}, [open, state.user]);
+	}, [open, user, initialTab]);
 
 	// Fetch token usage if we switch to usage tab
 	const fetchUsage = useCallback(async () => {
@@ -129,7 +148,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 	};
 
 	const handleSaveProfile = async () => {
-		if (!state.user) return;
+		if (!user) return;
 		if (!firstName.trim()) {
 			setError('First name is required.');
 			return;
@@ -156,7 +175,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 				formData.append('profile_picture', profileFile);
 			}
 
-			await updateUserProfile(state.user.id, formData);
+			await updateUserProfile(user.id, formData);
 			await refreshUser();
 			showToast('Profile updated successfully.', 'success');
 			onClose();
@@ -251,6 +270,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 					>
 						Profile Settings
 					</button>
+					{!isAdmin && (
 					<button
 						type="button"
 						onClick={() => setActiveTab('usage')}
@@ -265,6 +285,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 					>
 						Token Usage
 					</button>
+				)}
 				</nav>
 
 				{/* Content */}
@@ -370,7 +391,7 @@ export default function SettingsModal({ open, onClose }: SettingsModalProps) {
 									<input
 										id="settings-email"
 										type="email"
-										value={state.user?.email || ''}
+										value={user?.email || ''}
 										disabled
 										className="w-full h-(--input-height) rounded-sm border border-border bg-surface-muted px-3 text-sm text-text-secondary cursor-not-allowed opacity-70"
 									/>
