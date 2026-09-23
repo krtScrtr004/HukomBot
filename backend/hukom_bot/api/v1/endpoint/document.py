@@ -199,7 +199,7 @@ async def delete_document(
 
 @document_api_router.post("/bulk-delete")
 async def delete_document(
-    ids: Annotated[list[UUID], Path()],
+    ids: Annotated[list[UUID], Body()],
     document_service: Annotated[DocumentService, Depends(get_document_service)],
     pubsub_service: Annotated[PubsubService, Depends(get_pubsub_service)],
     _us: Annotated[User, Depends(verify_user)],
