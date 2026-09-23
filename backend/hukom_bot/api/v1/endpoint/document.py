@@ -99,9 +99,10 @@ async def upload_document(
     await service.publish(
         channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
     )
-    
+
     await service.publish(
-        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH, data="Document analytics data updated"
+        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH,
+        data="Document analytics data updated",
     )
 
     return SuccessResponse(message=result.message, data=result.data)
@@ -126,11 +127,11 @@ async def update_document(
     await service.publish(
         channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
     )
-    
-    await service.publish(
-        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH, data="Document analytics data updated"
-    )
 
+    await service.publish(
+        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH,
+        data="Document analytics data updated",
+    )
 
     return SuccessResponse(
         message="Document info updated successfully", data={"id": document_id}
@@ -164,9 +165,35 @@ async def approve_document(
     await pubsub_service.publish(
         channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
     )
-    
+
     await pubsub_service.publish(
-        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH, data="Document analytics data updated"
+        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH,
+        data="Document analytics data updated",
     )
 
     return SuccessResponse(message=result.message, data=result.data["response"])
+
+
+@document_api_router.delete("/{document_id}")
+async def delete_document(
+    document_id: Annotated[UUID, Path()],
+    document_service: Annotated[DocumentService, Depends(get_document_service)],
+    pubsub_service: Annotated[PubsubService, Depends(get_pubsub_service)],
+    # _us: Annotated[User, Depends(verify_user)],
+    # _rl=Depends(rate_limit(limit=10, window=60)),
+    # _rr=Depends(require_role(UserRole.ADMIN)),
+):
+    await document_service.delete(id=document_id)
+
+    await pubsub_service.publish(
+        channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+    )
+
+    await pubsub_service.publish(
+        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH,
+        data="Document analytics data updated",
+    )
+
+    return SuccessResponse(
+        message="Document deleted successfully", data={"id": document_id}
+    )
