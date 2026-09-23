@@ -76,7 +76,7 @@ class DocumentService:
         return await self._document_repo.count_monthly_upload(
             year=year, connection=connection
         )
-        
+
     async def count_registration(
         self, interval_days: int = 360, connection: AsyncConnection = None
     ):
@@ -92,6 +92,9 @@ class DocumentService:
         return await self._document_repo.count_by_document_type(
             date_range=date_range, connection=connection
         )
+
+    async def delete(self, id: UUID, connection: AsyncConnection = None):
+        await self._document_repo.delete(id=id, connection=connection)
 
     # Others =======
 

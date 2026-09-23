@@ -484,15 +484,11 @@ class DocumentRepository:
 
         try:
             async with self._database.connection() as conn:
-                return await self._count_monthly_upload_implement(
-                    conn=conn, year=year
-                )
+                return await self._count_monthly_upload_implement(conn=conn, year=year)
         except errors.OperationalError:
             raise
 
-    async def _count_monthly_upload_implement(
-        self, conn: AsyncConnection, year: int
-    ):
+    async def _count_monthly_upload_implement(self, conn: AsyncConnection, year: int):
         async with conn.cursor() as cur:
             await cur.execute(
                 f"""
@@ -520,21 +516,21 @@ class DocumentRepository:
             return MonthlyCount(**monthly_counts)
 
     async def count_registration(
-            self, interval_days: int = 360, connection: AsyncConnection = None
-        ):
-            if connection is not None:
+        self, interval_days: int = 360, connection: AsyncConnection = None
+    ):
+        if connection is not None:
+            return await self._count_registration_implement(
+                conn=connection, interval_days=interval_days
+            )
+
+        try:
+            async with self._database.connection() as conn:
                 return await self._count_registration_implement(
-                    conn=connection, interval_days=interval_days
+                    conn=conn, interval_days=interval_days
                 )
-    
-            try:
-                async with self._database.connection() as conn:
-                    return await self._count_registration_implement(
-                        conn=conn, interval_days=interval_days
-                    )
-            except errors.OperationalError:
-                raise
-    
+        except errors.OperationalError:
+            raise
+
     async def _count_registration_implement(
         self, conn: AsyncConnection, interval_days: int
     ):
@@ -602,29 +598,21 @@ class DocumentRepository:
 
     # DELETE ============================================================================
 
-    async def delete_many(self, ids: list[UUID], connection: AsyncConnection = None):
-        if not ids:
-            return
-
+    async def delete(self, id: UUID, connection: AsyncConnection = None):
         if connection is not None:
-            return await self._delete_many_implement(connection, ids)
+            await self._delete_implement(conn=connection, id=id)
 
         async with self._database.connection() as conn:
             try:
-                result = await self._delete_many_implement(conn, ids)
+                result = await self._delete_implement(conn=conn, id=id)
                 await conn.commit()
-                return result
             except (errors.IntegrityError, errors.OperationalError) as ex:
                 await conn.rollback()
                 raise
 
-    async def _delete_many_implement(self, conn: AsyncConnection, ids: list[UUID]):
+    async def _delete_implement(self, conn: AsyncConnection, id: UUID):
         async with conn.cursor() as cur:
-            placeholders = ", ".join(["%s"] * len(ids))
             await cur.execute(
-                f"""
-                DELETE FROM documents
-                WHERE id IN ({placeholders})
-                """,
-                ids,
+                """DELETE FROM documents WHERE id = %s""",
+                (id,),
             )
