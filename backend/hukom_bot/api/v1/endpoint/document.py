@@ -179,9 +179,9 @@ async def delete_document(
     document_id: Annotated[UUID, Path()],
     document_service: Annotated[DocumentService, Depends(get_document_service)],
     pubsub_service: Annotated[PubsubService, Depends(get_pubsub_service)],
-    # _us: Annotated[User, Depends(verify_user)],
-    # _rl=Depends(rate_limit(limit=10, window=60)),
-    # _rr=Depends(require_role(UserRole.ADMIN)),
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=10, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
 ):
     await document_service.delete(id=document_id)
 
@@ -197,3 +197,26 @@ async def delete_document(
     return SuccessResponse(
         message="Document deleted successfully", data={"id": document_id}
     )
+
+
+@document_api_router.post("/bulk-delete")
+async def delete_document(
+    ids: Annotated[list[UUID], Path()],
+    document_service: Annotated[DocumentService, Depends(get_document_service)],
+    pubsub_service: Annotated[PubsubService, Depends(get_pubsub_service)],
+    _us: Annotated[User, Depends(verify_user)],
+    _rl=Depends(rate_limit(limit=10, window=60)),
+    _rr=Depends(require_role(UserRole.ADMIN)),
+):
+    await document_service.delete_many(ids=ids)
+
+    await pubsub_service.publish(
+        channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+    )
+
+    await pubsub_service.publish(
+        channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH,
+        data="Document analytics data updated",
+    )
+
+    return SuccessResponse(message="Document deleted successfully", data={"ids": ids})
