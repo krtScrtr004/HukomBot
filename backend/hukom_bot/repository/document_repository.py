@@ -306,12 +306,8 @@ class DocumentRepository:
             )
 
             rows = await cur.fetchall()
+            return [Document.model_validate(row) for row in rows]
 
-        documents = []
-        for row in rows:
-            documents.append(Document.model_validate(row))
-
-            return documents
 
     async def all(
         self, param: DocumentGetAll, connection: AsyncConnection = None
@@ -355,12 +351,8 @@ class DocumentRepository:
             )
 
             rows = await cur.fetchall()
+            return [Document.model_validate(row) for row in rows]
 
-        documents = []
-        for row in rows:
-            documents.append(Document.model_validate(row))
-
-        return documents
 
     async def count_all(
         self, date_range: DateRangeableMixin = None, connection: AsyncConnection = None
@@ -615,4 +607,30 @@ class DocumentRepository:
             await cur.execute(
                 """DELETE FROM documents WHERE id = %s""",
                 (id,),
+            )
+
+    async def delete_many(self, ids: list[UUID], connection: AsyncConnection = None):
+        if not ids:
+            return
+
+        if connection is not None:
+            await self._delete_many_implement(connection, ids)
+
+        async with self._database.connection() as conn:
+            try:
+                result = await self._delete_many_implement(conn, ids)
+                await conn.commit()
+            except (errors.IntegrityError, errors.OperationalError) as ex:
+                await conn.rollback()
+                raise
+
+    async def _delete_many_implement(self, conn: AsyncConnection, ids: list[UUID]):
+        async with conn.cursor() as cur:
+            placeholders = ", ".join(["%s"] * len(ids))
+            await cur.execute(
+                f"""
+                DELETE FROM documents
+                WHERE id IN ({placeholders})
+                """,
+                ids,
             )

@@ -96,6 +96,9 @@ class DocumentService:
     async def delete(self, id: UUID, connection: AsyncConnection = None):
         await self._document_repo.delete(id=id, connection=connection)
 
+    async def delete_many(self, ids: list[UUID], connection: AsyncConnection = None):
+        await self._document_repo.delete_many(ids=ids, connection=connection)
+
     # Others =======
 
     def get_file_from_storage(self, upload_file_name, file_type):
