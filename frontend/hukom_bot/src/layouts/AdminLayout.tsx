@@ -4,6 +4,7 @@ import Sidebar from '@/components/ui/Sidebar';
 import Header from '@/components/workspace/Header';
 import UploadDocumentModal from '@/components/UploadDocumentModal';
 import SettingsModal from '@/components/workspace/shared/SettingsModal';
+import UserDocumentsModal from '@/components/shared/UserDocumentsModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { logout } from '@/services/authService';
 // import { profile } from 'console';
@@ -21,6 +22,7 @@ export default function AdminLayout() {
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [uploadModalOpen, setUploadModalOpen] = useState(false);
 	const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+	const [myDocumentsModalOpen, setMyDocumentsModalOpen] = useState(false);
 
 	const handleSignOut = async () => {
 		await logout();
@@ -30,9 +32,11 @@ export default function AdminLayout() {
 	return (
 		<div className="flex h-dvh flex-col bg-background text-text-primary">
 			<Header
+				userName={user ? `${user.first_name} ${user.last_name}` : undefined}
 				userRole={user?.role}
 				onToggleSidebar={() => setSidebarOpen(true)}
 				onUploadClick={() => setUploadModalOpen(true)}
+				onMyDocumentsClick={() => setMyDocumentsModalOpen(true)}
 			/>
 
 			<div className="relative flex min-h-0 min-w-0 flex-1">
@@ -63,6 +67,14 @@ export default function AdminLayout() {
 				open={settingsModalOpen}
 				onClose={() => setSettingsModalOpen(false)}
 				initialTab="profile"
+			/>
+
+			<UserDocumentsModal
+				open={myDocumentsModalOpen}
+				uploaderId={user?.id || null}
+				userName={user ? `${user.first_name} ${user.last_name}` : undefined}
+				isAdmin={user?.role === 'admin'}
+				onClose={() => setMyDocumentsModalOpen(false)}
 			/>
 		</div>
 	);

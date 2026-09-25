@@ -1,22 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import type { AdminDocumentListItem } from '@/types/admin';
 import type { LegalDocumentType } from '@/types/workspace';
 import {
 	approveDocument,
 	rejectDocument,
+	deleteDocument,
 } from '@/services/adminDocumentsService';
-import { useAdmin } from '@/contexts/AdminContext';
+import { AdminContext } from '@/contexts/AdminContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastProvider';
 import { getAdminErrorMessage } from '@/utils/adminErrors';
 import { LEGAL_DOCUMENT_TYPES } from '@/constants/legalDocumentTypes';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CharacterCounter from '@/components/ui/CharacterCounter';
 import ErrorText from '@/components/ui/ErrorText';
+import ConfirmDialog from '@/components/workspace/shared/ConfirmDialog';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface DocumentDetailModalProps {
 	open: boolean;
 	document: AdminDocumentListItem | null;
+	readOnly?: boolean;
 	onClose: () => void;
 }
 
@@ -25,15 +29,20 @@ const MAX_REJECTION_LENGTH = 500;
 export default function DocumentDetailModal({
 	open,
 	document: doc,
+	readOnly = false,
 	onClose,
 }: DocumentDetailModalProps) {
-	const { patchDocument } = useAdmin();
+	const adminCtx = useContext(AdminContext);
+	const { user: currentUser } = useAuth();
 	const { showToast } = useToast();
 	const [documentType, setDocumentType] = useState<LegalDocumentType>('contract');
 	const [rejectionMessage, setRejectionMessage] = useState('');
 	const [rejectionError, setRejectionError] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	const [showRejectInput, setShowRejectInput] = useState(false);
+	const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+	const isAdmin = !readOnly && currentUser?.role === 'admin';
 
 	const dialogRef = useRef<HTMLDivElement>(null);
 	useFocusTrap(dialogRef, open);
@@ -44,6 +53,7 @@ export default function DocumentDetailModal({
 			setRejectionMessage(doc.rejection_message || '');
 			setRejectionError(null);
 			setShowRejectInput(false);
+			setConfirmDeleteOpen(false);
 		}
 	}, [open, doc]);
 
@@ -62,7 +72,7 @@ export default function DocumentDetailModal({
 		setSubmitting(true);
 		try {
 			await approveDocument(doc.id, documentType);
-			patchDocument({
+			adminCtx?.patchDocument({
 				...doc,
 				document_type: documentType,
 				upload_status: 'ongoing',
@@ -86,13 +96,29 @@ export default function DocumentDetailModal({
 		setSubmitting(true);
 		try {
 			await rejectDocument(doc.id, trimmed);
-			patchDocument({
+			adminCtx?.patchDocument({
 				...doc,
 				upload_status: 'rejected',
 				rejection_message: trimmed,
 			});
 			showToast('Document rejected', 'success');
 			onClose();
+		} catch (error) {
+			showToast(getAdminErrorMessage(error), 'error');
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	const handleDelete = async () => {
+		setSubmitting(true);
+		try {
+			await deleteDocument(doc.id);
+			showToast('Document deleted successfully', 'success');
+			setConfirmDeleteOpen(false);
+			onClose();
+			adminCtx?.fetchDocuments();
+			adminCtx?.fetchDocumentAnalytics();
 		} catch (error) {
 			showToast(getAdminErrorMessage(error), 'error');
 		} finally {
@@ -203,9 +229,9 @@ export default function DocumentDetailModal({
 						<select
 							id="doc-type-select"
 							value={documentType}
-							disabled={submitting || doc.upload_status !== 'pending'}
+							disabled={!isAdmin || submitting || doc.upload_status === 'rejected'}
 							onChange={(e) => setDocumentType(e.target.value as LegalDocumentType)}
-							className="w-full h-(--input-height) rounded-sm border border-border bg-background px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+							className="w-full h-(--input-height) rounded-sm border border-border bg-background px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
 						>
 							{LEGAL_DOCUMENT_TYPES.map((opt) => (
 								<option key={opt.value} value={opt.value}>
@@ -226,7 +252,7 @@ export default function DocumentDetailModal({
 					) : null}
 
 					{/* Inline Disapproval Reason Form for Pending files */}
-					{doc.upload_status === 'pending' && showRejectInput ? (
+					{isAdmin && doc.upload_status === 'pending' && showRejectInput ? (
 						<div className="rounded-lg border border-danger/30 bg-danger/5 p-4 space-y-2">
 							<label
 								htmlFor="modal-reject-reason"
@@ -282,16 +308,28 @@ export default function DocumentDetailModal({
 
 				{/* Modal Footer */}
 				<footer className="p-4 border-t border-border shrink-0 flex items-center justify-between bg-surface">
-					<button
-						type="button"
-						onClick={onClose}
-						disabled={submitting}
-						className="px-4 py-2 rounded-sm text-sm border border-border text-text-primary hover:bg-hover transition-colors disabled:opacity-50"
-					>
-						Close
-					</button>
+					<div className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={onClose}
+							disabled={submitting}
+							className="px-4 py-2 rounded-sm text-sm border border-border text-text-primary hover:bg-hover transition-colors disabled:opacity-50"
+						>
+							Close
+						</button>
+						{isAdmin && (
+							<button
+								type="button"
+								onClick={() => setConfirmDeleteOpen(true)}
+								disabled={submitting}
+								className="px-3 py-2 rounded-sm text-sm border border-danger/40 text-danger hover:bg-danger/10 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+							>
+								<i className="bi bi-trash" /> Delete
+							</button>
+						)}
+					</div>
 
-					{doc.upload_status === 'pending' && !showRejectInput ? (
+					{isAdmin && doc.upload_status === 'pending' && !showRejectInput ? (
 						<div className="flex items-center gap-2">
 							<button
 								type="button"
@@ -314,6 +352,16 @@ export default function DocumentDetailModal({
 					) : null}
 				</footer>
 			</div>
+
+			<ConfirmDialog
+				open={confirmDeleteOpen}
+				title="Delete Document"
+				message={`Are you sure you want to permanently delete "${doc.original_file_name}"? This action cannot be undone.`}
+				confirmLabel={submitting ? 'Deleting…' : 'Delete Document'}
+				variant="danger"
+				onConfirm={() => void handleDelete()}
+				onCancel={() => !submitting && setConfirmDeleteOpen(false)}
+			/>
 		</div>
 	);
 }

@@ -54,3 +54,32 @@ export async function rejectDocument(
 		},
 	});
 }
+
+/** DELETE /documents/{document_id} */
+export async function deleteDocument(
+	documentId: string,
+): Promise<{ id: string }> {
+	return apiFetch<{ id: string }>(`/documents/${documentId}`, {
+		method: 'DELETE',
+	});
+}
+
+/** POST /documents/bulk-delete */
+export async function bulkDeleteDocuments(
+	ids: string[],
+): Promise<{ ids: string[] }> {
+	return apiFetch<{ ids: string[] }>('/documents/bulk-delete', {
+		method: 'POST',
+		body: ids,
+	});
+}
+
+/** GET /documents/{document_id} */
+export async function getDocumentInfo(
+	documentId: string,
+): Promise<AdminDocumentListItem> {
+	return apiFetch<AdminDocumentListItem>(`/documents/${documentId}`);
+}
+
+
+

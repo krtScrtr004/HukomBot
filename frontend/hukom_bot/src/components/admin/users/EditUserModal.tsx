@@ -11,6 +11,9 @@ import CharacterCounter from '@/components/ui/CharacterCounter';
 import ErrorText from '@/components/ui/ErrorText';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 
+import UserDocumentsModal from '@/components/shared/UserDocumentsModal';
+import EmbeddedUserDocumentsView from './EmbeddedUserDocumentsView';
+
 interface EditUserModalProps {
 	open: boolean;
 	user: AdminUserListItem | null;
@@ -20,6 +23,8 @@ interface EditUserModalProps {
 const MAX_NAME_LENGTH = 255;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+type ModalTab = 'profile' | 'documents';
+
 export default function EditUserModal({
 	open,
 	user,
@@ -28,6 +33,8 @@ export default function EditUserModal({
 	const { patchUser } = useAdmin();
 	const { user: currentUser } = useAuth();
 	const { showToast } = useToast();
+
+	const [activeTab, setActiveTab] = useState<ModalTab>('profile');
 	const [firstName, setFirstName] = useState('');
 	const [lastName, setLastName] = useState('');
 	const [role, setRole] = useState<UserRole>('standard');
@@ -41,6 +48,7 @@ export default function EditUserModal({
 	);
 	const [fileError, setFileError] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
+	const [userDocsModalOpen, setUserDocsModalOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const objectUrlRef = useRef<string | null>(null);
 	const dialogRef = useRef<HTMLDivElement>(null);
@@ -48,10 +56,11 @@ export default function EditUserModal({
 
 	useEffect(() => {
 		if (open && user) {
+			setActiveTab('profile');
 			setFirstName(user.first_name);
 			setLastName(user.last_name);
 			setRole(user.role);
-				setIsActive(user.is_active);
+			setIsActive(user.is_active);
 			setProfileFile(null);
 			setProfilePreviewUrl(user.profile_picture ?? null);
 			setFieldErrors({});
@@ -162,13 +171,13 @@ export default function EditUserModal({
 				aria-hidden="true"
 			/>
 
-			{/* Modal Container (Settings edit profile layout) */}
+			{/* Modal Container */}
 			<div
 				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="edit-user-title"
-				className="relative z-10 w-150 rounded-sm bg-surface border border-border shadow-lg flex flex-col max-h-[90vh] overflow-hidden"
+				className="relative z-10 w-sm max-w-2xl rounded-sm bg-surface border border-border shadow-lg flex flex-col max-h-[90vh] overflow-hidden"
 			>
 				{/* Modal Header */}
 				<header className="p-4 border-b border-border shrink-0 flex items-center justify-between bg-surface">
@@ -177,10 +186,10 @@ export default function EditUserModal({
 							id="edit-user-title"
 							className="text-lg font-semibold text-text-primary"
 						>
-							Edit User Profile
+							User Information & Settings
 						</h2>
 						<p className="text-xs text-text-muted mt-0.5">
-							Update user information, permissions, and profile image.
+							Manage profile credentials, permissions, and view uploaded files for {user.first_name} {user.last_name}.
 						</p>
 					</div>
 					<button
@@ -194,179 +203,211 @@ export default function EditUserModal({
 					</button>
 				</header>
 
+				{/* Modal Tabs Navigation */}
+				<nav className="flex border-b border-border bg-surface-muted px-4" aria-label="User info tabs">
+					<button
+						type="button"
+						onClick={() => setActiveTab('profile')}
+						className={`py-2.5 px-4 text-xs font-semibold border-b-2 transition-colors focus:outline-none flex items-center gap-1.5 ${
+							activeTab === 'profile'
+								? 'border-primary text-primary'
+								: 'border-transparent text-text-secondary hover:text-text-primary'
+						}`}
+					>
+						<i className="bi bi-person-badge" /> Profile Details
+					</button>
+					<button
+						type="button"
+						onClick={() => setActiveTab('documents')}
+						className={`py-2.5 px-4 text-xs font-semibold border-b-2 transition-colors focus:outline-none flex items-center gap-1.5 ${
+							activeTab === 'documents'
+								? 'border-primary text-primary'
+								: 'border-transparent text-text-secondary hover:text-text-primary'
+						}`}
+					>
+						<i className="bi bi-folder2-open" /> Uploaded Documents
+					</button>
+				</nav>
+
 				{/* Modal Body */}
-				<div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
-					{/* Profile Avatar & Upload Section */}
-					<div className="flex items-center gap-4">
-						<div className="relative w-20 h-20 rounded-full border border-border bg-surface-muted flex items-center justify-center overflow-hidden shrink-0">
-							{profilePreviewUrl ? (
-								<img
-									src={profilePreviewUrl}
-									alt="Profile preview"
-									className="w-full h-full object-cover"
+				{activeTab === 'profile' ? (
+					<div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
+						{/* Profile Avatar & Upload Section */}
+						<div className="flex items-center gap-4">
+							<div className="relative w-20 h-20 rounded-full border border-border bg-surface-muted flex items-center justify-center overflow-hidden shrink-0">
+								{profilePreviewUrl ? (
+									<img
+										src={profilePreviewUrl}
+										alt="Profile preview"
+										className="w-full h-full object-cover"
+									/>
+								) : (
+									<span className="text-2xl font-semibold text-text-secondary">
+										{getInitials()}
+									</span>
+								)}
+							</div>
+							<div className="space-y-1">
+								<label className="block text-sm font-medium text-text-primary">
+									Profile Picture
+								</label>
+								{currentUser?.id === user.id ? <p className="text-xs text-text-muted">Supports JPG, JPEG, or PNG. Maximum size 5MB.</p> : <p className="text-xs text-text-muted">Profile pictures can only be changed by the account owner.</p>}
+								{currentUser?.id === user.id && <>
+								<input
+									ref={fileInputRef}
+									type="file"
+									accept="image/*"
+									onChange={(e) =>
+										handleFileChange(e.target.files?.[0] ?? null)
+									}
+									className="hidden"
+									disabled={saving}
 								/>
-							) : (
-								<span className="text-2xl font-semibold text-text-secondary">
-									{getInitials()}
-								</span>
-							)}
+								<button
+									type="button"
+									onClick={() => fileInputRef.current?.click()}
+									disabled={saving}
+									className="px-3 py-1.5 rounded-sm text-xs font-medium border border-border text-text-primary bg-surface hover:bg-hover transition-colors disabled:opacity-50"
+								>
+									Upload Image
+								</button>
+								{fileError ? (
+									<div className="mt-1">
+										<ErrorText error={fileError} />
+									</div>
+								) : null}
+								{fieldErrors.profile_picture ? (
+									<div className="mt-1">
+										<ErrorText error={fieldErrors.profile_picture} />
+									</div>
+								) : null}
+								</>}
+							</div>
 						</div>
-						<div className="space-y-1">
-							<label className="block text-sm font-medium text-text-primary">
-								Profile Picture
-							</label>
-							{currentUser?.id === user.id ? <p className="text-xs text-text-muted">Supports JPG, JPEG, or PNG. Maximum size 5MB.</p> : <p className="text-xs text-text-muted">Profile pictures can only be changed by the account owner.</p>}
-							{currentUser?.id === user.id && <>
-							<input
-								ref={fileInputRef}
-								type="file"
-								accept="image/*"
-								onChange={(e) =>
-									handleFileChange(e.target.files?.[0] ?? null)
-								}
-								className="hidden"
-								disabled={saving}
-							/>
-							<button
-								type="button"
-								onClick={() => fileInputRef.current?.click()}
-								disabled={saving}
-								className="px-3 py-1.5 rounded-sm text-xs font-medium border border-border text-text-primary bg-surface hover:bg-hover transition-colors disabled:opacity-50"
-							>
-								Upload Image
-							</button>
-							{fileError ? (
-								<div className="mt-1">
-									<ErrorText error={fileError} />
-								</div>
-							) : null}
-							{fieldErrors.profile_picture ? (
-								<div className="mt-1">
-									<ErrorText error={fieldErrors.profile_picture} />
-								</div>
-							) : null}
-							</>}
+
+						<div className="flex items-center justify-between rounded-md border border-border bg-surface-muted p-3">
+							<div><p className="text-sm font-medium text-text-primary">Account status</p><p className="text-xs text-text-muted">{isActive ? 'This user can sign in and use the application.' : 'This user cannot sign in until reactivated.'}</p></div>
+							<label className="inline-flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} disabled={saving || currentUser?.id === user.id} className="h-4 w-4 accent-primary" />{isActive ? 'Active' : 'Inactive'}</label>
 						</div>
-					</div>
 
-					<div className="flex items-center justify-between rounded-md border border-border bg-surface-muted p-3">
-						<div><p className="text-sm font-medium text-text-primary">Account status</p><p className="text-xs text-text-muted">{isActive ? 'This user can sign in and use the application.' : 'This user cannot sign in until reactivated.'}</p></div>
-						<label className="inline-flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} disabled={saving || currentUser?.id === user.id} className="h-4 w-4 accent-primary" />{isActive ? 'Active' : 'Inactive'}</label>
-					</div>
+						{/* Form Input Fields */}
+						<div className="space-y-4">
+							<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-1">
+									<label
+										htmlFor="edit-first-name"
+										className="block text-sm font-medium text-text-primary"
+									>
+										First name
+									</label>
+									<input
+										id="edit-first-name"
+										type="text"
+										value={firstName}
+										maxLength={MAX_NAME_LENGTH}
+										onChange={(e) => setFirstName(e.target.value)}
+										disabled={saving}
+										className="w-full h-(--input-height) rounded-sm border border-border bg-background px-3 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+									/>
+									<div className="flex justify-between mt-1">
+										{fieldErrors.first_name ? (
+											<ErrorText error={fieldErrors.first_name} />
+										) : (
+											<span />
+										)}
+										<CharacterCounter
+											text={firstName}
+											maxLength={MAX_NAME_LENGTH}
+										/>
+									</div>
+								</div>
 
-					{/* Form Input Fields */}
-					<div className="space-y-4">
-						<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-1">
+									<label
+										htmlFor="edit-last-name"
+										className="block text-sm font-medium text-text-primary"
+									>
+										Last name
+									</label>
+									<input
+										id="edit-last-name"
+										type="text"
+										value={lastName}
+										maxLength={MAX_NAME_LENGTH}
+										onChange={(e) => setLastName(e.target.value)}
+										disabled={saving}
+										className="w-full h-(--input-height) rounded-sm border border-border bg-background px-3 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+									/>
+									<div className="flex justify-between mt-1">
+										{fieldErrors.last_name ? (
+											<ErrorText error={fieldErrors.last_name} />
+										) : (
+											<span />
+										)}
+										<CharacterCounter
+											text={lastName}
+											maxLength={MAX_NAME_LENGTH}
+										/>
+									</div>
+								</div>
+							</div>
+
+							{/* Read-only User Email & Meta Info */}
+							<div className="rounded-md border border-border bg-surface-muted p-3 space-y-2 text-xs">
+								<div className="flex items-center justify-between">
+									<span className="text-text-muted">Email address:</span>
+									<span className="font-mono text-text-primary font-medium">{user.email}</span>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-text-muted">Auth Provider:</span>
+									<span className="capitalize text-text-primary font-medium">{user.provider}</span>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-text-muted">Registered on:</span>
+									<span className="text-text-primary font-medium">
+										{new Date(user.created_at).toLocaleDateString(undefined, {
+											year: 'numeric',
+											month: 'long',
+											day: 'numeric',
+										})}
+									</span>
+								</div>
+							</div>
+
+							{/* User Role Selection */}
 							<div className="space-y-1">
 								<label
-									htmlFor="edit-first-name"
+									htmlFor="edit-role"
 									className="block text-sm font-medium text-text-primary"
 								>
-									First name
+									Role & Access Level
 								</label>
-								<input
-									id="edit-first-name"
-									type="text"
-									value={firstName}
-									maxLength={MAX_NAME_LENGTH}
-									onChange={(e) => setFirstName(e.target.value)}
+								<select
+									id="edit-role"
+									value={role}
+									onChange={(e) =>
+										setRole(e.target.value as UserRole)
+									}
 									disabled={saving}
 									className="w-full h-(--input-height) rounded-sm border border-border bg-background px-3 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
-								/>
-								<div className="flex justify-between mt-1">
-									{fieldErrors.first_name ? (
-										<ErrorText error={fieldErrors.first_name} />
-									) : (
-										<span />
-									)}
-									<CharacterCounter
-										text={firstName}
-										maxLength={MAX_NAME_LENGTH}
-									/>
-								</div>
-							</div>
-
-							<div className="space-y-1">
-								<label
-									htmlFor="edit-last-name"
-									className="block text-sm font-medium text-text-primary"
 								>
-									Last name
-								</label>
-								<input
-									id="edit-last-name"
-									type="text"
-									value={lastName}
-									maxLength={MAX_NAME_LENGTH}
-									onChange={(e) => setLastName(e.target.value)}
-									disabled={saving}
-									className="w-full h-(--input-height) rounded-sm border border-border bg-background px-3 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
-								/>
-								<div className="flex justify-between mt-1">
-									{fieldErrors.last_name ? (
-										<ErrorText error={fieldErrors.last_name} />
-									) : (
-										<span />
-									)}
-									<CharacterCounter
-										text={lastName}
-										maxLength={MAX_NAME_LENGTH}
-									/>
-								</div>
+									<option value="standard">Standard User</option>
+									<option value="contributor">Contributor</option>
+									<option value="admin">Administrator</option>
+								</select>
+								{fieldErrors.role ? (
+									<div className="mt-1">
+										<ErrorText error={fieldErrors.role} />
+									</div>
+								) : null}
 							</div>
-						</div>
-
-						{/* Read-only User Email & Meta Info */}
-						<div className="rounded-md border border-border bg-surface-muted p-3 space-y-2 text-xs">
-							<div className="flex items-center justify-between">
-								<span className="text-text-muted">Email address:</span>
-								<span className="font-mono text-text-primary font-medium">{user.email}</span>
-							</div>
-							<div className="flex items-center justify-between">
-								<span className="text-text-muted">Auth Provider:</span>
-								<span className="capitalize text-text-primary font-medium">{user.provider}</span>
-							</div>
-							<div className="flex items-center justify-between">
-								<span className="text-text-muted">Registered on:</span>
-								<span className="text-text-primary font-medium">
-									{new Date(user.created_at).toLocaleDateString(undefined, {
-										year: 'numeric',
-										month: 'long',
-										day: 'numeric',
-									})}
-								</span>
-							</div>
-						</div>
-
-						{/* User Role Selection */}
-						<div className="space-y-1">
-							<label
-								htmlFor="edit-role"
-								className="block text-sm font-medium text-text-primary"
-							>
-								Role & Access Level
-							</label>
-							<select
-								id="edit-role"
-								value={role}
-								onChange={(e) =>
-									setRole(e.target.value as UserRole)
-								}
-								disabled={saving}
-								className="w-full h-(--input-height) rounded-sm border border-border bg-background px-3 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
-							>
-								<option value="standard">Standard User</option>
-								<option value="contributor">Contributor</option>
-								<option value="admin">Administrator</option>
-							</select>
-							{fieldErrors.role ? (
-								<div className="mt-1">
-									<ErrorText error={fieldErrors.role} />
-								</div>
-							) : null}
 						</div>
 					</div>
-				</div>
+				) : (
+					<div className="flex-1 overflow-hidden flex flex-col p-4">
+						<EmbeddedUserDocumentsView uploaderId={user.id} />
+					</div>
+				)}
 
 				{/* Modal Footer */}
 				<footer className="p-4 border-t border-border shrink-0 flex justify-end gap-3 bg-surface">
@@ -376,19 +417,30 @@ export default function EditUserModal({
 						disabled={saving}
 						className="px-4 py-2 rounded-sm text-sm border border-border text-text-primary hover:bg-hover transition-colors disabled:opacity-50"
 					>
-						Cancel
+						Close
 					</button>
-					<button
-						type="button"
-						onClick={() => void handleSubmit()}
-						disabled={saving}
-						className="px-4 py-2 rounded-sm text-sm bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
-					>
-						{saving && <i className="bi bi-arrow-repeat animate-spin text-sm" />}
-						{saving ? 'Saving changes…' : 'Save Changes'}
-					</button>
+					{activeTab === 'profile' && (
+						<button
+							type="button"
+							onClick={() => void handleSubmit()}
+							disabled={saving}
+							className="px-4 py-2 rounded-sm text-sm bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+						>
+							{saving && <i className="bi bi-arrow-repeat animate-spin text-sm" />}
+							{saving ? 'Saving changes…' : 'Save Changes'}
+						</button>
+					)}
 				</footer>
 			</div>
+
+			{/* Standalone Sub-Modal fallback if needed */}
+			<UserDocumentsModal
+				open={userDocsModalOpen}
+				uploaderId={user.id}
+				userName={`${user.first_name} ${user.last_name}`}
+				isAdmin={true}
+				onClose={() => setUserDocsModalOpen(false)}
+			/>
 		</div>
 	);
 }

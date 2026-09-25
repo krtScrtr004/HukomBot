@@ -152,7 +152,7 @@ interface AdminContextValue {
 	handleAdminApiError: (error: unknown, context: string) => void;
 }
 
-const AdminContext = createContext<AdminContextValue | undefined>(undefined);
+export const AdminContext = createContext<AdminContextValue | undefined>(undefined);
 
 const initialState: AdminState = {
 	dashboard: { data: null, loading: false, error: null },

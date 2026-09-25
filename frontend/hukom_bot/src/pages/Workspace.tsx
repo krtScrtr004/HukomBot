@@ -14,6 +14,7 @@ import LoadingSpinner from '@/components/workspace/shared/LoadingSpinner';
 import ConfirmDialog from '@/components/workspace/shared/ConfirmDialog';
 import UploadDocumentModal from '@/components/UploadDocumentModal';
 import SettingsModal from '@/components/workspace/shared/SettingsModal';
+import UserDocumentsModal from '@/components/shared/UserDocumentsModal';
 
 function AnalysisWorkspaceContent() {
 	const { state } = useWorkspace();
@@ -58,6 +59,7 @@ function WorkspacePage() {
 	const [uploadDocumentModalOpen, setUploadDocumentModalOpen] =
 		useState(false);
 	const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+	const [myDocumentsModalOpen, setMyDocumentsModalOpen] = useState(false);
 
 	if (state.loading.auth) {
 		return (
@@ -89,6 +91,7 @@ function WorkspacePage() {
 						onSignOut={logout}
 						onUploadClick={() => setUploadDocumentModalOpen(true)}
 						onSettingsClick={() => setSettingsModalOpen(true)}
+						onMyDocumentsClick={() => setMyDocumentsModalOpen(true)}
 					/>
 				}
 				sidebar={
@@ -114,6 +117,14 @@ function WorkspacePage() {
 			<SettingsModal
 				open={settingsModalOpen}
 				onClose={() => setSettingsModalOpen(false)}
+			/>
+
+			<UserDocumentsModal
+				open={myDocumentsModalOpen}
+				uploaderId={state.user?.id || null}
+				userName={userName}
+				isAdmin={state.user?.role === 'admin'}
+				onClose={() => setMyDocumentsModalOpen(false)}
 			/>
 
 			{confirmDialog && (

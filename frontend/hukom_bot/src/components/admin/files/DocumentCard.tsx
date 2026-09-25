@@ -84,7 +84,7 @@ export default function DocumentCard({ document: doc, onSelect }: DocumentCardPr
 					<div className="h-6 w-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
 						{initials}
 					</div>
-					<span className="text-text-secondary text-xs truncate max-w-[110px]" title={uploaderName}>
+					<span className="text-text-secondary text-xs truncate max-w-27.5" title={uploaderName}>
 						{uploaderName}
 					</span>
 				</div>

@@ -10,6 +10,7 @@ interface HeaderProps {
 	onSignOut?: () => void;
 	onUploadClick?: () => void;
 	onSettingsClick?: () => void;
+	onMyDocumentsClick?: () => void;
 }
 
 export default function Header({
@@ -17,6 +18,7 @@ export default function Header({
 	onToggleSidebar,
 	onToggleVersionPanel,
 	onUploadClick,
+	onMyDocumentsClick,
 }: HeaderProps) {
 	return (
 		<header
@@ -39,6 +41,20 @@ export default function Header({
 			</section>
 
 			<section className="flex items-center gap-3 shrink-0">
+				{/* My Documents button */}
+				{onMyDocumentsClick && (
+					<button
+						type="button"
+						className="sm:bg-background sm:border sm:border-border rounded-sm text-sm text-text-secondary py-2 px-3 hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center gap-2"
+						onClick={onMyDocumentsClick}
+						aria-label="View my uploaded documents"
+						title="My Uploaded Documents"
+					>
+						<i className="bi bi-folder2-open text-primary" />
+						<span className="max-sm:hidden">My Documents</span>
+					</button>
+				)}
+
 				{/* Upload button for contributor / admin */}
 				{userRole &&
 				(userRole === 'contributor' || userRole === 'admin') ? (

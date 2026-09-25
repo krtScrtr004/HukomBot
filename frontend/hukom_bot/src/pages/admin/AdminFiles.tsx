@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { EVENT_BASE_URL_V1 } from '@/services/apiClient';
 import { useAdmin } from '@/contexts/AdminContext';
+import { deleteDocument, bulkDeleteDocuments } from '@/services/adminDocumentsService';
+import ConfirmDialog from '@/components/workspace/shared/ConfirmDialog';
+import { useToast } from '@/contexts/ToastProvider';
+import { getAdminErrorMessage } from '@/utils/adminErrors';
 import DataTable, { type DataTableColumn } from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import DocumentDetailModal from '@/components/admin/files/DocumentDetailModal';
@@ -92,11 +96,28 @@ function DocumentAnalytics({ data, loading }: { data: AdminDocumentAnalytics | n
 export default function AdminFilesPage() {
 	const { state, dispatch, fetchDocuments, fetchDocumentAnalytics } = useAdmin();
 	const { documents, documentAnalytics } = state;
+	const { showToast } = useToast();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedDocument, setSelectedDocument] = useState<AdminDocumentListItem | null>(null);
 
+	// Selection state for bulk actions
+	const [selectedIds, setSelectedIds] = useState<string[]>([]);
+	const [singleDeleteTarget, setSingleDeleteTarget] = useState<AdminDocumentListItem | null>(null);
+	const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+	const [deleting, setDeleting] = useState(false);
+	const [refreshing, setRefreshing] = useState(false);
+
 	const initFromUrlRef = useRef(false);
+
+	const handleManualRefresh = async () => {
+		setRefreshing(true);
+		try {
+			await Promise.all([fetchDocuments(), fetchDocumentAnalytics()]);
+		} finally {
+			setRefreshing(false);
+		}
+	};
 
 	useEffect(() => { void fetchDocumentAnalytics(); }, [fetchDocumentAnalytics]);
 
@@ -149,6 +170,7 @@ export default function AdminFilesPage() {
 
 	useEffect(() => {
 		void fetchDocuments();
+		setSelectedIds([]);
 	}, [
 		fetchDocuments,
 		documents.offset,
@@ -181,7 +203,78 @@ export default function AdminFilesPage() {
 		dispatch({ type: 'SET_DOCS_OFFSET', payload: 0 });
 	};
 
+	const handleSingleDelete = async () => {
+		if (!singleDeleteTarget) return;
+		setDeleting(true);
+		try {
+			await deleteDocument(singleDeleteTarget.id);
+			showToast('Document deleted successfully', 'success');
+			setSingleDeleteTarget(null);
+			setSelectedIds((prev) => prev.filter((id) => id !== singleDeleteTarget.id));
+			void fetchDocuments();
+			void fetchDocumentAnalytics();
+		} catch (error) {
+			showToast(getAdminErrorMessage(error), 'error');
+		} finally {
+			setDeleting(false);
+		}
+	};
+
+	const handleBulkDelete = async () => {
+		if (selectedIds.length === 0) return;
+		setDeleting(true);
+		try {
+			await bulkDeleteDocuments(selectedIds);
+			showToast(`${selectedIds.length} document(s) deleted successfully`, 'success');
+			setSelectedIds([]);
+			setBulkDeleteConfirmOpen(false);
+			void fetchDocuments();
+			void fetchDocumentAnalytics();
+		} catch (error) {
+			showToast(getAdminErrorMessage(error), 'error');
+		} finally {
+			setDeleting(false);
+		}
+	};
+
+	const allCurrentSelected =
+		documents.items.length > 0 &&
+		documents.items.every((item) => selectedIds.includes(item.id));
+
+	const toggleSelectAll = () => {
+		if (allCurrentSelected) {
+			const currentIds = new Set(documents.items.map((i) => i.id));
+			setSelectedIds((prev) => prev.filter((id) => !currentIds.has(id)));
+		} else {
+			const currentIds = documents.items.map((i) => i.id);
+			setSelectedIds((prev) => Array.from(new Set([...prev, ...currentIds])));
+		}
+	};
+
+	const toggleSelectRow = (id: string) => {
+		setSelectedIds((prev) =>
+			prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+		);
+	};
+
 	const columns: DataTableColumn<AdminDocumentListItem>[] = [
+		{
+			key: 'selection',
+			header: '',
+			render: (row) => (
+				<input
+					type="checkbox"
+					checked={selectedIds.includes(row.id)}
+					onChange={(e) => {
+						e.stopPropagation();
+						toggleSelectRow(row.id);
+					}}
+					onClick={(e) => e.stopPropagation()}
+					className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+					aria-label={`Select ${row.original_file_name}`}
+				/>
+			),
+		},
 		{
 			key: 'original_file_name',
 			header: 'File Name',
@@ -275,6 +368,18 @@ export default function AdminFilesPage() {
 					>
 						<i className="bi bi-eye text-base" />
 					</button>
+					<button
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							setSingleDeleteTarget(row);
+						}}
+						className="p-1.5 rounded-md text-text-secondary hover:text-danger hover:bg-danger/10 transition-colors"
+						title="Delete Document"
+						aria-label={`Delete ${row.original_file_name}`}
+					>
+						<i className="bi bi-trash text-base" />
+					</button>
 				</div>
 			),
 		},
@@ -303,7 +408,7 @@ export default function AdminFilesPage() {
 
 			<main className="space-y-4">
 					<div className="rounded-lg border border-border bg-surface p-5 shadow-xs space-y-4">
-						{/* Search Bar & View Mode Switcher */}
+						{/* Search Bar & Bulk Actions Toolbar */}
 						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 							<div className="relative flex-1">
 								<i className="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm" />
@@ -317,6 +422,44 @@ export default function AdminFilesPage() {
 								/>
 							</div>
 
+							<div className="flex items-center gap-2 shrink-0">
+								<button
+									type="button"
+									onClick={() => void handleManualRefresh()}
+									disabled={refreshing || documents.loading || documentAnalytics.loading}
+									className="px-3 py-2 text-xs font-medium border border-border rounded-md bg-background text-text-secondary hover:text-text-primary hover:bg-hover transition-colors flex items-center gap-1.5"
+									title="Refresh documents table and analytics stats"
+								>
+									<i
+										className={`bi bi-arrow-clockwise text-sm ${
+											refreshing || documents.loading || documentAnalytics.loading ? 'animate-spin' : ''
+										}`}
+									/>
+									<span className="hidden sm:inline">Refresh</span>
+								</button>
+
+								{documents.items.length > 0 && (
+									<button
+										type="button"
+										onClick={toggleSelectAll}
+										className="px-3 py-2 text-xs font-medium border border-border rounded-md bg-background text-text-secondary hover:text-text-primary hover:bg-hover transition-colors flex items-center gap-1.5"
+									>
+										<i className={`bi ${allCurrentSelected ? 'bi-check-square-fill text-primary' : 'bi-square'}`} />
+										<span>{allCurrentSelected ? 'Deselect Page' : 'Select Page'}</span>
+									</button>
+								)}
+
+								{selectedIds.length > 0 && (
+									<button
+										type="button"
+										onClick={() => setBulkDeleteConfirmOpen(true)}
+										className="px-3 py-2 text-xs font-medium rounded-md bg-danger text-danger-foreground hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-xs"
+									>
+										<i className="bi bi-trash" />
+										<span>Delete Selected ({selectedIds.length})</span>
+									</button>
+								)}
+							</div>
 						</div>
 
 						{/* Status Filter Tab Pills */}
@@ -422,6 +565,27 @@ export default function AdminFilesPage() {
 				onClose={() => setSelectedDocument(null)}
 			/>
 
+			{/* Single Document Delete Dialog */}
+			<ConfirmDialog
+				open={!!singleDeleteTarget}
+				title="Delete Document"
+				message={`Are you sure you want to permanently delete "${singleDeleteTarget?.original_file_name}"? This action cannot be undone.`}
+				confirmLabel={deleting ? 'Deleting…' : 'Delete Document'}
+				variant="danger"
+				onConfirm={() => void handleSingleDelete()}
+				onCancel={() => !deleting && setSingleDeleteTarget(null)}
+			/>
+
+			{/* Bulk Document Delete Dialog */}
+			<ConfirmDialog
+				open={bulkDeleteConfirmOpen}
+				title="Bulk Delete Documents"
+				message={`Are you sure you want to permanently delete ${selectedIds.length} selected document(s)? This action cannot be undone.`}
+				confirmLabel={deleting ? 'Deleting…' : `Delete ${selectedIds.length} Document(s)`}
+				variant="danger"
+				onConfirm={() => void handleBulkDelete()}
+				onCancel={() => !deleting && setBulkDeleteConfirmOpen(false)}
+			/>
 		</div>
 	);
 }

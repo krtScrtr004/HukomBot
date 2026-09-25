@@ -224,7 +224,7 @@ export default function SettingsModal({ open, onClose, initialTab }: SettingsMod
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="settings-title"
-				className="relative z-10 w-150 max-w-lg rounded-lg bg-surface border border-border shadow-lg flex flex-col max-h-[90vh]"
+				className="relative z-10 w-150 max-w-lg rounded-sm bg-surface border border-border shadow-lg flex flex-col max-h-[90vh]"
 			>
 				{/* Header */}
 				<header className="p-4 border-b border-border shrink-0 flex items-center justify-between">
