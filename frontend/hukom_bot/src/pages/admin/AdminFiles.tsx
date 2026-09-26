@@ -308,11 +308,13 @@ export default function AdminFilesPage() {
 	const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [refreshing, setRefreshing] = useState(false);
+	const [showTableBanner, setShowTableBanner] = useState(false);
 
 	const initFromUrlRef = useRef(false);
 
 	const handleManualRefresh = async () => {
 		setRefreshing(true);
+		setShowTableBanner(false);
 		try {
 			await Promise.all([fetchDocuments(), fetchDocumentAnalytics()]);
 		} finally {
@@ -333,11 +335,13 @@ export default function AdminFilesPage() {
 			});
 			stream.onmessage = (event) => {
 				const data = parseDocumentAnalyticsEvent(event.data);
-				if (data)
+				if (data) {
+					setShowTableBanner(true)
 					dispatch({
 						type: 'DISPATCH_DOCUMENT_ANALYTICS_UPDATE',
 						payload: data,
 					});
+				}
 			};
 		};
 		open();
@@ -647,6 +651,22 @@ export default function AdminFilesPage() {
 
 			<main className="space-y-4">
 				<div className="rounded-sm border border-border bg-surface p-5 shadow-xs space-y-4">
+					{/* SSE Changes Notification Banner */}
+					{showTableBanner && (
+						<div
+							className="rounded-sm border border-info/30 bg-info/5 p-3 flex items-center justify-between gap-4 animate-slide-down"
+							role="alert"
+						>
+							<div className="flex items-center gap-2 text-sm text-info">
+								<i
+									className="bi bi-bell-fill"
+									aria-hidden="true"
+								/>
+								<span>New document changes detected</span>
+							</div>
+						</div>
+					)}
+
 					{/* Search Bar & Bulk Actions Toolbar */}
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 						<div className="relative flex-1">

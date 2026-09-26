@@ -2,10 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { EVENT_BASE_URL_V1 } from '@/services/apiClient';
 import { useAdmin } from '@/contexts/AdminContext';
 import DataTable, { type DataTableColumn } from '@/components/ui/DataTable';
-import type {
-	AdminUserAnalytics,
-	AdminUserListItem,
-} from '@/types/admin';
+import type { AdminUserAnalytics, AdminUserListItem } from '@/types/admin';
 import { ADMIN_USERS_PAGE_SIZE } from '@/types/admin';
 import AdminUsersChart from '@/components/admin/users/AdminUsersChart';
 import EditUserModal from '@/components/admin/users/EditUserModal';
@@ -78,9 +75,11 @@ export default function AdminUsersPage() {
 	const { users, userAnalytics, editUserModal } = state;
 	const [searchTerm, setSearchTerm] = useState('');
 	const [refreshing, setRefreshing] = useState(false);
+	const [showTableBanner, setShowTableBanner] = useState(false);
 
 	const fetchRef = useRef(fetchUsers);
 	fetchRef.current = fetchUsers;
+
 	const fetchAnalyticsRef = useRef(fetchUserAnalytics);
 	fetchAnalyticsRef.current = fetchUserAnalytics;
 
@@ -122,6 +121,7 @@ export default function AdminUsersPage() {
 				if (event.data == null) return;
 				const data = parseUserAnalyticsEvent(event.data);
 				if (data) {
+					setShowTableBanner(true);
 					dispatch({
 						type: 'DISPATCH_USER_ANALYTICS_UPDATE',
 						payload: data,
@@ -151,6 +151,7 @@ export default function AdminUsersPage() {
 	// Manual refresh handler for users table & analytics
 	const handleManualRefresh = async () => {
 		setRefreshing(true);
+		setShowTableBanner(false);
 		try {
 			await Promise.all([fetchUsers(), fetchUserAnalytics()]);
 		} finally {
@@ -164,7 +165,9 @@ export default function AdminUsersPage() {
 			header: 'User',
 			sortable: true,
 			render: (row) => {
-				const initials = `${row.first_name?.charAt(0) || ''}${row.last_name?.charAt(0) || ''}`.toUpperCase() || 'U';
+				const initials =
+					`${row.first_name?.charAt(0) || ''}${row.last_name?.charAt(0) || ''}`.toUpperCase() ||
+					'U';
 				return (
 					<div className="flex items-center gap-3 min-w-45">
 						<div className="relative h-9 w-9 rounded-full bg-surface-muted border border-border flex items-center justify-center overflow-hidden shrink-0">
@@ -175,14 +178,18 @@ export default function AdminUsersPage() {
 									className="h-full w-full object-cover"
 								/>
 							) : (
-								<span className="text-xs font-semibold text-text-secondary">{initials}</span>
+								<span className="text-xs font-semibold text-text-secondary">
+									{initials}
+								</span>
 							)}
 						</div>
 						<div className="flex flex-col min-w-0">
 							<span className="font-medium text-text-primary group-hover:text-primary transition-colors whitespace-nowrap">
 								{row.first_name} {row.last_name}
 							</span>
-							<span className="text-xs text-text-muted whitespace-nowrap">{row.email}</span>
+							<span className="text-xs text-text-muted whitespace-nowrap">
+								{row.email}
+							</span>
 						</div>
 					</div>
 				);
@@ -193,7 +200,9 @@ export default function AdminUsersPage() {
 			header: 'Email',
 			sortable: true,
 			render: (row) => (
-				<span className="font-mono text-xs text-text-secondary whitespace-nowrap">{row.email}</span>
+				<span className="font-mono text-xs text-text-secondary whitespace-nowrap">
+					{row.email}
+				</span>
 			),
 		},
 		{
@@ -214,8 +223,13 @@ export default function AdminUsersPage() {
 			key: 'is_active',
 			header: 'Status',
 			render: (row) => (
-				<span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${row.is_active ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
-					<i className="bi bi-circle-fill text-[7px]" aria-hidden="true" />
+				<span
+					className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${row.is_active ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}
+				>
+					<i
+						className="bi bi-circle-fill text-[7px]"
+						aria-hidden="true"
+					/>
 					{row.is_active ? 'Active' : 'Inactive'}
 				</span>
 			),
@@ -225,7 +239,9 @@ export default function AdminUsersPage() {
 			header: 'Auth Provider',
 			render: (row) => (
 				<span className="inline-flex items-center gap-1.5 text-xs text-text-secondary whitespace-nowrap">
-					<i className={`bi ${row.provider === 'google' ? 'bi-google' : 'bi-shield-lock'} text-xs text-text-muted`} />
+					<i
+						className={`bi ${row.provider === 'google' ? 'bi-google' : 'bi-shield-lock'} text-xs text-text-muted`}
+					/>
 					{formatProvider(row.provider)}
 				</span>
 			),
@@ -252,7 +268,10 @@ export default function AdminUsersPage() {
 					type="button"
 					onClick={(e) => {
 						e.stopPropagation();
-						dispatch({ type: 'OPEN_EDIT_USER_MODAL', payload: row });
+						dispatch({
+							type: 'OPEN_EDIT_USER_MODAL',
+							payload: row,
+						});
 					}}
 					className="p-1.5 rounded-md text-text-secondary hover:text-primary hover:bg-hover transition-colors"
 					title="Edit User"
@@ -297,7 +316,8 @@ export default function AdminUsersPage() {
 						</span>
 					</div>
 					<p className="text-sm text-text-secondary mt-1">
-						Monitor user registrations, system activity, and edit account credentials.
+						Monitor user registrations, system activity, and edit
+						account credentials.
 					</p>
 				</div>
 			</header>
@@ -313,10 +333,12 @@ export default function AdminUsersPage() {
 				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 					<div>
 						<h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-							<i className="bi bi-table text-primary" /> Users Directory
+							<i className="bi bi-table text-primary" /> Users
+							Directory
 						</h2>
 						<p className="text-xs text-text-muted mt-0.5">
-							Click any user row to view or edit profile details in a modal.
+							Click any user row to view or edit profile details
+							in a modal.
 						</p>
 					</div>
 
@@ -338,13 +360,21 @@ export default function AdminUsersPage() {
 						<button
 							type="button"
 							onClick={() => void handleManualRefresh()}
-							disabled={refreshing || users.loading || userAnalytics.loading}
+							disabled={
+								refreshing ||
+								users.loading ||
+								userAnalytics.loading
+							}
 							className="px-3 py-2 text-xs font-medium border border-border rounded-md bg-background text-text-secondary hover:text-text-primary hover:bg-hover transition-colors flex items-center gap-1.5 shrink-0"
 							title="Refresh users directory and analytics stats"
 						>
 							<i
 								className={`bi bi-arrow-clockwise text-sm ${
-									refreshing || users.loading || userAnalytics.loading ? 'animate-spin' : ''
+									refreshing ||
+									users.loading ||
+									userAnalytics.loading
+										? 'animate-spin'
+										: ''
 								}`}
 							/>
 							<span className="hidden sm:inline">Refresh</span>
@@ -353,16 +383,75 @@ export default function AdminUsersPage() {
 				</div>
 
 				<div className="grid gap-2 border-t border-border pt-4 sm:grid-cols-3">
-					<select aria-label="Filter users by account status" value={users.statusFilter} onChange={(event) => { dispatch({ type: 'SET_USERS_STATUS_FILTER', payload: event.target.value as typeof users.statusFilter }); dispatch({ type: 'SET_USERS_OFFSET', payload: 0 }); }} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text-secondary">
-						<option value="all">All account statuses</option><option value="active">Active</option><option value="inactive">Inactive</option>
+					<select
+						aria-label="Filter users by account status"
+						value={users.statusFilter}
+						onChange={(event) => {
+							dispatch({
+								type: 'SET_USERS_STATUS_FILTER',
+								payload: event.target
+									.value as typeof users.statusFilter,
+							});
+							dispatch({ type: 'SET_USERS_OFFSET', payload: 0 });
+						}}
+						className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text-secondary"
+					>
+						<option value="all">All account statuses</option>
+						<option value="active">Active</option>
+						<option value="inactive">Inactive</option>
 					</select>
-					<select aria-label="Filter users by role" value={users.roleFilter} onChange={(event) => { dispatch({ type: 'SET_USERS_ROLE_FILTER', payload: event.target.value as typeof users.roleFilter }); dispatch({ type: 'SET_USERS_OFFSET', payload: 0 }); }} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text-secondary">
-						<option value="all">All roles</option><option value="standard">Standard</option><option value="contributor">Contributor</option><option value="admin">Admin</option>
+
+					<select
+						aria-label="Filter users by role"
+						value={users.roleFilter}
+						onChange={(event) => {
+							dispatch({
+								type: 'SET_USERS_ROLE_FILTER',
+								payload: event.target
+									.value as typeof users.roleFilter,
+							});
+							dispatch({ type: 'SET_USERS_OFFSET', payload: 0 });
+						}}
+						className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text-secondary"
+					>
+						<option value="all">All roles</option>
+						<option value="standard">Standard</option>
+						<option value="contributor">Contributor</option>
+						<option value="admin">Admin</option>
 					</select>
-					<select aria-label="Filter users by authentication provider" value={users.providerFilter} onChange={(event) => { dispatch({ type: 'SET_USERS_PROVIDER_FILTER', payload: event.target.value as typeof users.providerFilter }); dispatch({ type: 'SET_USERS_OFFSET', payload: 0 }); }} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text-secondary">
-						<option value="all">All providers</option><option value="google">Google</option><option value="facebook">Facebook</option><option value="apple">Apple</option>
+
+					<select
+						aria-label="Filter users by authentication provider"
+						value={users.providerFilter}
+						onChange={(event) => {
+							dispatch({
+								type: 'SET_USERS_PROVIDER_FILTER',
+								payload: event.target
+									.value as typeof users.providerFilter,
+							});
+							dispatch({ type: 'SET_USERS_OFFSET', payload: 0 });
+						}}
+						className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text-secondary"
+					>
+						<option value="all">All providers</option>
+						<option value="google">Google</option>
+						<option value="facebook">Facebook</option>
+						<option value="apple">Apple</option>
 					</select>
 				</div>
+
+				{/* SSE Changes Notification Banner */}
+				{showTableBanner && (
+					<div
+						className="rounded-sm border border-info/30 bg-info/5 p-3 flex items-center justify-between gap-4 animate-slide-down"
+						role="alert"
+					>
+						<div className="flex items-center gap-2 text-sm text-info">
+							<i className="bi bi-bell-fill" aria-hidden="true" />
+							<span>New user changes detected</span>
+						</div>
+					</div>
+				)}
 
 				<DataTable
 					columns={tableColumns}
@@ -410,7 +499,8 @@ export default function AdminUsersPage() {
 							onClick={() =>
 								dispatch({
 									type: 'SET_USERS_OFFSET',
-									payload: users.offset + ADMIN_USERS_PAGE_SIZE,
+									payload:
+										users.offset + ADMIN_USERS_PAGE_SIZE,
 								})
 							}
 							className="px-3 py-1.5 text-xs font-medium border border-border rounded-md disabled:opacity-40 hover:bg-hover transition-colors flex items-center gap-1"
@@ -421,7 +511,10 @@ export default function AdminUsersPage() {
 				</div>
 
 				{users.error && users.items.length > 0 ? (
-					<ErrorText error={users.error} onRetry={() => void handleManualRefresh()} />
+					<ErrorText
+						error={users.error}
+						onRetry={() => void handleManualRefresh()}
+					/>
 				) : null}
 			</div>
 

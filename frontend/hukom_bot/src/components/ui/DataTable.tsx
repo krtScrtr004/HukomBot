@@ -43,13 +43,14 @@ export default function DataTable<T>(props: DataTableProps<T>) {
 		rowAttributes,
 	} = props;
 
-	if (loading) return <LoadingSpinner label="Loading" size="lg" />;
+	if (loading) return <LoadingSpinner label="Loading" size="lg" className="min-h-100" />;
 	if (error) return <ErrorText error={error} onRetry={onRetry} />;
 	if (!rows.length) return <EmptyState title={emptyMessage} />;
 
 	return (
-		<div className="w-full overflow-x-auto scrollbar-thin">
+		<div className="min-h-100 w-full overflow-x-auto scrollbar-thin">
 			<table className="w-full min-w-full text-left text-sm border-collapse">
+
 				<thead>
 					<tr className="border-b border-border bg-surface-muted text-text-secondary text-xs uppercase tracking-wider">
 						{columns.map((column) => {
@@ -96,6 +97,7 @@ export default function DataTable<T>(props: DataTableProps<T>) {
 						})}
 					</tr>
 				</thead>
+
 				<tbody className="divide-y divide-border">
 					{rows.map((row) => (
 						<tr
@@ -112,6 +114,7 @@ export default function DataTable<T>(props: DataTableProps<T>) {
 						</tr>
 					))}
 				</tbody>
+
 			</table>
 		</div>
 	);
