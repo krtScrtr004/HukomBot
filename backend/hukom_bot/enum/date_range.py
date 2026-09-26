@@ -1,6 +1,13 @@
 import calendar
-from datetime import datetime, timedelta
 from enum import Enum
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+
+
+@dataclass(frozen=True)
+class DateTimeRange:
+    start: datetime | None
+    end: datetime | None
 
 
 class DateRange(str, Enum):
@@ -18,52 +25,101 @@ class DateRange(str, Enum):
     LAST_YEAR = "last_year"
     ALL_TIME = "all_time"
 
-    def to_datetime(self, now: datetime | None = None) -> datetime | None:
-        """Return the datetime this range represents, relative to `now`."""
+    def to_range(self, now: datetime | None = None) -> DateTimeRange:
         now = now or datetime.now()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        today_start = now.replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
 
         if self is DateRange.ALL_TIME:
-            return None
+            return DateTimeRange(None, None)
 
         if self is DateRange.TODAY:
-            return today_start
+            return DateTimeRange(
+                today_start,
+                now,
+            )
 
         if self is DateRange.YESTERDAY:
-            return today_start - timedelta(days=1)
+            return DateTimeRange(
+                today_start - timedelta(days=1),
+                today_start,
+            )
 
         if self is DateRange.THIS_WEEK:
-            return today_start - timedelta(days=today_start.weekday())  # Monday
+            start = today_start - timedelta(days=today_start.weekday())
+
+            return DateTimeRange(
+                start,
+                now,
+            )
 
         if self is DateRange.LAST_WEEK:
             this_week_start = today_start - timedelta(days=today_start.weekday())
-            return this_week_start - timedelta(weeks=1)
+
+            return DateTimeRange(
+                this_week_start - timedelta(weeks=1),
+                this_week_start,
+            )
 
         if self is DateRange.THIS_MONTH:
-            return today_start.replace(day=1)
+            return DateTimeRange(
+                today_start.replace(day=1),
+                now,
+            )
 
         if self is DateRange.LAST_MONTH:
             this_month_start = today_start.replace(day=1)
-            return _shift_months(this_month_start, -1)
+
+            return DateTimeRange(
+                _shift_months(this_month_start, -1),
+                this_month_start,
+            )
 
         if self is DateRange.LAST_7_DAYS:
-            return now - timedelta(days=7)
+            return DateTimeRange(
+                now - timedelta(days=7),
+                now,
+            )
 
         if self is DateRange.LAST_30_DAYS:
-            return now - timedelta(days=30)
+            return DateTimeRange(
+                now - timedelta(days=30),
+                now,
+            )
 
         if self is DateRange.LAST_90_DAYS:
-            return now - timedelta(days=90)
+            return DateTimeRange(
+                now - timedelta(days=90),
+                now,
+            )
 
         if self is DateRange.LAST_6_MONTHS:
-            return _shift_months(now, -6)
+            return DateTimeRange(
+                _shift_months(now, -6),
+                now,
+            )
 
         if self is DateRange.THIS_YEAR:
-            return today_start.replace(month=1, day=1)
+            return DateTimeRange(
+                today_start.replace(month=1, day=1),
+                now,
+            )
 
         if self is DateRange.LAST_YEAR:
-            this_year_start = today_start.replace(month=1, day=1)
-            return this_year_start.replace(year=this_year_start.year - 1)
+            this_year_start = today_start.replace(
+                month=1,
+                day=1,
+            )
+
+            return DateTimeRange(
+                this_year_start.replace(year=this_year_start.year - 1),
+                this_year_start,
+            )
 
         raise NotImplementedError(f"No datetime mapping defined for {self!r}")
 

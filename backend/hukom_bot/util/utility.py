@@ -1,7 +1,7 @@
 from uuid import UUID
 from pathlib import Path
 from fastapi import Request
-from datetime import datetime
+from datetime import datetime, timedelta
 from backend.hukom_bot.enum.date_range import DateRange
 from backend.hukom_bot.schema.mixin import DateRangeableMixin
 
@@ -67,29 +67,37 @@ def generate_daily_token_quota_key(user_id: UUID) -> str:
 
 
 def build_date_range_where_clause(
-    column_name: str, date_rangeable: DateRangeableMixin, include_where: bool = False
+    column_name: str,
+    date_rangeable: DateRangeableMixin,
+    include_where: bool = False,
 ) -> str:
-    if not any(date_rangeable.model_dump().values()):
-        return ""
-
     prefix = " WHERE " if include_where else " AND "
+
+    now = datetime.now()
 
     date_start = date_rangeable.date_start
     date_end = date_rangeable.date_end
 
-    if date_rangeable.date_range:
-        if date_rangeable.date_range is DateRange.ALL_TIME:
+    if date_rangeable.date_range is not None:
+        date_range = date_rangeable.date_range.to_range(now)
+
+        if date_range.start is None and date_range.end is None:
             return ""
-        date_start = date_rangeable.date_range.to_datetime()
-        date_end = datetime.now()
+
+        date_start = date_range.start
+        date_end = date_range.end
 
     conditions: list[str] = []
 
     if date_start is not None:
-        conditions.append(f"{column_name} >= '{date_start.isoformat()}'")
+        conditions.append(
+            f"{column_name} >= '{date_start.isoformat()}'"
+        )
 
     if date_end is not None:
-        conditions.append(f"{column_name} <= '{date_end.isoformat()}'")
+        conditions.append(
+            f"{column_name} < '{date_end.isoformat()}'"
+        )
 
     if not conditions:
         return ""
