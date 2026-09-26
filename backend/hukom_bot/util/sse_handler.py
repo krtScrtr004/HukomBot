@@ -31,7 +31,7 @@ async def sse_handler(
                 continue
 
             data = await data_builder()
-            yield f"message: {message}, data: {data.model_dump_json()}\n\n"
+            yield f"data: {data.model_dump_json()}\n\n"
     except asyncio.CancelledError:
         logger.info(
             "SSE cancelled on channel=%s",
