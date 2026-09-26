@@ -35,7 +35,8 @@ export default function DocumentDetailModal({
 	const adminCtx = useContext(AdminContext);
 	const { user: currentUser } = useAuth();
 	const { showToast } = useToast();
-	const [documentType, setDocumentType] = useState<LegalDocumentType>('contract');
+	const [documentType, setDocumentType] =
+		useState<LegalDocumentType>('contract');
 	const [rejectionMessage, setRejectionMessage] = useState('');
 	const [rejectionError, setRejectionError] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
@@ -77,7 +78,10 @@ export default function DocumentDetailModal({
 				document_type: documentType,
 				upload_status: 'ongoing',
 			});
-			showToast('Document approved successfully', 'success');
+			showToast(
+				'Document approved successfully. Ingestion process is ongoing.',
+				'success',
+			);
 			onClose();
 		} catch (error) {
 			showToast(getAdminErrorMessage(error), 'error');
@@ -161,7 +165,9 @@ export default function DocumentDetailModal({
 							>
 								{doc.original_file_name}
 							</h2>
-							<p className="text-xs text-text-muted">Document Details & Metadata</p>
+							<p className="text-xs text-text-muted">
+								Document Details & Metadata
+							</p>
 						</div>
 					</div>
 					<button
@@ -180,15 +186,21 @@ export default function DocumentDetailModal({
 					{/* Status Overview Card */}
 					<div className="rounded-lg border border-border bg-surface-muted p-4 space-y-3">
 						<div className="flex items-center justify-between">
-							<span className="text-xs text-text-muted font-medium">Processing Status</span>
+							<span className="text-xs text-text-muted font-medium">
+								Processing Status
+							</span>
 							<StatusBadge status={doc.upload_status} />
 						</div>
 
 						<div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60 text-xs">
 							<div>
-								<span className="text-text-muted block">Upload Date</span>
+								<span className="text-text-muted block">
+									Upload Date
+								</span>
 								<span className="font-medium text-text-primary">
-									{new Date(doc.created_at).toLocaleDateString(undefined, {
+									{new Date(
+										doc.created_at,
+									).toLocaleDateString(undefined, {
 										year: 'numeric',
 										month: 'long',
 										day: 'numeric',
@@ -196,8 +208,12 @@ export default function DocumentDetailModal({
 								</span>
 							</div>
 							<div>
-								<span className="text-text-muted block">Uploader ID</span>
-								<span className="font-mono text-text-primary truncate block">{doc.uploader?.id || 'N/A'}</span>
+								<span className="text-text-muted block">
+									Uploader ID
+								</span>
+								<span className="font-mono text-text-primary truncate block">
+									{doc.uploader?.id || 'N/A'}
+								</span>
 							</div>
 						</div>
 					</div>
@@ -212,8 +228,12 @@ export default function DocumentDetailModal({
 								{doc.uploader?.first_name?.charAt(0) || 'U'}
 							</div>
 							<div>
-								<p className="text-sm font-medium text-text-primary">{uploaderName}</p>
-								<p className="text-xs text-text-muted font-mono">{doc.uploader?.email || 'No email provided'}</p>
+								<p className="text-sm font-medium text-text-primary">
+									{uploaderName}
+								</p>
+								<p className="text-xs text-text-muted font-mono">
+									{doc.uploader?.email || 'No email provided'}
+								</p>
 							</div>
 						</div>
 					</div>
@@ -229,8 +249,16 @@ export default function DocumentDetailModal({
 						<select
 							id="doc-type-select"
 							value={documentType}
-							disabled={!isAdmin || submitting || doc.upload_status === 'rejected'}
-							onChange={(e) => setDocumentType(e.target.value as LegalDocumentType)}
+							disabled={
+								!isAdmin ||
+								submitting ||
+								doc.upload_status === 'rejected'
+							}
+							onChange={(e) =>
+								setDocumentType(
+									e.target.value as LegalDocumentType,
+								)
+							}
 							className="w-full h-(--input-height) rounded-sm border border-border bg-background px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
 						>
 							{LEGAL_DOCUMENT_TYPES.map((opt) => (
@@ -242,17 +270,23 @@ export default function DocumentDetailModal({
 					</div>
 
 					{/* Rejection Message Section */}
-					{doc.upload_status === 'rejected' && doc.rejection_message ? (
+					{doc.upload_status === 'rejected' &&
+					doc.rejection_message ? (
 						<div className="rounded-lg border border-danger/30 bg-danger/5 p-4 space-y-1">
 							<span className="text-xs font-semibold text-danger flex items-center gap-1">
-								<i className="bi bi-exclamation-triangle" /> Rejection Reason
+								<i className="bi bi-exclamation-triangle" />{' '}
+								Rejection Reason
 							</span>
-							<p className="text-xs text-text-primary">{doc.rejection_message}</p>
+							<p className="text-xs text-text-primary">
+								{doc.rejection_message}
+							</p>
 						</div>
 					) : null}
 
 					{/* Inline Disapproval Reason Form for Pending files */}
-					{isAdmin && doc.upload_status === 'pending' && showRejectInput ? (
+					{isAdmin &&
+					doc.upload_status === 'pending' &&
+					showRejectInput ? (
 						<div className="rounded-lg border border-danger/30 bg-danger/5 p-4 space-y-2">
 							<label
 								htmlFor="modal-reject-reason"
@@ -299,7 +333,9 @@ export default function DocumentDetailModal({
 									disabled={submitting}
 									className="px-3 py-1 rounded-sm text-xs bg-danger text-danger-foreground font-medium hover:opacity-90 disabled:opacity-50"
 								>
-									{submitting ? 'Rejecting…' : 'Confirm Disapproval'}
+									{submitting
+										? 'Rejecting…'
+										: 'Confirm Disapproval'}
 								</button>
 							</div>
 						</div>
@@ -329,24 +365,37 @@ export default function DocumentDetailModal({
 						)}
 					</div>
 
-					{isAdmin && doc.upload_status === 'pending' && !showRejectInput ? (
+					{isAdmin &&
+					(doc.upload_status === 'pending' ||
+						doc.upload_status === 'failed') &&
+					!showRejectInput ? (
 						<div className="flex items-center gap-2">
-							<button
-								type="button"
-								onClick={() => setShowRejectInput(true)}
-								disabled={submitting}
-								className="px-3 py-2 rounded-sm text-sm border border-danger/40 text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
-							>
-								Disapprove
-							</button>
+							{doc.upload_status === 'pending' && (
+								<button
+									type="button"
+									onClick={() => setShowRejectInput(true)}
+									disabled={submitting}
+									className="px-3 py-2 rounded-sm text-sm border border-danger/40 text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
+								>
+									Disapprove
+								</button>
+							)}
 							<button
 								type="button"
 								onClick={() => void handleApprove()}
 								disabled={submitting}
 								className="px-4 py-2 rounded-sm text-sm bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-1.5"
 							>
-								{submitting && <i className="bi bi-arrow-repeat animate-spin text-sm" />}
-								{submitting ? 'Approving…' : 'Approve File'}
+								{submitting && (
+									<i className="bi bi-arrow-repeat animate-spin text-sm" />
+								)}
+								{submitting
+									? doc.upload_status === 'failed'
+										? 'Retrying…'
+										: 'Approving…'
+									: doc.upload_status === 'failed'
+										? 'Retry Upload'
+										: 'Approve File'}
 							</button>
 						</div>
 					) : null}

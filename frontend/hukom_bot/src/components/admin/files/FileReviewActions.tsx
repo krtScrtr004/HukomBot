@@ -20,7 +20,9 @@ interface FileReviewActionsProps {
 
 const MAX_REJECTION_LENGTH = 500;
 
-export default function FileReviewActions({ document }: FileReviewActionsProps) {
+export default function FileReviewActions({
+	document,
+}: FileReviewActionsProps) {
 	const { patchDocument } = useAdmin();
 	const { showToast } = useToast();
 	const [approveOpen, setApproveOpen] = useState(false);
@@ -32,7 +34,10 @@ export default function FileReviewActions({ document }: FileReviewActionsProps) 
 	const [rejectionError, setRejectionError] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 
-	if (document.upload_status !== 'pending') {
+	if (
+		document.upload_status !== 'pending' &&
+		document.upload_status !== 'failed'
+	) {
 		return null;
 	}
 
@@ -86,27 +91,42 @@ export default function FileReviewActions({ document }: FileReviewActionsProps) 
 				onClick={(e) => e.stopPropagation()}
 				onKeyDown={(e) => e.stopPropagation()}
 			>
-				<button
-					type="button"
-					className="px-2 py-1 text-xs rounded-sm bg-primary text-primary-foreground hover:opacity-90"
-					onClick={() => {
-						setDocumentType(document.document_type);
-						setApproveOpen(true);
-					}}
-				>
-					Approve
-				</button>
-				<button
-					type="button"
-					className="px-2 py-1 text-xs rounded-sm bg-danger text-danger-foreground hover:opacity-90"
-					onClick={() => {
-						setRejectionMessage('');
-						setRejectionError(null);
-						setRejectOpen(true);
-					}}
-				>
-					Disapprove
-				</button>
+				{document.upload_status === 'failed' ? (
+					<button
+						type="button"
+						className="px-2 py-1 text-xs rounded-sm bg-primary text-primary-foreground hover:opacity-90 flex items-center gap-1"
+						onClick={() => {
+							setDocumentType(document.document_type);
+							setApproveOpen(true);
+						}}
+					>
+						<i className="bi bi-arrow-clockwise" /> Retry
+					</button>
+				) : (
+					<>
+						<button
+							type="button"
+							className="px-2 py-1 text-xs rounded-sm bg-primary text-primary-foreground hover:opacity-90"
+							onClick={() => {
+								setDocumentType(document.document_type);
+								setApproveOpen(true);
+							}}
+						>
+							Approve
+						</button>
+						<button
+							type="button"
+							className="px-2 py-1 text-xs rounded-sm bg-danger text-danger-foreground hover:opacity-90"
+							onClick={() => {
+								setRejectionMessage('');
+								setRejectionError(null);
+								setRejectOpen(true);
+							}}
+						>
+							Disapprove
+						</button>
+					</>
+				)}
 			</div>
 
 			<ConfirmDialog

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { EVENT_BASE_URL_V1 } from '@/services/apiClient'; 
+import { EVENT_BASE_URL_V1 } from '@/services/apiClient';
 import { useAdmin } from '@/contexts/AdminContext';
-import type { AdminDashboardData, AdminDashboardDateRange } from '@/types/admin';
+import type {
+	AdminDashboardData,
+	AdminDashboardDateRange,
+} from '@/types/admin';
 import PendingFilesList from '@/components/PendingFilesList';
 import LoadingSpinner from '@/components/workspace/shared/LoadingSpinner';
 import LineGraph from '@/components/admin/shared/LineGraph';
@@ -12,14 +15,33 @@ function isDashboardData(value: unknown): value is AdminDashboardData {
 	const data = value as Record<string, unknown>;
 	const status = data.document_status_count;
 	const weekly = data.document_weekly_count;
-	return typeof data.active_user_count === 'number' &&
+	return (
+		typeof data.active_user_count === 'number' &&
 		typeof data.documents_count === 'number' &&
 		typeof data.chunks_count === 'number' &&
-		!!status && typeof status === 'object' &&
-		['pending', 'ongoing', 'completed', 'failed', 'rejected'].every((key) => typeof (status as Record<string, unknown>)[key] === 'number') &&
-		!!weekly && typeof weekly === 'object' &&
-		['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].every((key) => typeof (weekly as Record<string, unknown>)[key] === 'number') &&
-		!!data.document_type_count && typeof data.document_type_count === 'object';
+		!!status &&
+		typeof status === 'object' &&
+		['pending', 'ongoing', 'completed', 'failed', 'rejected'].every(
+			(key) =>
+				typeof (status as Record<string, unknown>)[key] === 'number',
+		) &&
+		!!weekly &&
+		typeof weekly === 'object' &&
+		[
+			'monday',
+			'tuesday',
+			'wednesday',
+			'thursday',
+			'friday',
+			'saturday',
+			'sunday',
+		].every(
+			(key) =>
+				typeof (weekly as Record<string, unknown>)[key] === 'number',
+		) &&
+		!!data.document_type_count &&
+		typeof data.document_type_count === 'object'
+	);
 }
 
 function parseDashboardEvent(eventData: string): AdminDashboardData | null {
@@ -58,9 +80,14 @@ function DashboardErrorState({
 		>
 			<div className="max-w-md text-center">
 				<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-danger/10 text-danger">
-					<i className="bi bi-cloud-slash text-xl" aria-hidden="true" />
+					<i
+						className="bi bi-cloud-slash text-xl"
+						aria-hidden="true"
+					/>
 				</div>
-				<h2 className="mt-4 text-lg font-semibold">Dashboard unavailable</h2>
+				<h2 className="mt-4 text-lg font-semibold">
+					Dashboard unavailable
+				</h2>
 				<p className="mt-2 text-sm leading-6 text-text-secondary">
 					We couldn&apos;t load the latest dashboard data. Check your
 					connection and try again.
@@ -89,10 +116,23 @@ export default function AdminDashboardPage() {
 	const { state, fetchDashboard, fetchPendingFiles, dispatch } = useAdmin();
 	const { dashboard } = state;
 	const initRef = useRef(false);
-	const [dateRange, setDateRange] = useState<AdminDashboardDateRange>('last_30_days');
+	const [dateRange, setDateRange] =
+		useState<AdminDashboardDateRange>('last_30_days');
 	const documentTotal = dashboard.data?.documents_count ?? 1;
 	const dateRangeLabels: Record<AdminDashboardDateRange, string> = {
-		today: 'Today', yesterday: 'Yesterday', this_week: 'This week', last_week: 'Last week', this_month: 'This month', last_month: 'Last month', last_7_days: 'Last 7 days', last_30_days: 'Last 30 days', last_90_days: 'Last 90 days', last_6_months: 'Last 6 months', this_year: 'This year', last_year: 'Last year', all_time: 'All time',
+		today: 'Today',
+		yesterday: 'Yesterday',
+		this_week: 'This week',
+		last_week: 'Last week',
+		this_month: 'This month',
+		last_month: 'Last month',
+		last_7_days: 'Last 7 days',
+		last_30_days: 'Last 30 days',
+		last_90_days: 'Last 90 days',
+		last_6_months: 'Last 6 months',
+		this_year: 'This year',
+		last_year: 'Last year',
+		all_time: 'All time',
 	};
 
 	useEffect(() => {
@@ -109,9 +149,12 @@ export default function AdminDashboardPage() {
 		let es: EventSource | null = null;
 		const openStream = () => {
 			if (document.hidden || es) return;
-			es = new EventSource(`${EVENT_BASE_URL_V1}/admin/dashboard?date_range=${encodeURIComponent(dateRange)}`, {
-				withCredentials: true,
-			});
+			es = new EventSource(
+				`${EVENT_BASE_URL_V1}/admin/dashboard?date_range=${encodeURIComponent(dateRange)}`,
+				{
+					withCredentials: true,
+				},
+			);
 			es.onmessage = (event) => {
 				if (event.data == null) return;
 				const data = parseDashboardEvent(event.data);
@@ -155,27 +198,65 @@ export default function AdminDashboardPage() {
 						is today&apos;s overview.
 					</p>
 				</div>
-				
+
 				<div className="flex gap-2">
-					<div
-						className="flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text-secondary hover:bg-hover"
-					>
+					<div className="flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm text-text-secondary hover:bg-hover">
 						<i className="bi bi-calendar3" aria-hidden="true" />
 						<select
 							aria-label="Dashboard date range"
 							value={dateRange}
-							onChange={(event) => setDateRange(event.target.value as AdminDashboardDateRange)}
+							onChange={(event) =>
+								setDateRange(
+									event.target
+										.value as AdminDashboardDateRange,
+								)
+							}
 							className="cursor-pointer bg-transparent outline-none"
 						>
-							{Object.entries(dateRangeLabels).map(([value, label]) => (
-								<option key={value} value={value}>{label}</option>
-							))}
+							{Object.entries(dateRangeLabels).map(
+								([value, label]) => (
+									<option key={value} value={value}>
+										{label}
+									</option>
+								),
+							)}
 						</select>
 					</div>
 				</div>
 			</header>
 
 			<section aria-label="Dashboard statistics">
+				{dashboard.error && dashboard.data ? (
+					<div
+						className="mb-4 flex items-center justify-between gap-4 rounded-sm border border-warning/30 bg-warning/5 px-4 py-3"
+						role="alert"
+					>
+						<div className="flex items-start gap-3">
+							<i
+								className="bi bi-exclamation-triangle mt-0.5 text-warning"
+								aria-hidden="true"
+							/>
+							<div>
+								<p className="text-sm font-medium">
+									Showing previously loaded data
+								</p>
+								<p className="mt-1 text-xs text-text-secondary">
+									The latest dashboard refresh failed:{' '}
+									{dashboard.error}
+								</p>
+							</div>
+						</div>
+						<button
+							type="button"
+							onClick={() => void fetchDashboard()}
+							disabled={dashboard.loading}
+							className="shrink-0 rounded-sm border border-warning/30 px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning/10 disabled:opacity-60"
+						>
+							{dashboard.loading ? 'Retrying...' : 'Retry'}
+						</button>
+					</div>
+				) : null}
+
 				{dashboard.loading && !dashboard.data ? (
 					<div className="flex min-h-72 items-center justify-center rounded-sm border border-border bg-surface">
 						<LoadingSpinner label="Loading dashboard" size="lg" />
@@ -240,16 +321,6 @@ export default function AdminDashboardPage() {
 						))}
 					</div>
 				) : null}
-
-				{dashboard.error && dashboard.data ? (
-					<div className="mt-4 flex items-center justify-between gap-4 rounded-sm border border-warning/30 bg-warning/5 px-4 py-3" role="alert">
-						<div className="flex items-start gap-3">
-							<i className="bi bi-exclamation-triangle mt-0.5 text-warning" aria-hidden="true" />
-							<div><p className="text-sm font-medium">Showing previously loaded data</p><p className="mt-1 text-xs text-text-secondary">The latest dashboard refresh failed: {dashboard.error}</p></div>
-						</div>
-						<button type="button" onClick={() => void fetchDashboard()} disabled={dashboard.loading} className="shrink-0 rounded-sm border border-warning/30 px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning/10 disabled:opacity-60">{dashboard.loading ? 'Retrying...' : 'Retry'}</button>
-					</div>
-				) : null}
 			</section>
 
 			{dashboard.data && (
@@ -296,23 +367,29 @@ export default function AdminDashboardPage() {
 									{[
 										[
 											'Completed',
-											dashboard.data.document_status_count.completed,
+											dashboard.data.document_status_count
+												.completed,
 											'bg-success',
 										],
 										[
 											'Ongoing',
-											dashboard.data.document_status_count.ongoing,
+											dashboard.data.document_status_count
+												.ongoing,
 											'bg-info',
 										],
 										[
 											'Pending',
-											dashboard.data.document_status_count.pending,
+											dashboard.data.document_status_count
+												.pending,
 											'bg-warning',
 										],
 										[
 											'Failed / rejected',
-											dashboard.data.document_status_count.failed +
-											dashboard.data.document_status_count.rejected,
+											dashboard.data.document_status_count
+												.failed +
+												dashboard.data
+													.document_status_count
+													.rejected,
 											'bg-danger',
 										],
 									].map(([name, value, color]) => (
@@ -352,7 +429,9 @@ export default function AdminDashboardPage() {
 							</div>
 
 							<LineGraph
-								data={Object.entries(dashboard.data.document_weekly_count).map(([day, value]) => ({
+								data={Object.entries(
+									dashboard.data.document_weekly_count,
+								).map(([day, value]) => ({
 									label: day.slice(0, 3),
 									value,
 								}))}
@@ -369,26 +448,68 @@ export default function AdminDashboardPage() {
 						<article className="rounded-sm border border-border bg-surface p-5 xl:col-span-2">
 							<div className="flex items-center justify-between">
 								<div>
-									<h2 className="font-semibold">Documents by type</h2>
-									<p className="mt-1 text-xs text-text-secondary">Most common legal document categories</p>
+									<h2 className="font-semibold">
+										Documents by type
+									</h2>
+									<p className="mt-1 text-xs text-text-secondary">
+										Most common legal document categories
+									</p>
 								</div>
-								<i className="bi bi-bar-chart-fill text-primary" aria-hidden="true" />
+								<i
+									className="bi bi-bar-chart-fill text-primary"
+									aria-hidden="true"
+								/>
 							</div>
 							<div className="mt-6 space-y-4">
-								{Object.entries(dashboard.data.document_type_count)
+								{Object.entries(
+									dashboard.data.document_type_count,
+								)
 									.filter(([, value]) => value > 0)
-									.sort(([, first], [, second]) => second - first)
+									.sort(
+										([, first], [, second]) =>
+											second - first,
+									)
 									.slice(0, 8)
 									.map(([type, value], _, entries) => {
-										const largestValue = Math.max(...entries.map(([, entryValue]) => entryValue), documentTotal);
-										const percentage = (value / largestValue) * 100;
-											return <div key={type} className="grid grid-cols-[minmax(7rem,13rem)_1fr_2rem] items-center gap-3 text-xs">
-												<span className="truncate text-text-secondary">{type.replaceAll('_', ' ')}</span>
-												<div className="relative h-5 border-b border-border"><div className="absolute inset-x-0 top-1/2 border-t border-border/60" /><div className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-r-full bg-primary" style={{ width: `${Math.max(percentage, 3)}%` }} /></div>
-												<strong className="text-right">{value}</strong>
-											</div>;
+										const largestValue = Math.max(
+											...entries.map(
+												([, entryValue]) => entryValue,
+											),
+											documentTotal,
+										);
+										const percentage =
+											(value / largestValue) * 100;
+										return (
+											<div
+												key={type}
+												className="grid grid-cols-[minmax(7rem,13rem)_1fr_2rem] items-center gap-3 text-xs"
+											>
+												<span className="truncate text-text-secondary">
+													{type.replaceAll('_', ' ')}
+												</span>
+												<div className="relative h-5 border-b border-border">
+													<div className="absolute inset-x-0 top-1/2 border-t border-border/60" />
+													<div
+														className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-r-full bg-primary"
+														style={{
+															width: `${Math.max(percentage, 3)}%`,
+														}}
+													/>
+												</div>
+												<strong className="text-right">
+													{value}
+												</strong>
+											</div>
+										);
 									})}
-								{Object.values(dashboard.data.document_type_count).every((value) => value === 0) && <p className="text-sm text-text-muted">No document type activity for this range.</p>}
+								{Object.values(
+									dashboard.data.document_type_count,
+								).every((value) => value === 0) && (
+									<p className="text-sm text-text-muted">
+										No document type activity for this
+										range.
+									</p>
+								)}
 							</div>
 						</article>
 					</section>
