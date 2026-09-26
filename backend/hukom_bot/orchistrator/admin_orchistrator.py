@@ -1,3 +1,4 @@
+import asyncio
 from psycopg import AsyncConnection
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.service.chunk_service import ChunkService
@@ -28,113 +29,125 @@ class AdminOrchistrator:
     async def get_dashboard_data(
         self, date_range: DateRangeableMixin
     ) -> AdminDashboardData:
-        to_return = AdminDashboardData()
+        result = AdminDashboardData()
 
         async with self._db.connection() as conn:
-            # User ========================================================
-            to_return.active_user_count = await self._user_service.count_active(
-                date_range=date_range, connection=conn
-            )
-
-            # Documents ===================================================
-
-            # All
-            to_return.documents_count = await self._document_service.count_all(
-                date_range=date_range, connection=conn
-            )
-
-            # By Status
-            to_return.document_status_count = (
-                await self._document_service.count_by_upload_status(
+            try:
+                # User ========================================================
+                result.active_user_count = await self._user_service.count_active(
                     date_range=date_range, connection=conn
                 )
-            )
 
-            # By Document Type
-            to_return.document_type_count = (
-                await self._document_service.count_by_document_type(
+                # Documents ===================================================
+
+                # All
+                result.documents_count = await self._document_service.count_all(
                     date_range=date_range, connection=conn
                 )
-            )
 
-            # Weekly (Mon to Sun)
-            to_return.document_weekly_count = await self._document_service.count_weekly(
-                connection=conn
-            )
+                # By Status
+                result.document_status_count = (
+                    await self._document_service.count_by_upload_status(
+                        date_range=date_range, connection=conn
+                    )
+                )
 
-            # Chunks =====================================================
-            to_return.chunks_count = await self._chunk_service.count_all(
-                date_range=date_range, connection=conn
-            )
+                # By Document Type
+                result.document_type_count = (
+                    await self._document_service.count_by_document_type(
+                        date_range=date_range, connection=conn
+                    )
+                )
 
-            await conn.commit()
+                # Weekly (Mon to Sun)
+                result.document_weekly_count = await self._document_service.count_weekly(
+                    connection=conn
+                )
 
-            return to_return
+                # Chunks =====================================================
+                result.chunks_count = await self._chunk_service.count_all(
+                    date_range=date_range, connection=conn
+                )
+
+                return result
+            except asyncio.CancelledError:
+                await self._handle_cancelled_error(conn=conn)
 
     async def get_user_analytics(self) -> AdminUserAnalytics:
-        to_return = AdminUserAnalytics()
+        result = AdminUserAnalytics()
 
         async with self._db.connection() as conn:
-            to_return.registered_count = await self._user_service.count_all(
-                connection=conn
-            )
-
-            to_return.active_count = await self._user_service.count_active(
-                connection=conn
-            )
-
-            to_return.inactive_count = await self._user_service.count_inactive(
-                connection=conn
-            )
-
-            to_return.monthly_registration_count = (
-                await self._user_service.count_monthly_registration(connection=conn)
-            )
-
-            # Last 30 days only
-            to_return.new_registration_count = (
-                await self._user_service.count_registration(
-                    interval_days=30, connection=conn
+            try:
+                result.registered_count = await self._user_service.count_all(
+                    connection=conn
                 )
-            )
 
-            to_return.role_count = await self._user_service.count_by_role(
-                connection=conn
-            )
+                result.active_count = await self._user_service.count_active(
+                    connection=conn
+                )
 
-            await conn.commit()
+                result.inactive_count = await self._user_service.count_inactive(
+                    connection=conn
+                )
 
-            return to_return
+                result.monthly_registration_count = (
+                    await self._user_service.count_monthly_registration(connection=conn)
+                )
+
+                # Last 30 days only
+                result.new_registration_count = (
+                    await self._user_service.count_registration(
+                        interval_days=30, connection=conn
+                    )
+                )
+
+                result.role_count = await self._user_service.count_by_role(
+                    connection=conn
+                )
+
+                return result
+            except asyncio.CancelledError:
+                await self._handle_cancelled_error(conn=conn)
 
     async def get_document_analytics(self) -> AdminDocumentAnalytics:
-        to_return = AdminDocumentAnalytics()
+        result = AdminDocumentAnalytics()
 
         async with self._db.connection() as conn:
-            to_return.total_count = await self._document_service.count_all(
-                connection=conn
-            )
+            try:
+                result.total_count = await self._document_service.count_all(
+                    connection=conn
+                )
+                result.status_count = await self._document_service.count_by_upload_status(
+                    connection=conn
+                )
+                result.type_count = await self._document_service.count_by_document_type(
+                    connection=conn
+                )
+                result.monthly_upload_count = (
+                    await self._document_service.count_monthly_upload(connection=conn)
+                )
+                result.new_upload_count = await self._document_service.count_registration(
+                    interval_days=30,
+                    connection=conn,
+                )
 
-            to_return.status_count = (
-                await self._document_service.count_by_upload_status(connection=conn)
-            )
+                users = await self._user_service.get_most_upload_count(
+                    limit=5,
+                    connection=conn,
+                )
+                result.most_upload_user = [
+                    UserCaster.base_to_response(user) for user in users
+                ]
 
-            to_return.type_count = await self._document_service.count_by_document_type(
-                connection=conn
-            )
+                return result
 
-            to_return.monthly_upload_count = (
-                await self._document_service.count_monthly_upload(connection=conn)
-            )
-
-            to_return.new_upload_count = await self._document_service.count_registration(
-                interval_days=30, connection=conn
-            )
-
-            most_upload_users = await self._user_service.get_most_upload_count(
-                limit=5, connection=conn
-            )
-            to_return.most_upload_user = [
-                UserCaster.base_to_response(user) for user in most_upload_users
-            ]
-
-            return to_return
+            except asyncio.CancelledError:
+                await self._handle_cancelled_error(conn=conn)
+    
+    async def _handle_cancelled_error(self, conn: AsyncConnection):
+        try:
+            await asyncio.shield(conn.cancel_safe())
+        except Exception:
+            # The pool will discard the connection if it cannot recover it.
+            pass
+        raise

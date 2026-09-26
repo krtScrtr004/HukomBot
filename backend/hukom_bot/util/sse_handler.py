@@ -1,7 +1,11 @@
+import asyncio
+import logging
 from fastapi import Request
 from pydantic import BaseModel
 from typing import Callable, Awaitable
 from backend.hukom_bot.service.pubsub_service import PubsubService
+
+logger = logging.getLogger(__name__)
 
 
 async def sse_handler(
@@ -28,7 +32,14 @@ async def sse_handler(
 
             data = await data_builder()
             yield f"message: {message}, data: {data.model_dump_json()}\n\n"
-
+    except asyncio.CancelledError:
+        logger.info(
+            "SSE cancelled on channel=%s",
+            channel_name,
+        )
+        raise
+    except Exception as ex:
+        raise
     finally:
         await pubsub_service.unsubscribe(channel_name)
         await pubsub_service.close()
