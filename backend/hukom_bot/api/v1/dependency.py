@@ -326,6 +326,7 @@ def get_document_orchestrator(
     document_service: DocumentService = Depends(get_document_service),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     file_storage_service: FileStorageService = Depends(get_file_storage_service),
+    pubsub_service: PubsubService = Depends(get_pubsub_service),
     user_service: UserService = Depends(get_user_service),
 ) -> DocumentOrchistrator:
     return DocumentOrchistrator(
@@ -334,6 +335,7 @@ def get_document_orchestrator(
         document_service=document_service,
         embedding_service=embedding_service,
         file_storage_service=file_storage_service,
+        pubsub_service=pubsub_service,
         user_service=user_service,
     )
 

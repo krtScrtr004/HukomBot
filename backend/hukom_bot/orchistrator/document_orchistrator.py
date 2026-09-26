@@ -3,6 +3,7 @@ from uuid import UUID
 from pathlib import Path
 from fastapi import UploadFile
 
+from backend.hukom_bot.core.settings import settings
 from backend.hukom_bot.database.database import Database
 from backend.hukom_bot.enum.upload_status import UploadStatus
 from backend.hukom_bot.enum.legal_document_type import LegalDocumentType
@@ -15,6 +16,7 @@ from backend.hukom_bot.service.chunk_service import ChunkService
 from backend.hukom_bot.service.document_service import DocumentService
 from backend.hukom_bot.service.embedding_service import EmbeddingService
 from backend.hukom_bot.service.file_storage_service import FileStorageService
+from backend.hukom_bot.service.pubsub_service import PubsubService
 from backend.hukom_bot.service.user_service import UserService
 from backend.hukom_bot.exception.app_exception import (
     NotFoundException,
@@ -34,6 +36,7 @@ class DocumentOrchistrator:
         document_service: DocumentService,
         embedding_service: EmbeddingService,
         file_storage_service: FileStorageService,
+        pubsub_service: PubsubService,
         user_service: UserService,
     ):
         self._db = db
@@ -41,6 +44,7 @@ class DocumentOrchistrator:
         self._document_service = document_service
         self._embedding_service = embedding_service
         self._file_storage_service = file_storage_service
+        self._pubsub_service = pubsub_service
         self._user_service = user_service
 
     async def get_by_id(self, id: UUID) -> DocumentResponse | None:
@@ -213,122 +217,137 @@ class DocumentOrchistrator:
         document_id: UUID,
         payload: ApproveDocumentUploadPayload,
     ) -> OrchistratorResult:
-        document = await self._document_service.get_by_id(document_id)
-        if not document:
-            raise NotFoundException(
-                code="DOCUMENT_NOT_FOUND", message="Document not found"
+        async with self._db.connection() as conn:
+            document = await self._document_service.get_by_id(document_id)
+            if not document:
+                raise NotFoundException(
+                    code="DOCUMENT_NOT_FOUND", message="Document not found"
+                )
+
+            if document.upload_status == UploadStatus.COMPLETED:
+                return OrchistratorResult(
+                    message="File upload completed",
+                    data={
+                        "document": document,
+                        "response": DocumentCaster.base_to_upload_response(document),
+                    },
+                )
+
+            # Update document_type if not None in request body
+            document.document_type = (
+                payload.document_type
+                if payload.document_type is not None
+                else document.document_type
+            )
+            document.upload_status = UploadStatus.ONGOING
+            await self._document_service.update(
+                DocumentUpdate(
+                    id=document_id,
+                    document_type=document.document_type,
+                    upload_status=document.upload_status,
+                ),
+                connection=conn
             )
 
-        if document.upload_status == UploadStatus.COMPLETED:
             return OrchistratorResult(
-                message="File upload completed",
+                message="File upload is ongoing",
                 data={
                     "document": document,
-                    "response": DocumentCaster.base_to_upload_response(document),
+                    "response": DocumentUploadResponse(
+                        document_id=document_id,
+                        status=document.upload_status,
+                    ),
                 },
             )
 
-        # Update document_type if not None in request body
-        document.document_type = (
-            payload.document_type
-            if payload.document_type is not None
-            else document.document_type
-        )
-        document.upload_status = UploadStatus.ONGOING
-        await self._document_service.update(
-            DocumentUpdate(
-                id=document_id,
-                document_type=document.document_type,
-                upload_status=document.upload_status,
-            )
-        )
-
-        return OrchistratorResult(
-            message="File upload is ongoing",
-            data={
-                "document": document,
-                "response": DocumentUploadResponse(
-                    document_id=document_id,
-                    status=document.upload_status,
-                ),
-            },
-        )
-
     async def process_document_pdf_upload(self, document: Document, file: Path):
-        try:
-            # Set document upload status to ONGOING
-            await self._document_service.update(
-                DocumentUpdate(
-                    id=document.id,
-                    document_type=document.document_type,
-                    upload_status=UploadStatus.ONGOING,
-                    upload_error=None,
+        async with self._db.connection() as conn:
+            try:
+                # Set document upload status to ONGOING
+                await self._document_service.update(
+                    DocumentUpdate(
+                        id=document.id,
+                        document_type=document.document_type,
+                        upload_status=UploadStatus.ONGOING,
+                        upload_error=None,
+                    ),
+                    connection=conn
                 )
-            )
-            logger.info(
-                "Document with id: %s set upload status to ONGOING", document.id
-            )
-
-            chunks = await self._chunk_service.extract_text_to_chunks(file)
-
-            # Create the chunk models
-            document_chunks = {}
-            for i, chunk in enumerate(chunks):
-                document_chunks[i] = ChunkCreate(
-                    document_id=document.id,
-                    chunk_number=i + 1,
-                    chunk_text=chunk["document"],
-                    section=chunk["section"],
+                logger.info(
+                    "Document with id: %s set upload status to ONGOING", document.id
                 )
 
-            texts = [chunk["document"] for chunk in chunks]
-            embeddings = self._embedding_service.embed_documents(texts)
+                chunks = await self._chunk_service.extract_text_to_chunks(file)
 
-            # Map embeddings back to the chunk models
-            for i, embedding in enumerate(embeddings):
-                chunk_model = document_chunks.get(i)
-                if chunk_model:
-                    chunk_model.embedding = embedding
+                # Create the chunk models
+                document_chunks = {}
+                for i, chunk in enumerate(chunks):
+                    document_chunks[i] = ChunkCreate(
+                        document_id=document.id,
+                        chunk_number=i + 1,
+                        chunk_text=chunk["document"],
+                        section=chunk["section"],
+                    )
 
-            await self._chunk_service.create_many(list(document_chunks.values()))
+                texts = [chunk["document"] for chunk in chunks]
+                embeddings = self._embedding_service.embed_documents(texts)
 
-            # Set document upload status to COMPLETED
-            await self._document_service.update(
-                DocumentUpdate(
-                    id=document.id,
-                    upload_status=UploadStatus.COMPLETED,
+                # Map embeddings back to the chunk models
+                for i, embedding in enumerate(embeddings):
+                    chunk_model = document_chunks.get(i)
+                    if chunk_model:
+                        chunk_model.embedding = embedding
+
+                await self._chunk_service.create_many(list(document_chunks.values()))
+
+                # Set document upload status to COMPLETED
+                await self._document_service.update(
+                    DocumentUpdate(
+                        id=document.id,
+                        upload_status=UploadStatus.COMPLETED,
+                    ),
+                    connection=conn
                 )
-            )
 
-            logger.info(
-                "%i chunks created for document with id: %s",
-                len(document_chunks),
-                document.id,
-            )
-
-            logger.info(
-                "Document with id: %s set upload status to COMPLETED", document.id
-            )
-
-            # Delete file in the server
-            await self._file_storage_service.delete_from_pending(file.name)
-
-            logger.info("Document %s successfully deleted", file.name)
-        except Exception as ex:
-            # Set document upload status to FAILED
-            await self._document_service.update(
-                DocumentUpdate(
-                    id=document.id,
-                    upload_status=UploadStatus.FAILED,
-                    upload_error=str(ex),
+                logger.info(
+                    "%i chunks created for document with id: %s",
+                    len(document_chunks),
+                    document.id,
                 )
-            )
 
-            logger.error(
-                "Document with id: %s set upload status to FAILED", document.id
-            )
+                logger.info(
+                    "Document with id: %s set upload status to COMPLETED", document.id
+                )
 
-            logger.exception(str(ex))
+                # Delete file in the server
+                await self._file_storage_service.delete_from_pending(file.name)
+
+                logger.info("Document %s successfully deleted", file.name)
+            except Exception as ex:
+                # Set document upload status to FAILED
+                await self._document_service.update(
+                    DocumentUpdate(
+                        id=document.id,
+                        upload_status=UploadStatus.FAILED,
+                        upload_error=str(ex),
+                    ),
+                    connection=conn
+                )
+
+                logger.error(
+                    "Document with id: %s set upload status to FAILED", document.id
+                )
+
+                logger.exception(str(ex))
+            finally:
+                await self._pubsub_service.publish(
+                    channel=settings.ADMIN_DASHBOARD_CH, data="Admin dashboard data updated"
+                )
+            
+                await self._pubsub_service.publish(
+                    channel=settings.ADMIN_DOCUMENT_ANALYTICS_CH,
+                    data="Document analytics data updated",
+                )
 
     async def search_pipeline(self, param: DocumentSearch):
         async with self._db.connection() as conn:
