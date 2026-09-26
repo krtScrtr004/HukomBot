@@ -1,4 +1,4 @@
-# HukomBot
+﻿# HukomBot
 
 ## Installation
 
@@ -134,8 +134,8 @@ All API endpoints use the `/api/v1` base path.
 | Method | Path | Auth | Roles | Rate Limit | Description |
 |--------|------|------|-------|------------|-------------|
 | `GET` | `/api/v1/auth/me` | Yes | Any | 60 req/min | Get current user profile |
-| `GET` | `/api/v1/auth/google/login` | No | — | 10 req/min | Initiate Google OAuth |
-| `GET` | `/api/v1/auth/google/login/callback` | No | — | 10 req/min | Handle Google OAuth callback |
+| `GET` | `/api/v1/auth/google/login` | No | â€” | 10 req/min | Initiate Google OAuth |
+| `GET` | `/api/v1/auth/google/login/callback` | No | â€” | 10 req/min | Handle Google OAuth callback |
 | `GET` | `/api/v1/auth/logout` | Yes | Any | 20 req/min | Log out the current user |
 | `GET` | `/api/v1/users/` | Yes | `admin` | 60 req/min | List/search all users |
 | `GET` | `/api/v1/users/me` | Yes | Any | 60 req/min | Get current user profile |
@@ -153,9 +153,9 @@ All API endpoints use the `/api/v1` base path.
 | `GET` | `/api/v1/admin/dashboard` | Yes | `admin` | 60 req/min | Get admin dashboard data |
 | `GET` | `/api/v1/admin/users` | Yes | `admin` | 60 req/min | Get admin user analytics |
 | `GET` | `/api/v1/admin/documents` | Yes | `admin` | 60 req/min | Get admin document analytics |
-| `GET` | `/events/v1/admin/dashboard` | Yes | `admin` | — | Stream admin dashboard updates (SSE) |
-| `GET` | `/events/v1/admin/users` | Yes | `admin` | — | Stream admin user analytics updates (SSE) |
-| `GET` | `/events/v1/admin/documents` | Yes | `admin` | — | Stream admin document analytics updates (SSE) |
+| `GET` | `/events/v1/admin/dashboard` | Yes | `admin` | â€” | Stream admin dashboard updates (SSE) |
+| `GET` | `/events/v1/admin/users` | Yes | `admin` | â€” | Stream admin user analytics updates (SSE) |
+| `GET` | `/events/v1/admin/documents` | Yes | `admin` | â€” | Stream admin document analytics updates (SSE) |
 | `POST` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 5 req/min | Run case analysis |
 | `GET` | `/api/v1/case-analyses/` | Yes | `standard`, `contributor` | 60 req/min | List the user's case analysis sessions |
 | `GET` | `/api/v1/case-analyses/{id}/versions` | Yes | `standard`, `contributor` | 60 req/min | List versions of a case analysis session |
@@ -218,139 +218,57 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 
 ## Added
 
-### Frontend
-
-- Added a React + Vite frontend application under `frontend/hukom_bot`.
-- Added TypeScript, ESLint, and path alias configuration.
-- Added the login page route.
-- Added reusable UI components:
-  - `LoginCard`
-  - `Logo`
-  - `ProviderButton`
-  - `ThemeToggle`
-- Added sitewide theme context/provider.
-- Added centered layout primitives for authentication views.
-- Added Bootstrap Icons integration.
-- Added `SettingsModal` with:
-  - Profile Settings tab
-  - Token Usage tab
-- Added `userService.ts` with:
-  - `updateUserProfile()`
-  - `getUserTokenUsage()`
-- Added `UserTokenUsageResponse` type.
-- Added a user profile dropdown to `SessionExplorer`.
-- Added Settings and Sign Out actions.
-- Added a Settings trigger to `Header`.
-- Added `refreshUser()` to `WorkspaceContext`.
-
 ### Backend
 
-- Added the `case_analysis_answer_format` enum and supporting caster, repository, and schema components for the case analysis version flow.
-- Reintroduced the case analyses endpoint module:
-  - `backend/hukom_bot/api/v1/endpoint/case_analysis.py`
-- Added:
-
-  ```http
-  GET /api/v1/users/me/usage
-  ```
-
-  for retrieving authenticated user token quota usage.
-- Added:
-
-  ```http
-  PATCH /api/v1/users/{user_id}
-  ```
-
-  for updating user profiles through `multipart/form-data`.
-- Added rate limiting:
-  - `PATCH /users/{user_id}` — 10 requests/minute
-  - `GET /users/me` — 60 requests/minute
-  - `GET /users/me/usage` — 60 requests/minute
-- Added Redis-backed, Lua-scripted token quota middleware.
-- Added `TokenQuotaUsage` schema containing:
-  - `quota`
-  - `remaining`
-  - `ttl`
-- Added `profile_picture` to `UserResponse`.
-- Updated `UserCaster.base_to_response` to include `profile_picture`.
 - Added `created_at` and  `provider`  (`OAuthProvider`) fields to `UserResponse` schema.
 - Added to `UserResponse` schema.
-- Added `UserOrchistrator` with `update_pipeline()` for:
-  - Profile updates
-  - File validation
-  - Cloudinary image uploads
-  - Authorization checks
-  - Database transactions
-  - Transaction rollback
-- Added `get_user_orchistrator` dependency injection.
 - Added:
-  ```http
-  PATCH /api/v1/documents/{document_id}
-  ```
-  for updating document metadata (original file name, document type, upload status) through `DocumentUpdatePayload`.
-- Added `DocumentOrchistrator.update_pipeline()` with:
-  - Status transition validation (no reverting to prior states, no FAILED after COMPLETED)
-  - Forbidden `ONGOING` status transitions (must use the approve endpoint instead)
-  - `REJECTED` status handling with file deletion and `rejection_message` enforcement
-- Added Role-Based Access Control (RBAC):
-  - Added `role` field to `JWTPayload`
-  - Added `require_role` dependency injection function
-  - Added `UserRole` enum (`standard`, `contributor`, `admin`)
-- Added role guards on endpoints:
-  - `standard`, `contributor` required: `GET /users/me/usage`, all `case-analyses` endpoints
-  - `admin` required: `PATCH /documents/{id}`, `PATCH /documents/{id}/approve`, `GET /documents/`, `GET /documents/{id}`
-- Added:
-  ```http
-  GET /api/v1/users/
-  ```
-  for listing/searching all users (admin only).
-- Added:
-  ```http
-  DELETE /api/v1/users/{user_id}
-  ```
-  for deleting user accounts (admin only).
-- Added:
+
   ```http
   GET /api/v1/admin/dashboard
   ```
+
    for retrieving admin dashboard data with aggregated counts (admin only).
 - Added:
+
   ```http
   GET /api/v1/admin/users
   ```
+
    for retrieving admin user analytics with registration and role counts (admin only).
 - Added:
+
   ```http
   GET /api/v1/admin/documents
   ```
+
    for retrieving admin document analytics with status, type, monthly upload counts, and top uploaders (admin only).
 - Added:
+
   ```http
   GET /events/v1/admin/dashboard
   ```
+
    for streaming real-time admin dashboard updates via Server-Sent Events (SSE) (`admin` only).
 - Added:
+
   ```http
   GET /events/v1/admin/users
   ```
+
    for streaming real-time user analytics updates via Server-Sent Events (SSE) (`admin` only).
 - Added:
+
   ```http
   GET /events/v1/admin/documents
   ```
+
    for streaming real-time document analytics updates via Server-Sent Events (SSE) (`admin` only).
 - Added `PubsubService` class wrapping Redis pub/sub for publish/subscribe messaging.
 - Added `ADMIN_DASHBOARD_CH`, `ADMIN_USER_ANALYTICS_CH`, and `ADMIN_DOCUMENT_ANALYTICS_CH` configuration variables for the Redis channel names.
 - Added publish (trigger) statements to document and user actions that update admin dashboard statistics.
-- Added `role` field to the JWT payload emitted at login.
-- Added `AuthContext` (`AuthContext.tsx`) for frontend auth state management.
-- Added `RequireAuth` wrapper in `App.tsx` for protected route rendering.
-- Added `user.ts` type definitions for frontend.
 - Added `UserSearch` schema with query-based search, filter by `is_active`, `role`, `oauth_provider`, and `OrderableMixin` for sortable columns.
-- Added `DocumentSearch` schema with query-based search and `OrderableMixin`.
-- Added `DocumentResponse` schema with nested `UserResponse` for the uploader.
 - Added `UserGetAll` and `DocumentGetAll` schemas for non-search list endpoints with filter by `is_active`, `role`, `oauth_provider`.
-- Added `OrderableMixin` and `OrderEnum` (`ASC`/`DESC`) for sortable list responses.
 - Added `AdminDashboardData` schema with aggregated counts for active users, documents by status, and chunks.
 - Updated `AdminDashboardData` schema to include per-status, per-weekly, and per-type document counts via `DocumentStatusCount`, `DocumentWeeklyCount`, and `DocumentTypeCount` schemas.
 - Updated `GET /api/v1/admin/dashboard` to accept optional `date_range`, `date_start`, and `date_end` query parameters for filtering by date range.
@@ -359,54 +277,27 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Added `date_range`, `date_start`, and `date_end` query parameters to `GET /events/v1/admin/dashboard`.
 - Added `AdminUserAnalytics`, `MonthlyCount`, and `UserRoleCount` schemas for admin user analytics.
 - Added `AdminDocumentAnalytics` schema for admin document analytics with status, type, monthly upload counts, and top uploaders.
-- Added `rejection_message` field to `DocumentCreate`, `DocumentUpdateBase`, and `DocumentResponse` schemas.
-- Added `rejected` value to the `UploadStatus` enum with status level `-1` and state transition logic in `DocumentOrchistrator.update_pipeline()`.
-- Made `uploader` field optional (`UserResponse | None`) in `DocumentResponse` schema.
 - Added `uploader_id` filter to `DocumentSearch` and `DocumentGetAll` schemas.
 - Added:
+
   ```http
   DELETE /api/v1/documents/{document_id}
   ```
+
    for deleting a document by ID (admin only).
 - Added `DocumentService.delete()` method and corresponding repository implementation for single document deletion.
 - Added:
+
   ```http
   POST /api/v1/documents/bulk-delete
   ```
-  for bulk deletion of multiple documents by ID (admin only).
+
+   for bulk deletion of multiple documents by ID (admin only).
 - Added `DocumentService.delete_many()` method and corresponding repository implementation for bulk document deletion.
 - Changed role access for `GET /api/v1/documents/` from `admin` to `Any authenticated`.
 - Changed role access for `GET /api/v1/documents/{document_id}` from `admin` to `Any authenticated`.
 
 ## Changed
-
-### Backend Structure
-
-- Renamed the backend package namespace from:
-
-  ```text
-  backend.app
-  ```
-
-  to:
-
-  ```text
-  backend.hukom_bot
-  ```
-
-  across API, services, repositories, schemas, and utilities.
-
-### Frontend Architecture
-
-- Migrated the frontend from the legacy Python/HTML page structure to a modern React component architecture.
-- Updated theme toggle icon styling.
-- Applied theme handling globally.
-- Created `AuthContext` as the single source of truth for authentication state on the frontend, replacing inline auth checks in `WorkspaceContext`.
-- Updated `App.tsx` with a `RequireAuth` wrapper that gates `/workspace` behind `standard` or `contributor` roles.
-- Separated user-related types (`UserRole`, `UserResponse`, `UserTokenUsageResponse`) into `frontend/hukom_bot/src/types/user.ts`.
-- Updated logout handling to use the async `logout()` service function directly instead of `getLogoutUrl()` + `window.location.href`.
-- Updated `WorkspaceContext` to consume `AuthContext` instead of fetching the current user independently.
-- Updated `SessionExplorer` session list to render sorted by `updated_at` descending (most recent first).
 
 ### User API
 
@@ -442,25 +333,6 @@ The endpoint now uses `UserOrchistrator` for authorization and transactional upd
   - Authorization checks (self or admin; admin-only for `role` and `is_active` fields)
   - Database transactions with rollback on failure
 
-### Token Usage API
-
-The response from:
-
-```http
-GET /users/me/usage
-```
-
-is now wrapped in a `SuccessResponse` envelope containing:
-
-```json
-{
-  "success": true,
-  "message": "...",
-  "data": {},
-  "result": {}
-}
-```
-
 ### User Response
 
 - Updated `UserCaster` to include `profile_picture` when converting to `UserResponse`.
@@ -473,84 +345,3 @@ is now wrapped in a `SuccessResponse` envelope containing:
 - `UserSearch` schema restructured to use generic `query` field with `OrderableMixin` instead of separate `first_name`/`last_name`/`email`/`provider` fields.
 - `DocumentSearch` schema restructured to use generic `query` field with `OrderableMixin`.
 - Added `model_validator` on `DocumentUpdateBase` to enforce: `rejection_message` required when `upload_status` is `rejected`, and `upload_status` required when `rejection_message` is provided.
-
-### Dependency Injection
-
-- Consolidated the `DocumentOrchistrator` import in `dependency.py`.
-- Added a trailing comma for consistency.
-
-### Workspace UI
-
-- Refactored `SessionExplorer` to accept:
-  - `onSettingsClick`
-  - `onSignOut`
-- Added a user profile footer with a dropdown menu.
-- Updated `Header` to accept `onSettingsClick`.
-- Moved user name display from `Header` to the `SessionExplorer` footer.
-- Updated the `Workspace` page to manage `settingsModalOpen` state and connect the settings modal.
-
-### Document API
-
-The approve document endpoint was changed from:
-
-```http
-POST /documents/{document_id}/approve
-```
-
-to:
-
-```http
-PATCH /documents/{document_id}/approve
-```
-
-A new endpoint was also added:
-
-```http
-PATCH /documents/{document_id}
-```
-
-for updating document metadata.
-
----
-
-## Removed
-
-### Legacy Frontend
-
-Removed the legacy frontend Python templates, routers, scripts, styles, and helper modules under:
-
-```text
-frontend/
-```
-
-### User Service
-
-- Removed the direct `UserService` dependency from the user endpoint.
-- Replaced it with `UserOrchistrator`.
-
-### User Endpoint Imports
-
-- Removed the old `Body` import.
-- Replaced it with:
-  - `Form`
-  - `File`
-  - `UploadFile`
-- Removed `getLogoutUrl()` from frontend `authService.ts`.
-- Replaced it with an async `logout()` that calls the API and redirects on completion.
-
-### Header User Display
-
-- Removed direct `first_name`/user name display from `Header`.
-- User information is now displayed in the `SessionExplorer` profile footer.
-
----
-
-### Screenshots
-
-![Login Page](screenshot/login-dark.png)
-![Workspace - Case Analysis](screenshot/case-analysis.png)
-![Workspace - Case Reanalysis](screenshot/case-reanalysis.png)
-![Document Upload Modal](screenshot/document-upload.png)
-![Settings Modal - Profile](screenshot/settings-prof.png)
-![Setings Modal - Token Usage](screenshot/settings-token.png)
-
