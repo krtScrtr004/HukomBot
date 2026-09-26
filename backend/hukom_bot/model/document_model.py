@@ -18,6 +18,7 @@ class Document(BaseModel):
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
     upload_error: str | None = Field(default=None)
     rejection_message: str | None = Field(default=None)
+    upload_status_updated_at: datetime = Field(default_factory=datetime.now)
     created_at: datetime = Field(default_factory=datetime.now)
 
     # Navigation Property

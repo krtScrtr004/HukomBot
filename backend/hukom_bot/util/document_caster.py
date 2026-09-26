@@ -24,6 +24,7 @@ class DocumentCaster:
             upload_status=document.upload_status,
             upload_error=document.upload_error,
             rejection_message=document.rejection_message,
+            upload_status_updated_at=document.upload_status_updated_at,
             created_at=document.created_at
         )
 
@@ -62,6 +63,7 @@ class DocumentCaster:
             upload_status=document.upload_status,
             upload_error=document.upload_error,
             rejection_message=document.rejection_message,
+            upload_status_updated_at=document.upload_status_updated_at,
             created_at=document.created_at
         )
 

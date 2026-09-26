@@ -21,6 +21,7 @@ class DocumentCreate(BaseModel):
     upload_status: UploadStatus = Field(default=UploadStatus.PENDING)
     upload_error: str | None = Field(default=None, max_length=500)
     rejection_message: str | None = Field(default=None, max_length=500)
+    upload_status_updated_at: datetime = Field(default_factory=datetime.now)
     created_at: datetime = Field(default_factory=datetime.now)
 
     model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
@@ -129,6 +130,7 @@ class DocumentResponse(BaseModel):
     upload_status: UploadStatus
     upload_error: str | None
     rejection_message: str | None
+    upload_status_updated_at: datetime | None
     created_at: datetime
 
     model_config = {"arbitrary_types_allowed": True}
