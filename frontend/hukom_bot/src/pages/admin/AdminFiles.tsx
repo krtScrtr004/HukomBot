@@ -19,6 +19,7 @@ import type {
 } from '@/types/admin';
 import { ADMIN_DOCUMENTS_PAGE_SIZE } from '@/types/admin';
 import type { UploadStatus } from '@/types/workspace';
+import { LEGAL_DOCUMENT_TYPES } from '@/constants/legalDocumentTypes';
 
 const STATUS_FILTERS: {
 	label: string;

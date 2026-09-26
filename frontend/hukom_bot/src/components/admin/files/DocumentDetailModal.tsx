@@ -246,6 +246,7 @@ export default function DocumentDetailModal({
 						>
 							Legal Document Category
 						</label>
+
 						<select
 							id="doc-type-select"
 							value={documentType}
@@ -261,8 +262,14 @@ export default function DocumentDetailModal({
 							}
 							className="w-full h-(--input-height) rounded-sm border border-border bg-background px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60 disabled:cursor-not-allowed"
 						>
-							{LEGAL_DOCUMENT_TYPES.map((opt) => (
-								<option key={opt.value} value={opt.value}>
+							{LEGAL_DOCUMENT_TYPES.sort((a, b) =>
+								a.label.localeCompare(b.label),
+							).map((opt) => (
+								<option
+									key={opt.value}
+									value={opt.value}
+									selected={doc.document_type === opt.value}
+								>
 									{opt.label}
 								</option>
 							))}
@@ -294,6 +301,7 @@ export default function DocumentDetailModal({
 							>
 								Reason for Disapproval
 							</label>
+
 							<textarea
 								id="modal-reject-reason"
 								value={rejectionMessage}
@@ -307,6 +315,7 @@ export default function DocumentDetailModal({
 								placeholder="Describe why this document is being rejected…"
 								className="w-full border border-border rounded-sm p-2 text-xs bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-danger"
 							/>
+
 							<div className="flex justify-between items-center text-xs">
 								{rejectionError ? (
 									<ErrorText error={rejectionError} />
@@ -318,6 +327,7 @@ export default function DocumentDetailModal({
 									maxLength={MAX_REJECTION_LENGTH}
 								/>
 							</div>
+
 							<div className="flex justify-end gap-2 pt-1">
 								<button
 									type="button"
@@ -327,6 +337,7 @@ export default function DocumentDetailModal({
 								>
 									Cancel
 								</button>
+
 								<button
 									type="button"
 									onClick={() => void handleReject()}
@@ -353,6 +364,7 @@ export default function DocumentDetailModal({
 						>
 							Close
 						</button>
+
 						{isAdmin && (
 							<button
 								type="button"
@@ -380,6 +392,7 @@ export default function DocumentDetailModal({
 									Disapprove
 								</button>
 							)}
+
 							<button
 								type="button"
 								onClick={() => void handleApprove()}

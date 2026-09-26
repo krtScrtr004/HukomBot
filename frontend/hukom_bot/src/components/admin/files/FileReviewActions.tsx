@@ -114,6 +114,7 @@ export default function FileReviewActions({
 						>
 							Approve
 						</button>
+
 						<button
 							type="button"
 							className="px-2 py-1 text-xs rounded-sm bg-danger text-danger-foreground hover:opacity-90"
@@ -138,12 +139,14 @@ export default function FileReviewActions({
 							Confirm approval for{' '}
 							<strong>{document.original_file_name}</strong>.
 						</p>
+
 						<label
 							htmlFor={`approve-type-${document.id}`}
 							className="block text-sm mb-1"
 						>
 							Document type (optional)
 						</label>
+
 						<select
 							id={`approve-type-${document.id}`}
 							value={documentType}
@@ -154,8 +157,16 @@ export default function FileReviewActions({
 							}
 							className="w-full border border-border rounded-sm px-2 py-1 text-sm bg-surface"
 						>
-							{LEGAL_DOCUMENT_TYPES.map((opt) => (
-								<option key={opt.value} value={opt.value}>
+							{LEGAL_DOCUMENT_TYPES.sort((a, b) =>
+								a.label.localeCompare(b.label),
+							).map((opt) => (
+								<option
+									key={opt.value}
+									value={opt.value}
+									selected={
+										document.document_type === opt.value
+									}
+								>
 									{opt.label}
 								</option>
 							))}
@@ -176,6 +187,7 @@ export default function FileReviewActions({
 							Provide a reason for rejecting{' '}
 							<strong>{document.original_file_name}</strong>.
 						</p>
+
 						<FactTextArea
 							id={`reject-reason-${document.id}`}
 							value={rejectionMessage}
@@ -188,6 +200,7 @@ export default function FileReviewActions({
 								if (rejectionError) setRejectionError(null);
 							}}
 						/>
+
 						<div className="flex justify-between items-start mt-1">
 							{rejectionError ? (
 								<ErrorText error={rejectionError} />
