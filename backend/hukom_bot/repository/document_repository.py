@@ -56,6 +56,7 @@ class DocumentRepository:
                     upload_error, 
                     digest,
                     uploader_id,
+                    upload_status_updated_at,
                     created_at
                 ) VALUES (
                     %(id)s,
@@ -67,6 +68,7 @@ class DocumentRepository:
                     %(upload_error)s, 
                     %(digest)s,
                     %(uploader_id)s,
+                    %(upload_status_updated_at)s,
                     %(created_at)s
                 )
                 ON CONFLICT (digest)
@@ -133,6 +135,9 @@ class DocumentRepository:
         if document.upload_status:
             set_clauses.append("upload_status = %(upload_status)s")
             values["upload_status"] = document.upload_status
+            
+            set_clauses.append("upload_status_updated_at = %(upload_status_updated_at)s")
+            values["upload_status_updated_at"] = datetime.now()
         if document.rejection_message:
             set_clauses.append("rejection_message = %(rejection_message)s")
             values["rejection_message"] = document.rejection_message
@@ -409,7 +414,7 @@ class DocumentRepository:
         async with conn.cursor() as cur:
             date_range_query = (
                 build_date_range_where_clause(
-                    column_name="created_at",
+                    column_name="upload_status_updated_at",
                     date_rangeable=date_range,
                     include_where=True,
                 )
