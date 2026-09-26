@@ -142,12 +142,14 @@ All API endpoints use the `/api/v1` base path.
 | `GET` | `/api/v1/users/me/usage` | Yes | `standard`, `contributor` | 60 req/min | Get daily token quota usage |
 | `PATCH` | `/api/v1/users/{user_id}` | Yes | Any (admin for `role` field) | 10 req/min | Update user profile |
 | `DELETE` | `/api/v1/users/{id}` | Yes | `admin` | 60 req/min | Delete a user account |
-| `GET` | `/api/v1/documents/` | Yes | `admin` | 60 req/min | List/search all documents |
+| `GET` | `/api/v1/documents/` | Yes | Any | 60 req/min | List/search all documents |
 | `POST` | `/api/v1/documents/` | Yes | Any | 5 req/min | Upload a document |
-| `GET` | `/api/v1/documents/{id}` | Yes | `admin` | 60 req/min | Get document by ID |
+| `GET` | `/api/v1/documents/{id}` | Yes | Any | 60 req/min | Get document by ID |
 | `PATCH` | `/api/v1/documents/{id}` | Yes | `admin` | 10 req/min | Update document metadata |
 | `PATCH` | `/api/v1/documents/{id}/approve` | Yes | `admin` | 10 req/min | Approve a document |
 | `GET` | `/api/v1/documents/{id}/upload-status` | Yes | Any | 60 req/min | Get document upload status |
+| `DELETE` | `/api/v1/documents/{id}` | Yes | `admin` | 10 req/min | Delete a document |
+| `POST` | `/api/v1/documents/bulk-delete` | Yes | `admin` | 10 req/min | Bulk delete documents |
 | `GET` | `/api/v1/admin/dashboard` | Yes | `admin` | 60 req/min | Get admin dashboard data |
 | `GET` | `/api/v1/admin/users` | Yes | `admin` | 60 req/min | Get admin user analytics |
 | `GET` | `/api/v1/admin/documents` | Yes | `admin` | 60 req/min | Get admin document analytics |
@@ -361,6 +363,20 @@ This provides rollback behavior for failed profile updates, preventing orphaned 
 - Added `rejected` value to the `UploadStatus` enum with status level `-1` and state transition logic in `DocumentOrchistrator.update_pipeline()`.
 - Made `uploader` field optional (`UserResponse | None`) in `DocumentResponse` schema.
 - Added `uploader_id` filter to `DocumentSearch` and `DocumentGetAll` schemas.
+- Added:
+  ```http
+  DELETE /api/v1/documents/{document_id}
+  ```
+   for deleting a document by ID (admin only).
+- Added `DocumentService.delete()` method and corresponding repository implementation for single document deletion.
+- Added:
+  ```http
+  POST /api/v1/documents/bulk-delete
+  ```
+  for bulk deletion of multiple documents by ID (admin only).
+- Added `DocumentService.delete_many()` method and corresponding repository implementation for bulk document deletion.
+- Changed role access for `GET /api/v1/documents/` from `admin` to `Any authenticated`.
+- Changed role access for `GET /api/v1/documents/{document_id}` from `admin` to `Any authenticated`.
 
 ## Changed
 
