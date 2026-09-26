@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict ZiKgLy1Ikb9Elcf1pSuAmzhbTdOT5CBFEdVHxaccO9RFgC5juQZ1awrrfOp5qFN
+\restrict XpyGG9Rf99Pd5bFHhuLjwMrvRAJuoeGG5GOw19Hg1m9hbcVCxWK4GaAhebIUbiQ
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
 
--- Started on 2026-08-27 23:24:47
+-- Started on 2026-09-26 23:13:27
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -30,7 +30,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
 
 --
--- TOC entry 5401 (class 0 OID 0)
+-- TOC entry 5404 (class 0 OID 0)
 -- Dependencies: 3
 -- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
 --
@@ -47,7 +47,7 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 
 --
--- TOC entry 5402 (class 0 OID 0)
+-- TOC entry 5405 (class 0 OID 0)
 -- Dependencies: 2
 -- Name: EXTENSION vector; Type: COMMENT; Schema: -; Owner: 
 --
@@ -167,7 +167,8 @@ CREATE TYPE public.upload_status AS ENUM (
     'pending',
     'ongoing',
     'completed',
-    'failed'
+    'failed',
+    'rejected'
 );
 
 
@@ -422,7 +423,8 @@ CREATE TABLE public.chunks (
     chunk_text text NOT NULL,
     embedding public.vector(768),
     section character varying(100) NOT NULL,
-    search_vector tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, ((COALESCE(chunk_text, ''::text) || ' '::text) || (COALESCE(section, ''::character varying))::text))) STORED
+    search_vector tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, ((COALESCE(chunk_text, ''::text) || ' '::text) || (COALESCE(section, ''::character varying))::text))) STORED,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -444,7 +446,9 @@ CREATE TABLE public.documents (
     upload_file_name uuid NOT NULL,
     search_vector tsvector,
     digest bytea NOT NULL,
-    uploader_id uuid NOT NULL
+    uploader_id uuid NOT NULL,
+    rejection_message text,
+    upload_status_updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -487,7 +491,7 @@ CREATE TABLE public.users (
 ALTER TABLE public.users OWNER TO postgres;
 
 --
--- TOC entry 5221 (class 2606 OID 75026)
+-- TOC entry 5223 (class 2606 OID 75026)
 -- Name: case_analysis_sessions case_analysis_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -496,7 +500,7 @@ ALTER TABLE ONLY public.case_analysis_sessions
 
 
 --
--- TOC entry 5234 (class 2606 OID 75092)
+-- TOC entry 5236 (class 2606 OID 75092)
 -- Name: case_analysis_version_facts case_analysis_version_facts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -505,7 +509,7 @@ ALTER TABLE ONLY public.case_analysis_version_facts
 
 
 --
--- TOC entry 5229 (class 2606 OID 75080)
+-- TOC entry 5231 (class 2606 OID 75080)
 -- Name: case_analysis_versions case_analysis_versions_case_analysis_session_id_version_num_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -514,7 +518,7 @@ ALTER TABLE ONLY public.case_analysis_versions
 
 
 --
--- TOC entry 5231 (class 2606 OID 75078)
+-- TOC entry 5233 (class 2606 OID 75078)
 -- Name: case_analysis_versions case_analysis_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -523,7 +527,7 @@ ALTER TABLE ONLY public.case_analysis_versions
 
 
 --
--- TOC entry 5225 (class 2606 OID 75059)
+-- TOC entry 5227 (class 2606 OID 75059)
 -- Name: case_fact_versions case_fact_versions_case_fact_id_version_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -532,7 +536,7 @@ ALTER TABLE ONLY public.case_fact_versions
 
 
 --
--- TOC entry 5227 (class 2606 OID 75057)
+-- TOC entry 5229 (class 2606 OID 75057)
 -- Name: case_fact_versions case_fact_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -541,7 +545,7 @@ ALTER TABLE ONLY public.case_fact_versions
 
 
 --
--- TOC entry 5223 (class 2606 OID 75036)
+-- TOC entry 5225 (class 2606 OID 75036)
 -- Name: case_facts case_facts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -550,7 +554,7 @@ ALTER TABLE ONLY public.case_facts
 
 
 --
--- TOC entry 5213 (class 2606 OID 16765)
+-- TOC entry 5215 (class 2606 OID 16765)
 -- Name: chunks chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -559,7 +563,7 @@ ALTER TABLE ONLY public.chunks
 
 
 --
--- TOC entry 5207 (class 2606 OID 66697)
+-- TOC entry 5209 (class 2606 OID 66697)
 -- Name: documents documents_digest_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -568,7 +572,7 @@ ALTER TABLE ONLY public.documents
 
 
 --
--- TOC entry 5209 (class 2606 OID 16727)
+-- TOC entry 5211 (class 2606 OID 16727)
 -- Name: documents documents_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -577,7 +581,7 @@ ALTER TABLE ONLY public.documents
 
 
 --
--- TOC entry 5211 (class 2606 OID 58549)
+-- TOC entry 5213 (class 2606 OID 58549)
 -- Name: documents documents_upload_file_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -586,7 +590,7 @@ ALTER TABLE ONLY public.documents
 
 
 --
--- TOC entry 5237 (class 2606 OID 99729)
+-- TOC entry 5239 (class 2606 OID 99729)
 -- Name: revoked_tokens revoked_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -595,7 +599,7 @@ ALTER TABLE ONLY public.revoked_tokens
 
 
 --
--- TOC entry 5217 (class 2606 OID 25650)
+-- TOC entry 5219 (class 2606 OID 25650)
 -- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -604,7 +608,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- TOC entry 5219 (class 2606 OID 25648)
+-- TOC entry 5221 (class 2606 OID 25648)
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -613,7 +617,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- TOC entry 5205 (class 1259 OID 17823)
+-- TOC entry 5207 (class 1259 OID 17823)
 -- Name: document_title_idx; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -621,7 +625,7 @@ CREATE UNIQUE INDEX document_title_idx ON public.documents USING btree (original
 
 
 --
--- TOC entry 5232 (class 1259 OID 99735)
+-- TOC entry 5234 (class 1259 OID 99735)
 -- Name: idx_case_analysis_version_search_vector; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -629,7 +633,7 @@ CREATE INDEX idx_case_analysis_version_search_vector ON public.case_analysis_ver
 
 
 --
--- TOC entry 5235 (class 1259 OID 99730)
+-- TOC entry 5237 (class 1259 OID 99730)
 -- Name: idx_revoked_tokens_expires_at; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -637,7 +641,7 @@ CREATE INDEX idx_revoked_tokens_expires_at ON public.revoked_tokens USING btree 
 
 
 --
--- TOC entry 5214 (class 1259 OID 25690)
+-- TOC entry 5216 (class 1259 OID 25690)
 -- Name: idx_users_provider; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -645,7 +649,7 @@ CREATE INDEX idx_users_provider ON public.users USING btree (provider, provider_
 
 
 --
--- TOC entry 5215 (class 1259 OID 25689)
+-- TOC entry 5217 (class 1259 OID 25689)
 -- Name: uq_users_provider_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -653,15 +657,15 @@ CREATE UNIQUE INDEX uq_users_provider_id ON public.users USING btree (provider, 
 
 
 --
--- TOC entry 5247 (class 2620 OID 91497)
+-- TOC entry 5249 (class 2620 OID 91497)
 -- Name: users trg_set_user_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER trg_set_user_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public._set_user_updated_at();
+CREATE TRIGGER trg_set_user_updated_at BEFORE INSERT OR UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public._set_user_updated_at();
 
 
 --
--- TOC entry 5248 (class 2620 OID 99732)
+-- TOC entry 5251 (class 2620 OID 99732)
 -- Name: case_analysis_versions trg_update_case_analysis_version_search_vector; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -669,7 +673,7 @@ CREATE TRIGGER trg_update_case_analysis_version_search_vector BEFORE INSERT OR U
 
 
 --
--- TOC entry 5246 (class 2620 OID 58556)
+-- TOC entry 5248 (class 2620 OID 58556)
 -- Name: documents trg_update_document_search_vector; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -677,7 +681,15 @@ CREATE TRIGGER trg_update_document_search_vector BEFORE INSERT OR UPDATE ON publ
 
 
 --
--- TOC entry 5244 (class 2606 OID 75093)
+-- TOC entry 5250 (class 2620 OID 165265)
+-- Name: users trg_update_user_search_vector; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trg_update_user_search_vector BEFORE INSERT OR UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public._update_user_search_vector();
+
+
+--
+-- TOC entry 5246 (class 2606 OID 75093)
 -- Name: case_analysis_version_facts case_analysis_version_facts_case_analysis_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -686,7 +698,7 @@ ALTER TABLE ONLY public.case_analysis_version_facts
 
 
 --
--- TOC entry 5245 (class 2606 OID 75098)
+-- TOC entry 5247 (class 2606 OID 75098)
 -- Name: case_analysis_version_facts case_analysis_version_facts_case_fact_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -695,7 +707,7 @@ ALTER TABLE ONLY public.case_analysis_version_facts
 
 
 --
--- TOC entry 5243 (class 2606 OID 75081)
+-- TOC entry 5245 (class 2606 OID 75081)
 -- Name: case_analysis_versions case_analysis_versions_case_analysis_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -704,7 +716,7 @@ ALTER TABLE ONLY public.case_analysis_versions
 
 
 --
--- TOC entry 5242 (class 2606 OID 75060)
+-- TOC entry 5244 (class 2606 OID 75060)
 -- Name: case_fact_versions case_fact_versions_case_fact_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -713,7 +725,7 @@ ALTER TABLE ONLY public.case_fact_versions
 
 
 --
--- TOC entry 5241 (class 2606 OID 75037)
+-- TOC entry 5243 (class 2606 OID 75037)
 -- Name: case_facts case_facts_case_analysis_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -722,7 +734,7 @@ ALTER TABLE ONLY public.case_facts
 
 
 --
--- TOC entry 5239 (class 2606 OID 17003)
+-- TOC entry 5241 (class 2606 OID 17003)
 -- Name: chunks chunks_document_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -731,7 +743,7 @@ ALTER TABLE ONLY public.chunks
 
 
 --
--- TOC entry 5240 (class 2606 OID 91514)
+-- TOC entry 5242 (class 2606 OID 91514)
 -- Name: case_analysis_sessions fk_case_analysis_session_user; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -740,7 +752,7 @@ ALTER TABLE ONLY public.case_analysis_sessions
 
 
 --
--- TOC entry 5238 (class 2606 OID 91507)
+-- TOC entry 5240 (class 2606 OID 91507)
 -- Name: documents fk_users_documents; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -748,11 +760,11 @@ ALTER TABLE ONLY public.documents
     ADD CONSTRAINT fk_users_documents FOREIGN KEY (uploader_id) REFERENCES public.users(id);
 
 
--- Completed on 2026-08-27 23:24:47
+-- Completed on 2026-09-26 23:13:28
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ZiKgLy1Ikb9Elcf1pSuAmzhbTdOT5CBFEdVHxaccO9RFgC5juQZ1awrrfOp5qFN
+\unrestrict XpyGG9Rf99Pd5bFHhuLjwMrvRAJuoeGG5GOw19Hg1m9hbcVCxWK4GaAhebIUbiQ
 
