@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 from redis.asyncio import Redis
+
+logger = logging.getLogger(__name__)
 
 
 class PubsubService:
@@ -14,8 +17,12 @@ class PubsubService:
         await self._pubsub.subscribe(*channels)
 
     async def publish(self, channel: str, data: Any) -> int:
-        return await self._redis.publish(channel=channel, message=json.dumps(data))
-    
+        res = await self._redis.publish(channel=channel, message=json.dumps(data))
+
+        logger.info("Server successfully published event to %s channel", channel)
+
+        return res
+
     async def get_message(
         self, ignore_subscribe_messages: bool = False, timeout: float | None = 0
     ) -> dict[str, Any] | None:
